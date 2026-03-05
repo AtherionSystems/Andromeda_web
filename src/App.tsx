@@ -1,35 +1,50 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import './App.css';
+
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+    <div
+      style={{
+        minHeight: '100vh',
+        minWidth: '100vw',
+        overflow: 'hidden',
+        margin: 0,
+        padding: 0,
+        boxSizing: 'border-box',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'linear-gradient(135deg, #1e293b 0%, #6366f1 60%, #f8fafc 100%)',
+      }}
+    >
+      <div style={{ display: 'flex', gap: '3vw', alignItems: 'center', marginBottom: '2.5rem' }}>
+        <img
+          src="/Media/Images/Atherion_Transparent.png"
+          alt="Atherion Logo"
+          style={{ height: '110px', objectFit: 'contain', filter: 'drop-shadow(0 2px 16px #6366f1aa) brightness(1.15)' }}
+        />
+        <img
+          src="/Media/Images/Andromeda_Transparent.png"
+          alt="Andromeda Logo"
+          style={{ height: '110px', objectFit: 'contain', filter: 'drop-shadow(0 2px 16px #6366f1aa) brightness(1.15)' }}
+        />
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+      <h2
+        style={{
+          fontWeight: 400,
+          color: '#f1f5f9',
+          fontSize: '1.5rem',
+          letterSpacing: '0.02em',
+          opacity: 0.93,
+          textAlign: 'center',
+          textShadow: '0 2px 8px #1e293b88',
+        }}
+      >
+        Webpage wireframe and scaffolding
+      </h2>
+    </div>
+  );
 }
 
-export default App
+export default App;
