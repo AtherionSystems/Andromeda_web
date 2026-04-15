@@ -26,31 +26,14 @@ const SearchInput: React.FC<SearchInputProps> = ({
   placeholder = "Search Project...",
 }) => {
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 6,
-        border: "0.5px solid #cdd8db",
-        borderRadius: 4,
-        padding: "4px 8px",
-        background: "#f8fafa",
-      }}
-    >
+    <div className="flex items-center gap-1.5 border border-oracle-border rounded px-2 py-1 bg-[#f8fafa]">
       <SearchIcon />
       <input
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        style={{
-          border: "none",
-          background: "transparent",
-          fontSize: 12,
-          color: "#3a5a6a",
-          outline: "none",
-          width: 120,
-        }}
+        className="border-none bg-transparent text-[12px] text-[#3a5a6a] outline-none w-[120px]"
       />
     </div>
   );

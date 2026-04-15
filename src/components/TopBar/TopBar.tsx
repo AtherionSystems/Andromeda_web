@@ -43,66 +43,35 @@ const Topbar: React.FC<TopbarProps> = ({ searchValue, onSearchChange }) => {
   const [activeTab, setActiveTab] = useState("overview");
 
   return (
-    <header
-      style={{
-        display: "flex",
-        alignItems: "center",
-        padding: "0 20px",
-        height: 44,
-        background: "#fff",
-        borderBottom: "0.5px solid rgba(0,0,0,0.1)",
-        gap: 20,
-        flexShrink: 0,
-      }}
-    >
-      {/* Título de la vista */}
-      <span
-        style={{
-          color: "#C74634",
-          fontStyle: "italic",
-          fontWeight: 600,
-          fontSize: 14,
-        }}
-      >
+    <header className="flex items-center px-5 h-11 bg-white border-b border-black/10 gap-5 shrink-0">
+      <span className="text-[#C74634] italic font-semibold text-[14px]">
         Product Owner
       </span>
-
-      {/* Tabs de sección */}
-      <nav style={{ display: "flex" }}>
+      <nav className="flex">
         {TABS.map((tab) => (
           <button
             key={tab.value}
             onClick={() => setActiveTab(tab.value)}
-            style={{
-              padding: "0 14px",
-              height: 44,
-              border: "none",
-              borderBottom:
-                activeTab === tab.value
-                  ? "2px solid #C74634"
-                  : "2px solid transparent",
-              background: "transparent",
-              color: activeTab === tab.value ? "#C74634" : "#5a7a8a",
-              fontWeight: activeTab === tab.value ? 500 : 400,
-              fontSize: 12,
-              cursor: "pointer",
-            }}
+            className={`px-3.5 h-11 border-none bg-transparent text-[12px] cursor-pointer
+            border-b-2 transition-colors
+            ${
+              activeTab === tab.value
+                ? "text-[#C74634] border-b-[#C74634] font-medium"
+                : "text-[#5a7a8a] border-b-transparent font-normal hover:text-[#1a3a4a]"
+            }`}
           >
             {tab.label}
           </button>
         ))}
       </nav>
 
-      {/* Espaciador — empuja los controles a la derecha */}
-      <div style={{ flex: 1 }} />
+      <div className="flex-1" />
 
-      {/* Controles derechos */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        {/* Búsqueda controlada: el valor sube al padre (ProjectsPage) */}
+      <div className="flex items-center gap-3">
         <SearchInput value={searchValue} onChange={onSearchChange} />
 
-        {/* Ícono: ayuda / docs */}
-        <IconBtn title="Help">
+        {/* Icono ayuda */}
+        <button className="w-7 h-7 flex items-center justify-center rounded-full bg-transparent border-none cursor-pointer text-[#5a7a8a] hover:bg-[#f0f4f5]">
           <svg
             width="14"
             height="14"
@@ -115,10 +84,10 @@ const Topbar: React.FC<TopbarProps> = ({ searchValue, onSearchChange }) => {
             <path d="M6 6a2 2 0 114 0c0 1.5-2 2-2 3" />
             <circle cx="8" cy="12" r="0.5" fill="currentColor" />
           </svg>
-        </IconBtn>
+        </button>
 
-        {/* Ícono: notificaciones */}
-        <IconBtn title="Notifications">
+        {/* Icono notificaciones */}
+        <button className="w-7 h-7 flex items-center justify-center rounded-full bg-transparent border-none cursor-pointer text-[#5a7a8a] hover:bg-[#f0f4f5]">
           <svg
             width="14"
             height="14"
@@ -130,26 +99,10 @@ const Topbar: React.FC<TopbarProps> = ({ searchValue, onSearchChange }) => {
             <path d="M8 2a5 5 0 015 5c0 2 .6 3 1 4H2c.4-1 1-2 1-4a5 5 0 015-5z" />
             <path d="M6 13a2 2 0 004 0" />
           </svg>
-        </IconBtn>
+        </button>
 
-        {/* Avatar del usuario — iniciales hardcodeadas;
-            reemplazar por datos del contexto de autenticación */}
-        <div
-          style={{
-            width: 28,
-            height: 28,
-            borderRadius: "50%",
-            background: "#4a8fa3",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "#fff",
-            fontSize: 11,
-            fontWeight: 600,
-            cursor: "pointer",
-          }}
-          title="Mi perfil"
-        >
+        {/* Avatar */}
+        <div className="w-8 h-8 rounded-full bg-[#4a3f7a] flex items-center justify-center text-white text-[11px] font-semibold cursor-pointer">
           PO
         </div>
       </div>

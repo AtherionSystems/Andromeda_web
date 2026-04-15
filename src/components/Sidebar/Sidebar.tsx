@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import NavItem from "./NavItem";
 
-// ── Iconos SVG inline (sin dependencias externas) ──
 const Icons: Record<string, React.ReactNode> = {
   Dashboard: (
     <svg viewBox="0 0 16 16" fill="currentColor" width="14" height="14">
@@ -87,62 +86,30 @@ const NAV_ITEMS = [
 ];
 
 const Sidebar: React.FC = () => {
-  // Estado local: ruta activa. Migrar a React Router
-  // (useLocation) cuando se integre enrutamiento real.
   const [activeRoute, setActiveRoute] = useState("/");
 
   return (
-    <aside
-      style={{
-        width: 168,
-        background: "#dce8ea",
-        display: "flex",
-        flexDirection: "column",
-        flexShrink: 0,
-        height: "100%",
-      }}
-    >
-      {/* ── Branding ── */}
-      <div
-        style={{
-          padding: "16px 14px 12px",
-          borderBottom: "0.5px solid rgba(0,0,0,0.1)",
-        }}
-      >
-        <div
-          style={{
-            color: "#C74634",
-            fontWeight: 700,
-            fontSize: 13,
-            letterSpacing: "0.5px",
-          }}
-        >
-          ORACLE
-        </div>
-        <div
-          style={{
-            fontSize: 11,
-            fontWeight: 600,
-            color: "#1a3a4a",
-            marginTop: 1,
-          }}
-        >
+    // overflow-hidden evita que la imagen desborde el sidebar
+    <aside className="w-full h-full bg-white flex flex-col border-r border-black/10 overflow-hidden">
+      {/* Branding */}
+      <div className="px-4 pt-4 pb-3 border-b border-black/10">
+        {/* Logo contenido dentro del ancho del sidebar */}
+        <img
+          src="/Media/Images/OracleColour_Transparent.png"
+          alt="Oracle Logo"
+          style={{ maxWidth: "120px" }} // ← tope fijo, no depende de Tailwind
+          className="w-full h-auto object-contain mb-2"
+        />
+        <div className="text-[11px] font-semibold text-[#1a3a4a] leading-tight">
           Atherion Systems
         </div>
-        <div
-          style={{
-            fontSize: 9,
-            color: "#5a7a8a",
-            letterSpacing: "0.8px",
-            textTransform: "uppercase",
-          }}
-        >
+        <div className="text-[9px] text-[#5a7a8a] tracking-widest uppercase mt-0.5">
           Enterprise Platform
         </div>
       </div>
 
-      {/* ── Lista de navegación ── */}
-      <nav style={{ flex: 1, paddingTop: 8 }}>
+      {/* Navegación */}
+      <nav className="flex-1 pt-2">
         {NAV_ITEMS.map((item) => (
           <NavItem
             key={item.route}

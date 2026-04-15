@@ -2,52 +2,35 @@ import React, { useState } from "react";
 import Sidebar from "../Sidebar/Sidebar";
 import Topbar from "../TopBar/TopBar";
 import Footer from "./Footer";
+import { useWindowSize } from "../../hooks/useWindowSize";
 
 interface AppLayoutProps {
-  // Slot de contenido — acepta cualquier página
   children: (searchQuery: string) => React.ReactNode;
 }
 
 const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
-  // Estado de búsqueda compartido entre Topbar y la página activa
   const [searchQuery, setSearchQuery] = useState("");
+  const { breakpoint } = useWindowSize();
 
   return (
     <div
-      style={{
-        display: "flex",
-        height: "100vh",
-        background: "#f0f4f5",
-        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-        fontSize: 13,
-        overflow: "hidden",
-      }}
+      className={`flex w-full h-screen bg-[#f5f5f5] font-sans text-[13px]
+      ${breakpoint === "mobile" ? "flex-col" : "flex-row"}`}
     >
-      {/* ── Sidebar fijo ── */}
-      <Sidebar />
-
-      {/* ── Área derecha ── */}
+      {/* Sidebar — ancho fijo en tablet/desktop, barra superior en mobile */}
       <div
-        style={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-        }}
+        className={`shrink-0 overflow-hidden
+        ${breakpoint === "mobile" ? "w-full h-auto" : "w-[168px] h-full"}`}
       >
-        {/* Topbar recibe y actualiza el valor de búsqueda */}
+        <Sidebar />
+      </div>
+
+      {/* Área derecha — ocupa el espacio restante */}
+      <div className="flex flex-col flex-1 min-w-0 min-h-0">
         <Topbar searchValue={searchQuery} onSearchChange={setSearchQuery} />
 
-        {/* Contenido de la página actual.
-            Se usa render prop para pasar searchQuery sin prop drilling complejo. */}
-        <div
-          style={{
-            flex: 1,
-            overflow: "hidden",
-            display: "flex",
-            flexDirection: "column",
-          }}
-        >
+        {/* Zona de contenido — scrollable */}
+        <div className="flex flex-col flex-1 overflow-y-auto">
           {children(searchQuery)}
         </div>
 

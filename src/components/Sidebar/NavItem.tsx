@@ -14,37 +14,22 @@ const NavItem: React.FC<NavItemProps> = ({
   route,
   isActive,
   onClick,
-}) => {
-  return (
-    <button
-      onClick={() => onClick(route)}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "9px",
-        width: "100%",
-        padding: "8px 14px",
-        border: "none",
-        borderLeft: isActive
-          ? "2.5px solid #C74634"
-          : "2.5px solid transparent",
-        background: isActive ? "rgba(0,0,0,0.08)" : "transparent",
-        color: isActive ? "#1a3a4a" : "#3a5a6a",
-        fontWeight: isActive ? 500 : 400,
-        fontSize: "13px",
-        cursor: "pointer",
-        textAlign: "left",
-        transition: "all 0.15s ease",
-      }}
-      // Accesibilidad: indica al lector de pantalla qué página está activa
-      aria-current={isActive ? "page" : undefined}
-    >
-      <span style={{ width: 14, height: 14, opacity: 0.7, flexShrink: 0 }}>
-        {icon}
-      </span>
-      {label}
-    </button>
-  );
-};
+}) => (
+  <button
+    onClick={() => onClick(route)}
+    aria-current={isActive ? "page" : undefined}
+    className={`flex items-center gap-2.5 w-full px-4 py-2 text-[13px] text-left
+      border-l-[2.5px] transition-all duration-150 bg-transparent border-t-0
+      border-r-0 border-b-0 cursor-pointer
+      ${
+        isActive
+          ? "border-l-[#C74634] bg-[#f0f4f5] text-[#1a3a4a] font-medium"
+          : "border-l-transparent text-[#3a5a6a] font-normal hover:bg-[#f5f5f5]"
+      }`}
+  >
+    <span className="w-3.5 h-3.5 opacity-60 shrink-0">{icon}</span>
+    {label}
+  </button>
+);
 
 export default NavItem;

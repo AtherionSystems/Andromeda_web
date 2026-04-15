@@ -2,8 +2,6 @@ import React, { useState } from "react";
 import type { Project } from "../../types/project";
 import MemberAvatars from "./MemberAvatars";
 
-// Paletas de colores para los placeholders SVG.
-// Si el proyecto tiene coverImage, se usa <img>.
 const COVER_PALETTES = [
   { bg: "#1d4a5a", layers: ["#2d6a7a", "#c8a882", "#8a4a3a"] },
   { bg: "#c8a060", layers: ["#9a4a6a", "#7a3a5a", "#4a3a2a"] },
@@ -11,7 +9,6 @@ const COVER_PALETTES = [
   { bg: "#3a2a4a", layers: ["#5a4a7a", "#c87060", "#4a3060"] },
 ];
 
-// SVG generativo usado como portada cuando no hay imagen real
 const CoverPlaceholder: React.FC<{ index: number }> = ({ index }) => {
   const p = COVER_PALETTES[index % COVER_PALETTES.length];
   return (
@@ -51,7 +48,6 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
   index,
   onClick,
 }) => {
-  // Hover state para el efecto de sombra
   const [hovered, setHovered] = useState(false);
 
   return (
@@ -59,74 +55,48 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
       onClick={() => onClick?.(project)}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      style={{
-        background: "#fff",
-        borderRadius: 8,
-        border: "0.5px solid rgba(0,0,0,0.1)",
-        overflow: "hidden",
-        cursor: "pointer",
-        boxShadow: hovered ? "0 2px 12px rgba(0,0,0,0.1)" : "none",
-        transition: "box-shadow 0.15s ease",
-      }}
-      // Accesibilidad: rol de botón para lectores de pantalla
       role="button"
-      aria-label={`Abrir proyecto: ${project.title}`}
       tabIndex={0}
+      aria-label={`Abrir proyecto: ${project.title}`}
       onKeyDown={(e) => e.key === "Enter" && onClick?.(project)}
+      className={`bg-white rounded-lg overflow-hidden cursor-pointer
+        transition-shadow duration-150 border border-black/[0.08]
+        ${
+          hovered
+            ? "shadow-[0_4px_16px_rgba(0,0,0,0.12)]"
+            : "shadow-[0_1px_4px_rgba(0,0,0,0.06)]"
+        }`}
     >
-      {/* ── Card Header ── */}
-      <div style={{ padding: "14px 14px 10px" }}>
-        {/* Fila: título + número de orden */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-          }}
-        >
-          <div style={{ flex: 1, paddingRight: 8 }}>
-            <h3
-              style={{
-                fontSize: 14,
-                fontWeight: 500,
-                color: "#1a3a4a",
-                marginBottom: 3,
-              }}
-            >
-              {project.title}
-            </h3>
-            <p style={{ fontSize: 11, color: "#6a8a9a", lineHeight: 1.4 }}>
-              {project.description}
-            </p>
-          </div>
-          {/* Número en gris tenue — solo decorativo */}
-          <span
-            style={{
-              fontSize: 18,
-              fontWeight: 300,
-              color: "#9abacc",
-              flexShrink: 0,
-            }}
-          >
-            {String(index + 1).padStart(2, "0")}
-          </span>
-        </div>
-
-        {/* Avatares del equipo */}
-        <MemberAvatars members={project.members} />
-      </div>
-
-      {/* ── Imagen de portada ── */}
-      <div style={{ height: 120, overflow: "hidden" }}>
+      {/* ── Imagen arriba ── */}
+      <div className="h-[140px] overflow-hidden">
         {project.coverImage ? (
           <img
             src={project.coverImage}
             alt={`Portada de ${project.title}`}
-            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            className="w-full h-full object-cover"
           />
         ) : (
           <CoverPlaceholder index={index} />
         )}
+      </div>
+
+      {/* ── Contenido abajo ── */}
+      <div className="p-3.5 pt-3">
+        <div className="flex justify-between items-start">
+          <div className="flex-1 pr-2">
+            <h3 className="text-[14px] font-medium text-[#1a3a4a] mb-1">
+              {project.title}
+            </h3>
+            <p className="text-[11px] text-[#6a8a9a] leading-snug">
+              {project.description}
+            </p>
+          </div>
+          {/* Número decorativo */}
+          <span className="text-[18px] font-light text-[#9abacc] shrink-0">
+            {String(index + 1).padStart(2, "0")}
+          </span>
+        </div>
+        <MemberAvatars members={project.members} />
       </div>
     </article>
   );

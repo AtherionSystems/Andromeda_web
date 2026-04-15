@@ -12,49 +12,25 @@ const MemberAvatars: React.FC<MemberAvatarsProps> = ({ members, max = 4 }) => {
   const overflow = members.length - max;
 
   return (
-    <div style={{ display: "flex", marginTop: 10 }}>
+    <div className="flex mt-2.5">
       {visible.map((member, i) => (
         <div
           key={i}
-          title={member.name} // tooltip con nombre completo
+          title={member.name}
           style={{
-            width: 24,
-            height: 24,
-            borderRadius: "50%",
             background: member.color,
-            border: "2px solid #fff",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: 9,
-            fontWeight: 600,
-            color: "#fff",
-            marginLeft: i === 0 ? 0 : -4, // solapamiento
-            zIndex: visible.length - i, // el primero queda encima
-            cursor: "default",
+            marginLeft: i === 0 ? 0 : -4,
+            zIndex: visible.length - i,
           }}
+          className="w-6 h-6 rounded-full border-2 border-white flex items-center justify-center text-[9px] font-semibold text-white cursor-default"
         >
           {member.initials}
         </div>
       ))}
-
-      {/* Desbordamiento: "+2", "+5", etc. */}
       {overflow > 0 && (
         <div
-          style={{
-            width: 24,
-            height: 24,
-            borderRadius: "50%",
-            background: "#d0dde0",
-            border: "2px solid #fff",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: 9,
-            fontWeight: 600,
-            color: "#4a6a7a",
-            marginLeft: -4,
-          }}
+          style={{ marginLeft: -4 }}
+          className="w-6 h-6 rounded-full border-2 border-white bg-[#d0dde0] flex items-center justify-center text-[9px] font-semibold text-[#4a6a7a]"
         >
           +{overflow}
         </div>

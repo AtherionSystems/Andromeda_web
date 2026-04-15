@@ -16,7 +16,7 @@ const Footer: React.FC = () => {
       }}
     >
       <span style={{ fontSize: 10, color: "#8aaabb", letterSpacing: "0.5px" }}>
-        © 2024 ATHERION SYSTEMS. ALL RIGHTS RESERVED.
+        © 2026 ATHERION SYSTEMS. ALL RIGHTS RESERVED.
       </span>
 
       <nav style={{ display: "flex", gap: 16 }}>
