@@ -19,6 +19,10 @@ interface MemberEntry {
   initials: string;
 }
 
+interface HealthResponse {
+  status?: string;
+}
+
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
 const PRIORITY_ORDER: Record<string, number> = {
@@ -168,7 +172,10 @@ function ObjectiveItem({ task }: { task: EnrichedTask }) {
           <p style={{ margin: "0 0 2px", fontSize: 9, letterSpacing: 0.8, color: "#6a8a9a", textTransform: "uppercase" }}>
             {taskCode(task)}
           </p>
-          <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: "#1a3a4a", lineHeight: 1.4 }}>
+          <p style={{
+            margin: 0, fontSize: 11, fontWeight: 600, color: "#1a3a4a", lineHeight: 1.4,
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          }}>
             {task.title}
           </p>
           {task.description && (
@@ -195,8 +202,8 @@ function ObjectiveItem({ task }: { task: EnrichedTask }) {
 // ── Upcoming events (illustrative — no calendar endpoint yet) ────────────────
 
 const MOCK_EVENTS = [
-  { day: "14", month: "Oct", title: "Stakeholder Review", tag: "Full", tagColor: "#c74634", sub: null },
-  { day: "13", month: "Oct", title: "Sprint Retrospective", tag: null, tagColor: null, sub: "10:00 · 1 Atherion Link" },
+  { day: "16", month: "Apr", title: "Stakeholder Review", tag: null, tagColor: null, sub: "7:00 AM" },
+  { day: "17", month: "Apr", title: "Sprint Retrospective", tag: null, tagColor: null, sub: "10:00 AM" },
 ];
 
 function EventItem({ ev }: { ev: typeof MOCK_EVENTS[0] }) {
@@ -231,7 +238,10 @@ function EventItem({ ev }: { ev: typeof MOCK_EVENTS[0] }) {
 
 // ── System Config (static — no config endpoint) ───────────────────────────────
 
-function SystemConfigCard() {
+function SystemConfigCard({ healthUp }: { healthUp: boolean | null }) {
+  const healthColor = healthUp === null ? "#94a3b8" : healthUp ? "#4ade80" : "#f87171";
+  const healthLabel = healthUp === null ? "Checking" : healthUp ? "Operational" : "Unavailable";
+
   return (
     <div style={{ background: "#1a3a4a", borderRadius: 8, padding: "14px 16px", marginTop: 12 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
@@ -248,20 +258,11 @@ function SystemConfigCard() {
         <span style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.9)" }}>System Config</span>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {[
-          { label: "Environment",     value: "Production-Alpha" },
-          { label: "Version Control", value: "CDL49   10.4"     },
-        ].map((row) => (
-          <div key={row.label} style={{ display: "flex", justifyContent: "space-between" }}>
-            <span style={{ fontSize: 10, color: "rgba(255,255,255,0.45)" }}>{row.label}</span>
-            <span style={{ fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.8)" }}>{row.value}</span>
-          </div>
-        ))}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ fontSize: 10, color: "rgba(255,255,255,0.45)" }}>Lattice Status</span>
+          <span style={{ fontSize: 10, color: "rgba(255,255,255,0.45)" }}>Availability</span>
           <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ade80", display: "inline-block" }} />
-            <span style={{ fontSize: 10, fontWeight: 600, color: "#4ade80" }}>Operational</span>
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: healthColor, display: "inline-block" }} />
+            <span style={{ fontSize: 10, fontWeight: 600, color: healthColor }}>{healthLabel}</span>
           </div>
         </div>
       </div>
@@ -270,7 +271,7 @@ function SystemConfigCard() {
           Last Deploy
         </p>
         <p style={{ margin: 0, fontSize: 10, color: "rgba(255,255,255,0.7)", fontWeight: 500 }}>
-          Dec 9, 19:04:13 OFT
+          Apr 14, 19:04:13 
         </p>
       </div>
     </div>
@@ -294,24 +295,55 @@ function Skeleton({ w = "100%", h = 14, radius = 4 }: { w?: string | number; h?:
 
 export default function PODashboard({ user: _user }: { user: ApiUser }) {
   const [loading, setLoading]           = useState(true);
+  const [healthUp, setHealthUp]         = useState<boolean | null>(null);
   const [projectName, setProjectName]   = useState("Projects Overview");
   const [completionPct, setCompletionPct] = useState(0);
   const [activeBlocks, setActiveBlocks] = useState(0);
   const [objectives, setObjectives]     = useState<EnrichedTask[]>([]);
   const [members, setMembers]           = useState<MemberEntry[]>([]);
   const [totalMembers, setTotalMembers] = useState(0);
+  const [showAllMembers, setShowAllMembers] = useState(false);
+  const [showAllObjectives, setShowAllObjectives] = useState(false);
+
+  useEffect(() => {
+    async function checkHealth() {
+      try {
+        const res = await fetch("/health");
+        if (!res.ok) {
+          setHealthUp(false);
+          return;
+        }
+        const data = (await res.json()) as HealthResponse | null;
+        if (!data || typeof data.status !== "string") {
+          setHealthUp(true);
+          return;
+        }
+        setHealthUp(data.status.toUpperCase() === "UP");
+      } catch {
+        setHealthUp(false);
+      }
+    }
+
+    checkHealth();
+
+  }, []);
 
   useEffect(() => {
     async function load() {
       try {
-        const [projects, allMembers] = await Promise.all([
-          getProjects(),
-          getProjectMembers(),
-        ]);
+        const projects = await getProjects();
 
         // Use first active project name as the page title
-        const activeProject = projects.find((p) => p.status === "active") ?? projects[0];
+        const activeProject =
+          projects.find((p) => p.id === 134) ??
+          projects.find((p) => p.status === "active") ??
+          projects[0];
         if (activeProject) setProjectName(activeProject.name);
+        const activeProjectId = activeProject?.id;
+
+        const membersForProject = activeProject
+          ? await getProjectMembers({ projectId: activeProject.id })
+          : await getProjectMembers();
 
         // Load tasks for all projects in parallel
         const taskArrays = await Promise.all(
@@ -325,10 +357,13 @@ export default function PODashboard({ user: _user }: { user: ApiUser }) {
           })
         );
         const allTasks = taskArrays.flat();
+        const scopedTasks = allTasks.filter((t) =>
+          activeProjectId ? t.projectId === activeProjectId : true
+        );
 
         // Completion rate
-        const total = allTasks.length;
-        const done  = allTasks.filter((t) => t.status === "done").length;
+        const total = scopedTasks.length;
+        const done  = scopedTasks.filter((t) => t.status === "done").length;
         setCompletionPct(total > 0 ? Math.round((done / total) * 100) : 0);
 
         // Active blocks: critical tasks not yet done
@@ -338,15 +373,16 @@ export default function PODashboard({ user: _user }: { user: ApiUser }) {
         setActiveBlocks(blocks.length);
 
         // Top 3 objectives: non-done, sorted by priority
-        const openTasks = allTasks
+        const openTasks = scopedTasks
           .filter((t) => t.status !== "done")
           .sort((a, b) => (PRIORITY_ORDER[a.priority] ?? 4) - (PRIORITY_ORDER[b.priority] ?? 4));
-        setObjectives(openTasks.slice(0, 3));
+        setObjectives(openTasks);
+        setShowAllObjectives(false);
 
         // Unique members (by userId), max shown = 3
         const seen = new Set<number>();
         const unique: MemberEntry[] = [];
-        allMembers.forEach((m, i) => {
+        membersForProject.forEach((m, i) => {
           if (!seen.has(m.userId)) {
             seen.add(m.userId);
             unique.push({
@@ -359,7 +395,8 @@ export default function PODashboard({ user: _user }: { user: ApiUser }) {
           }
         });
         setTotalMembers(unique.length);
-        setMembers(unique.slice(0, 3));
+        setMembers(unique);
+        setShowAllMembers(false);
       } catch (err) {
         console.error("PODashboard load error:", err);
       } finally {
@@ -410,7 +447,7 @@ export default function PODashboard({ user: _user }: { user: ApiUser }) {
               </p>
             )}
             <p style={{ margin: 0, fontSize: 10, color: "rgba(255,255,255,0.75)", lineHeight: 1.5 }}>
-              Task completion across all active projects.
+              Task completion for the current project.
             </p>
           </div>
 
@@ -434,10 +471,10 @@ export default function PODashboard({ user: _user }: { user: ApiUser }) {
       </div>
 
       {/* ── Bottom row ─────────────────────────────────────────────── */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)", gap: 14 }}>
 
         {/* Team Distribution */}
-        <div style={{ background: "#fff", border: "1px solid #cdd8db", borderRadius: 10, padding: "14px 16px" }}>
+        <div style={{ background: "#fff", border: "1px solid #cdd8db", borderRadius: 10, padding: "14px 16px", minWidth: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: "#1a3a4a" }}>Team Distribution</span>
             <svg viewBox="0 0 16 16" fill="none" stroke="#6a8a9a" strokeWidth="1.4" width="14" height="14">
@@ -454,15 +491,20 @@ export default function PODashboard({ user: _user }: { user: ApiUser }) {
             <p style={{ fontSize: 12, color: "#6a8a9a", textAlign: "center", padding: "16px 0" }}>No members found.</p>
           ) : (
             <>
-              {members.map((m, i) => <MemberRow key={m.userId} member={m} idx={i} />)}
+              {(showAllMembers ? members : members.slice(0, 3)).map((m, i) => (
+                <MemberRow key={m.userId} member={m} idx={i} />
+              ))}
               {totalMembers > 3 && (
-                <button style={{
-                  marginTop: 12, width: "100%", fontSize: 10,
-                  color: "#c74634", background: "none", border: "none",
-                  cursor: "pointer", fontWeight: 700, letterSpacing: 0.5,
-                  textTransform: "uppercase", textAlign: "center", padding: 0,
-                }}>
-                  View All Members ({totalMembers})
+                <button
+                  onClick={() => setShowAllMembers((prev) => !prev)}
+                  style={{
+                    marginTop: 12, width: "100%", fontSize: 10,
+                    color: "#c74634", background: "none", border: "none",
+                    cursor: "pointer", fontWeight: 700, letterSpacing: 0.5,
+                    textTransform: "uppercase", textAlign: "center", padding: 0,
+                  }}
+                >
+                  {showAllMembers ? "Hide Members" : `View All Members (${totalMembers})`}
                 </button>
               )}
             </>
@@ -470,7 +512,7 @@ export default function PODashboard({ user: _user }: { user: ApiUser }) {
         </div>
 
         {/* Current Objectives */}
-        <div style={{ background: "#fff", border: "1px solid #cdd8db", borderRadius: 10, padding: "14px 16px" }}>
+        <div style={{ background: "#fff", border: "1px solid #cdd8db", borderRadius: 10, padding: "14px 16px", minWidth: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: "#1a3a4a" }}>Current Objectives</span>
             <span style={{
@@ -491,19 +533,36 @@ export default function PODashboard({ user: _user }: { user: ApiUser }) {
               All tasks are completed.
             </p>
           ) : (
-            objectives.map((t) => <ObjectiveItem key={t.id} task={t} />)
+            <>
+              {(showAllObjectives ? objectives : objectives.slice(0, 3)).map((t) => (
+                <ObjectiveItem key={t.id} task={t} />
+              ))}
+              {objectives.length > 3 && (
+                <button
+                  onClick={() => setShowAllObjectives((prev) => !prev)}
+                  style={{
+                    marginTop: 12, width: "100%", fontSize: 10,
+                    color: "#c74634", background: "none", border: "none",
+                    cursor: "pointer", fontWeight: 700, letterSpacing: 0.5,
+                    textTransform: "uppercase", textAlign: "center", padding: 0,
+                  }}
+                >
+                  {showAllObjectives ? "Hide Objectives" : `View All Objectives (${objectives.length})`}
+                </button>
+              )}
+            </>
           )}
         </div>
 
         {/* Upcoming + System Config */}
-        <div style={{ display: "flex", flexDirection: "column" }}>
+        <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
           <div style={{ background: "#fff", border: "1px solid #cdd8db", borderRadius: 10, padding: "14px 16px" }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: "#1a3a4a" }}>Upcoming</span>
             <div style={{ marginTop: 4 }}>
               {MOCK_EVENTS.map((ev) => <EventItem key={ev.title} ev={ev} />)}
             </div>
           </div>
-          <SystemConfigCard />
+          <SystemConfigCard healthUp={healthUp} />
         </div>
       </div>
     </div>
