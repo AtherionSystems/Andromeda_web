@@ -13,9 +13,10 @@ interface ProtectedRouteProps {
 function ProtectedRoute({ children, allowedRole }: ProtectedRouteProps) {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
-  const isDev = user.userType === "developer";
-  if (allowedRole === "developer" && !isDev) return <Navigate to="/po" replace />;
-  if (allowedRole === "po" && isDev) return <Navigate to="/developer" replace />;
+  if (allowedRole === "developer" && user.userType !== "developer")
+    return <Navigate to="/po" replace />;
+  if (allowedRole === "po" && user.userType === "developer")
+    return <Navigate to="/developer" replace />;
   return <>{children}</>;
 }
 

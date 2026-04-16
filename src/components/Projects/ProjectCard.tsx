@@ -1,5 +1,6 @@
-import React, { useState } from "react";
-import type { Project } from "../../types/project";
+import { useState } from "react";
+import type { ApiProject } from "../../types/api";
+import type { Member } from "../../types/project";
 import MemberAvatars from "./MemberAvatars";
 
 const COVER_PALETTES = [
@@ -9,7 +10,7 @@ const COVER_PALETTES = [
   { bg: "#3a2a4a", layers: ["#5a4a7a", "#c87060", "#4a3060"] },
 ];
 
-const CoverPlaceholder: React.FC<{ index: number }> = ({ index }) => {
+function CoverPlaceholder({ index }: { index: number }) {
   const p = COVER_PALETTES[index % COVER_PALETTES.length];
   return (
     <svg
@@ -35,19 +36,16 @@ const CoverPlaceholder: React.FC<{ index: number }> = ({ index }) => {
       />
     </svg>
   );
-};
-
-interface ProjectCardProps {
-  project: Project;
-  index: number;
-  onClick?: (project: Project) => void;
 }
 
-const ProjectCard: React.FC<ProjectCardProps> = ({
-  project,
-  index,
-  onClick,
-}) => {
+interface ProjectCardProps {
+  project: ApiProject;
+  members: Member[];
+  index: number;
+  onClick?: (project: ApiProject) => void;
+}
+
+function ProjectCard({ project, members, index, onClick }: ProjectCardProps) {
   const [hovered, setHovered] = useState(false);
 
   return (
@@ -57,7 +55,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
       onMouseLeave={() => setHovered(false)}
       role="button"
       tabIndex={0}
-      aria-label={`Abrir proyecto: ${project.title}`}
+      aria-label={`Open project: ${project.name}`}
       onKeyDown={(e) => e.key === "Enter" && onClick?.(project)}
       className={`bg-white rounded-lg overflow-hidden cursor-pointer
         transition-shadow duration-150 border border-black/[0.08]
@@ -67,39 +65,30 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
             : "shadow-[0_1px_4px_rgba(0,0,0,0.06)]"
         }`}
     >
-      {/* ── Imagen arriba ── */}
+      {/* Cover */}
       <div className="h-[140px] overflow-hidden">
-        {project.coverImage ? (
-          <img
-            src={project.coverImage}
-            alt={`Portada de ${project.title}`}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <CoverPlaceholder index={index} />
-        )}
+        <CoverPlaceholder index={index} />
       </div>
 
-      {/* ── Contenido abajo ── */}
+      {/* Content */}
       <div className="p-3.5 pt-3">
         <div className="flex justify-between items-start">
           <div className="flex-1 pr-2">
             <h3 className="text-[14px] font-medium text-[#1a3a4a] mb-1">
-              {project.title}
+              {project.name}
             </h3>
             <p className="text-[11px] text-[#6a8a9a] leading-snug">
-              {project.description}
+              {project.description ?? "No description provided."}
             </p>
           </div>
-          {/* Número decorativo */}
           <span className="text-[18px] font-light text-[#9abacc] shrink-0">
             {String(index + 1).padStart(2, "0")}
           </span>
         </div>
-        <MemberAvatars members={project.members} />
+        <MemberAvatars members={members} />
       </div>
     </article>
   );
-};
+}
 
 export default ProjectCard;

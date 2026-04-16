@@ -1,43 +1,51 @@
-import React, { useState } from "react";
+import { useState, type ReactNode } from "react";
 import Sidebar from "../Sidebar/Sidebar";
 import Topbar from "../TopBar/TopBar";
 import Footer from "./Footer";
 import { useWindowSize } from "../../hooks/useWindowSize";
+import type { ApiUser } from "../../types/api";
 
 interface AppLayoutProps {
-  children: (searchQuery: string) => React.ReactNode;
+  user: ApiUser;
+  role: "po" | "developer";
+  onLogout: () => void;
+  onNavigate?: (route: string) => void;
+  activeRoute?: string;
+  children: (searchQuery: string) => ReactNode;
 }
 
-const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
+function AppLayout({ user, role, onLogout, onNavigate, activeRoute, children }: AppLayoutProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const { breakpoint } = useWindowSize();
 
   return (
     <div
-      className={`flex w-full h-screen bg-[#f5f5f5] font-sans text-[13px]
+      className={`flex w-full h-screen bg-[#f0f4f5] font-sans text-[13px]
       ${breakpoint === "mobile" ? "flex-col" : "flex-row"}`}
     >
-      {/* Sidebar — ancho fijo en tablet/desktop, barra superior en mobile */}
       <div
         className={`shrink-0 overflow-hidden
         ${breakpoint === "mobile" ? "w-full h-auto" : "w-[168px] h-full"}`}
       >
-        <Sidebar />
+        <Sidebar role={role} onLogout={onLogout} onNavigate={onNavigate} activeRoute={activeRoute} />
       </div>
 
-      {/* Área derecha — ocupa el espacio restante */}
       <div className="flex flex-col flex-1 min-w-0 min-h-0">
-        <Topbar searchValue={searchQuery} onSearchChange={setSearchQuery} />
+        <Topbar
+          user={user}
+          role={role}
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
+          onLogout={onLogout}
+        />
 
-        {/* Zona de contenido — scrollable */}
         <div className="flex flex-col flex-1 overflow-y-auto">
-          {children(searchQuery)}
+          <main className="flex-1 px-6 py-5">{children(searchQuery)}</main>
+          <Footer />
         </div>
-
-        <Footer />
       </div>
     </div>
   );
-};
+}
 
 export default AppLayout;
