@@ -41,7 +41,9 @@ function AppLayout({ user, role, onLogout, onNavigate, activeRoute, children }: 
 
         <div className="flex flex-col flex-1 overflow-y-auto">
           <main className="flex-1 px-6 py-5">{children(searchQuery)}</main>
-          <Footer />
+          <div className="mt-auto">
+            <Footer />
+          </div>
         </div>
       </div>
     </div>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import BacklogColumn from "../../components/Backlog/BacklogColumn";
-import type { ApiTask } from "../../types/api";
+import type { ApiProject, ApiTask } from "../../types/api";
 import type { Member } from "../../types/project";
 import { getProjects } from "../../api/projects";
 import { getProjectTasks, getTaskAssignments } from "../../api/tasks";
@@ -21,10 +21,12 @@ function memberInitials(username: string): string {
 }
 
 function BacklogPage() {
+  const [projects, setProjects] = useState<ApiProject[]>([]);
   const [tasks, setTasks] = useState<ApiTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<ApiTask | null>(null);
+  const [selectedProjectId, setSelectedProjectId] = useState<number | "all">("all");
   const [taskAssignments, setTaskAssignments] = useState<Record<number, Member[]>>({});
 
   useEffect(() => {
@@ -33,6 +35,7 @@ function BacklogPage() {
         setError(null);
 
         const projects = await getProjects();
+        setProjects(projects);
         const taskArrays = await Promise.all(
           projects.map(async (project) => {
             const projectTasks = await getProjectTasks(project.id);
@@ -105,35 +108,67 @@ function BacklogPage() {
   }
 
   const selectedMembers = selectedTask ? (taskAssignments[selectedTask.id] ?? []) : [];
+  const visibleTasks =
+    selectedProjectId === "all"
+      ? tasks
+      : tasks.filter((task) => task.projectId === selectedProjectId);
+  const visibleTaskCount = visibleTasks.length;
 
   return (
     <>
-      <div className="px-8 pt-6 pb-2 bg-[#fdfdfd]">
-        <h2 className="text-2xl font-semibold text-slate-900 italic">Backlog</h2>
+      <div className="bg-[#fdfdfd] px-8 pt-6 pb-1">
+        <div className="mb-2 flex items-start justify-between gap-4">
+          <div className="flex flex-col items-start">
+            <h2 className="text-2xl font-semibold text-slate-900 italic">Backlog</h2>
+            <p className="mt-2 text-[18px] text-slate-500">{visibleTaskCount} tasks</p>
+          </div>
+
+          <div className="min-w-[320px] text-right">
+            <label className="mb-2 block text-[11px] font-semibold uppercase tracking-wide text-slate-500 text-left">
+              Filter by project
+            </label>
+            <select
+              value={selectedProjectId}
+              onChange={(event) => {
+                const value = event.target.value === "all" ? "all" : Number(event.target.value);
+                setSelectedProjectId(value);
+                setSelectedTask(null);
+              }}
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm outline-none transition-colors focus:border-[#c74634]"
+            >
+              <option value="all">All Projects</option>
+              {projects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
       </div>
 
-      <div className="flex h-full gap-6 overflow-x-auto p-8 bg-[#fdfdfd]">
+      <div className="flex h-full gap-6 overflow-x-auto px-8 pb-8 pt-2 bg-[#fdfdfd]">
         <BacklogColumn 
           title="To Do" 
-          tasks={tasks.filter(t => t.status === "todo")} 
+          tasks={visibleTasks.filter(t => t.status === "todo")} 
           onTaskClick={setSelectedTask}
           taskAssignments={taskAssignments}
         />
         <BacklogColumn 
           title="In Progress" 
-          tasks={tasks.filter(t => t.status === "in_progress")} 
+          tasks={visibleTasks.filter(t => t.status === "in_progress")} 
           onTaskClick={setSelectedTask}
           taskAssignments={taskAssignments}
         />
         <BacklogColumn 
           title="Review" 
-          tasks={tasks.filter(t => t.status === "review")} 
+          tasks={visibleTasks.filter(t => t.status === "review")} 
           onTaskClick={setSelectedTask}
           taskAssignments={taskAssignments}
         />
         <BacklogColumn 
           title="Done" 
-          tasks={tasks.filter(t => t.status === "done")} 
+          tasks={visibleTasks.filter(t => t.status === "done")} 
           onTaskClick={setSelectedTask}
           taskAssignments={taskAssignments}
         />
