@@ -12,20 +12,22 @@ interface ProtectedRouteProps {
 
 function ProtectedRoute({ children, allowedRole }: ProtectedRouteProps) {
   const { user } = useAuth();
+  const isDeveloper = user?.userType?.toLowerCase() === "developer";
+
   if (!user) return <Navigate to="/login" replace />;
-  if (allowedRole === "developer" && user.userType !== "developer")
+  if (allowedRole === "developer" && !isDeveloper)
     return <Navigate to="/po" replace />;
-  if (allowedRole === "po" && user.userType === "developer")
-    return <Navigate to="/developer" replace />;
   return <>{children}</>;
 }
 
 function AppRoutes() {
   const { user } = useAuth();
-  const defaultDash = user?.userType === "developer" ? "/developer" : "/po";
+  const defaultDash = "/po";
+  const guestDash = "/login";
 
   return (
     <Routes>
+      <Route path="/" element={<Navigate to={user ? defaultDash : guestDash} replace />} />
       <Route
         path="/login"
         element={user ? <Navigate to={defaultDash} replace /> : <LoginPage />}
@@ -46,7 +48,7 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
-      <Route path="*" element={<Navigate to="/login" replace />} />
+      <Route path="*" element={<Navigate to={user ? defaultDash : guestDash} replace />} />
     </Routes>
   );
 }

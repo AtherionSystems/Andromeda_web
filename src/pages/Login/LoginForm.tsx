@@ -1,9 +1,15 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom"; // Importación necesaria
 import InputField from "../../components/InputField";
 import Button from "../../components/Button";
+import { useAuth } from "../../contexts/AuthContext";
+import type { ApiUser } from "../../types/api";
 
 function LoginForm() {
-  const [username, setUsername] = useState(""); // antes email
+  const { login } = useAuth();
+  const navigate = useNavigate(); // Inicializamos el hook de navegación
+
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({
@@ -21,6 +27,11 @@ function LoginForm() {
       isValid = false;
     }
 
+    if (!password) {
+      newErrors.password = "Security key is required";
+      isValid = false;
+    }
+
     setErrors(newErrors);
     return isValid;
   };
@@ -35,7 +46,6 @@ function LoginForm() {
         headers: {
           "Content-Type": "application/json",
         },
-        // enviamos identifier (email o username)
         body: JSON.stringify({ username, password }),
       });
 
@@ -50,7 +60,20 @@ function LoginForm() {
         return;
       }
 
-      console.log("LOGIN OK", data);
+      // Procesamos el usuario según la estructura de tu API
+      const loggedUser = ((data as { user?: ApiUser }).user ?? data) as ApiUser;
+      
+      // 1. Actualizamos el contexto global (y localStorage)
+      login(loggedUser);
+
+      // 2. Redirección basada en el rol del usuario
+      const role = loggedUser.userType?.toLowerCase();
+      if (role === "developer") {
+        navigate("/developer", { replace: true });
+      } else {
+        navigate("/po", { replace: true });
+      }
+      
     } catch (error) {
       console.error("Network error:", error);
       setErrors((prev) => ({
@@ -69,13 +92,13 @@ function LoginForm() {
       </h2>
 
       <InputField
-        label="Corporate Email"
+        label="Username"
         value={username}
         onChange={(val) => {
           setUsername(val);
           if (errors.username) setErrors((prev) => ({ ...prev, username: "" }));
         }}
-        placeholder="name@oracle.com"
+        placeholder="Enter your username"
         error={errors.username}
       />
 
@@ -91,10 +114,12 @@ function LoginForm() {
         error={errors.password}
       />
 
-      <Button
-        text={loading ? "Authorizing..." : "Authorize Session"}
-        onClick={handleSubmit}
-      />
+      <div className="mt-2">
+        <Button
+          text={loading ? "Authorizing..." : "Authorize Session"}
+          onClick={handleSubmit}
+        />
+      </div>
 
       <div className="mt-8 text-xs text-slate-600">
         <span>© 2026 Atherion Systems. All rights reserved.</span> |{" "}

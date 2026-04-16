@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import AppLayout from "../../components/Layout/AppLayout";
 import ProjectsPage from "../../components/Projects/ProjectsPage";
+import BacklogPage from "../../components/Backlog/BacklogPage";
 import DeveloperDashboard from "./DeveloperDashboard";
 
 function DeveloperPage() {
@@ -36,6 +37,9 @@ function DeveloperPage() {
               description="Review your current project portfolio, teams and key performance indicators for all active initiatives in your department. Provide deep visibility into technical tasks to optimize software delivery cycles and team velocity."
             />
           );
+        }
+        if (activeRoute === "/backlog") {
+          return <BacklogPage />;
         }
         // Placeholder for other sections not yet implemented
         return (
