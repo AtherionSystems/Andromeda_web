@@ -1,47 +1,63 @@
-// ─────────────────────────────────────────────
-// App.tsx — Punto de entrada de la aplicación
-//
-// Aquí se decide qué "página" renderizar.
-// Con React Router, este archivo montaría las rutas
-// y cada <Route> renderizaría su página dentro de AppLayout.
-//
-// Por ahora: una sola vista (ProjectsPage) sin router.
-// ─────────────────────────────────────────────
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import LoginPage from "./pages/Login/LoginPage";
+import POPage from "./pages/PO/POPage";
+import DeveloperPage from "./pages/Developer/DeveloperPage";
+import type { ReactNode } from "react";
 
-import React from "react";
-import AppLayout from "./components/Layout/AppLayout";
-import ProjectsPage from "./components/Projects/ProjectsPage";
-import { MOCK_PROJECTS } from "./data/mockData";
-import type { Project } from "./types/project";
+interface ProtectedRouteProps {
+  children: ReactNode;
+  allowedRole: "po" | "developer";
+}
 
-const App: React.FC = () => {
-  // Handler: navegar al detalle del proyecto
-  // Con React Router: navigate(`/projects/${project.id}`)
-  const handleProjectClick = (project: Project) => {
-    console.log("Abrir proyecto:", project.title);
-    // TODO: implementar navegación o modal de detalle
-  };
+function ProtectedRoute({ children, allowedRole }: ProtectedRouteProps) {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/login" replace />;
+  const isDev = user.userType === "developer";
+  if (allowedRole === "developer" && !isDev) return <Navigate to="/po" replace />;
+  if (allowedRole === "po" && isDev) return <Navigate to="/developer" replace />;
+  return <>{children}</>;
+}
 
-  // Handler: abrir modal/formulario de nuevo proyecto
-  const handleNewProject = () => {
-    console.log("Nuevo proyecto");
-    // TODO: abrir modal o navegar a /projects/new
-  };
+function AppRoutes() {
+  const { user } = useAuth();
+  const defaultDash = user?.userType === "developer" ? "/developer" : "/po";
 
   return (
-    // AppLayout usa render prop para pasar searchQuery
-    // hacia abajo sin prop drilling extra
-    <AppLayout>
-      {(searchQuery) => (
-        <ProjectsPage
-          projects={MOCK_PROJECTS}
-          searchQuery={searchQuery}
-          onProjectClick={handleProjectClick}
-          onNewProject={handleNewProject}
-        />
-      )}
-    </AppLayout>
+    <Routes>
+      <Route
+        path="/login"
+        element={user ? <Navigate to={defaultDash} replace /> : <LoginPage />}
+      />
+      <Route
+        path="/po"
+        element={
+          <ProtectedRoute allowedRole="po">
+            <POPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/developer"
+        element={
+          <ProtectedRoute allowedRole="developer">
+            <DeveloperPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route path="*" element={<Navigate to="/login" replace />} />
+    </Routes>
   );
-};
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <BrowserRouter>
+        <AppRoutes />
+      </BrowserRouter>
+    </AuthProvider>
+  );
+}
 
 export default App;

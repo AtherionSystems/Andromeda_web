@@ -1,5 +1,12 @@
 @import "tailwindcss";
 
+#root {
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+}
+
 @theme {
   --color-oracle-red: #c74634;
   --color-oracle-bg: #f0f4f5;
