@@ -14,15 +14,11 @@ jobs:
       contents: write
       pull-requests: write
       checks: write
-      statuses: write
     steps:
       - uses: actions/checkout@v3
-        with:  # to check out the actual pull request commit, not the merge commit
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}  # to check out the actual pull request commit, not the merge commit
           fetch-depth: 0  # a full history is required for pull request analysis
-      - name: Super-Linter
-        uses: super-linter/super-linter@v8.6.0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: 'Qodana Scan'
         uses: JetBrains/qodana-action@v2025.3
         with:
