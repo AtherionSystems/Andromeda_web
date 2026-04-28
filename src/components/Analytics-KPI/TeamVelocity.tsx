@@ -4,20 +4,19 @@ import {Card,CardContent,CardDescription,CardHeader,CardTitle,} from "@/componen
 import {ChartContainer,ChartTooltip,ChartTooltipContent,type ChartConfig,} from "@/components/ui/chart"
 
 const chartData = [
-  { team: "chrome",points: 187, fill: "var(--color-chrome)" },
-  { team: "safari",points: 200, fill: "var(--color-safari)" },
-  { team: "firefox",points: 275, fill: "var(--color-firefox)" },
-  { team: "edge",points: 173, fill: "var(--color-edge)" },
-  { team: "other", points: 90,  fill: "var(--color-other)" },
+  { team:"chrome",points: 187, fill: "#C2D4D4" },
+  { team:"safari",points: 200, fill: "#C2D4D4" },
+  { team:"firefox",points: 275, fill: "#C2D4D4" },
+  { team:"edge",points: 173, fill: "#C2D4D4" },
+  { team:"other", points: 90,fill: "#C2D4D4" },
 ]
-
 const chartConfig = {
-  points: { label: "Story Points" },
-  chrome:  { label: "Chrome",color: "var(--chart-1)" },
-  safari:  { label: "Safari",color: "var(--chart-2)" },
-  firefox: { label: "Firefox",color: "var(--chart-1)" },
-  edge:    { label: "Edge",color: "var(--chart-2)" },
-  other:   { label: "Other",color: "var(--chart-3)" },
+  points:{ label: "Story Points" },
+  chrome:{ label: "Chrome",color: "var(--chart-1)" },
+  safari:{ label: "Safari",color: "var(--chart-2)" },
+  firefox:{ label: "Firefox",color: "var(--chart-1)" },
+  edge:{ label: "Edge",color: "var(--chart-2)" },
+  other:{ label: "Other",color: "var(--chart-3)" },
 } satisfies ChartConfig
 
 const ACTIVE_INDEX = 2

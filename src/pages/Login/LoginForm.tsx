@@ -36,7 +36,9 @@ function LoginForm() {
     return isValid;
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (event?: React.FormEvent<HTMLFormElement>) => {
+    event?.preventDefault();
+
     if (!validate()) return;
 
     setLoading(true);
@@ -91,35 +93,38 @@ function LoginForm() {
         Identify Credentials
       </h2>
 
-      <InputField
-        label="Username"
-        value={username}
-        onChange={(val) => {
-          setUsername(val);
-          if (errors.username) setErrors((prev) => ({ ...prev, username: "" }));
-        }}
-        placeholder="Enter your username"
-        error={errors.username}
-      />
-
-      <InputField
-        label="Security Key"
-        type="password"
-        value={password}
-        onChange={(val) => {
-          setPassword(val);
-          if (errors.password) setErrors((prev) => ({ ...prev, password: "" }));
-        }}
-        placeholder="Enter your password"
-        error={errors.password}
-      />
-
-      <div className="mt-2">
-        <Button
-          text={loading ? "Authorizing..." : "Authorize Session"}
-          onClick={handleSubmit}
+      <form onSubmit={handleSubmit}>
+        <InputField
+          label="Username"
+          value={username}
+          onChange={(val) => {
+            setUsername(val);
+            if (errors.username) setErrors((prev) => ({ ...prev, username: "" }));
+          }}
+          placeholder="Enter your username"
+          error={errors.username}
         />
-      </div>
+
+        <InputField
+          label="Security Key"
+          type="password"
+          value={password}
+          onChange={(val) => {
+            setPassword(val);
+            if (errors.password) setErrors((prev) => ({ ...prev, password: "" }));
+          }}
+          placeholder="Enter your password"
+          error={errors.password}
+        />
+
+        <div className="mt-2">
+          <Button
+            text={loading ? "Authorizing..." : "Authorize Session"}
+            onClick={() => handleSubmit()}
+            type="submit"
+          />
+        </div>
+      </form>
 
       <div className="mt-8 text-xs text-slate-600">
         <span>© 2026 Atherion Systems. All rights reserved.</span> |{" "}

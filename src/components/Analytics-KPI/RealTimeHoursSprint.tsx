@@ -3,22 +3,21 @@ import {Card,CardContent,CardDescription,CardHeader,CardTitle,} from "@/componen
 import {ChartContainer,ChartTooltip,ChartTooltipContent,type ChartConfig,} from "@/components/ui/chart"
 
 const chartData = [
-  { month: "January", desktop: 186, mobile: 80 },
-  { month: "February", desktop: 305, mobile: 200 },
-  { month: "March", desktop: 237, mobile: 120 },
-  { month: "April", desktop: 73, mobile: 190 },
-  { month: "May", desktop: 209, mobile: 130 },
-  { month: "June", desktop: 214, mobile: 140 },
+  { sprintNumber: "Sprint 1", devOne: 186, devTwo: 80 },
+  { sprintNumber: "Sprint 2", devOne: 305, devTwo: 200 },
+  { sprintNumber: "Sprint 3", devOne: 237, devTwo: 120 },
+  { sprintNumber: "Sprint 4", devOne: 73, devTwo: 190 },
+
 ]
 
 const chartConfig = {
-  desktop: {
-    label: "Desktop",
-    color: "var(--chart-1)",
+  devOne: {
+    label: "Dev1",
+    color: "#C2D4D4",
   },
-  mobile: {
-    label: "Mobile",
-    color: "var(--chart-2)",
+  devTwo: {
+    label: "Dev2",
+    color: "#69777B",
   },
 } satisfies ChartConfig
 
@@ -34,20 +33,20 @@ export function RealTimeHoursPerSprint() {
           <BarChart accessibilityLayer data={chartData}>
             <CartesianGrid vertical={false} />
             <XAxis
-              dataKey="month"
+              dataKey="sprintNumber"
               tickLine={false}
-              tickMargin={10}
+              tickMargin={15}
               axisLine={false}
-              tickFormatter={(value) => value.slice(0, 3)}
+              tickFormatter={(value) => value.slice(0, 10)}
             />
             <ChartTooltip
               cursor={false}
               content={<ChartTooltipContent indicator="dashed" />}
             />
-            <Bar dataKey="desktop" fill="var(--color-desktop)" radius={4} />
-            <Bar dataKey="mobile" fill="var(--color-mobile)" radius={4} />
+            <Bar dataKey="devOne" fill="#C2D4D4" radius={4} />
+            <Bar dataKey="devTwo" fill="#69777B" radius={4} />
           </BarChart>
-        </ChartContainer>
+      </ChartContainer>
       </CardContent>
     </Card>
   )
