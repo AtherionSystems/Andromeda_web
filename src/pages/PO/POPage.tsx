@@ -4,7 +4,8 @@ import { useAuth } from "../../contexts/AuthContext";
 import AppLayout from "../../components/Layout/AppLayout";
 import ProjectsPage from "../../components/Projects/ProjectsPage";
 import PODashboard from "./PODashboard";
-import BacklogPage from "../../components/Backlog/BacklogPage"; // 1. Importamos la nueva página
+import BacklogPage from "../../components/Backlog/BacklogPage"; 
+import { AnalyticsPage } from "@/components/Analytics-KPI/AnalyticsPage";
 
 function POPage() {
   const { user, logout } = useAuth();
@@ -39,6 +40,10 @@ function POPage() {
         // 3. Renderizado del Backlog cuando la ruta coincida
         if (activeRoute === "/backlog") {
           return <BacklogPage />;
+        }
+
+        if (activeRoute === "/analytics") {
+          return <AnalyticsPage/>;
         }
 
         // Estado por defecto para rutas que aún no tienen componente

@@ -5,6 +5,7 @@ import AppLayout from "../../components/Layout/AppLayout";
 import ProjectsPage from "../../components/Projects/ProjectsPage";
 import BacklogPage from "../../components/Backlog/BacklogPage";
 import DeveloperDashboard from "./DeveloperDashboard";
+import { AnalyticsPage} from "@/components/Analytics-KPI/AnalyticsPage";
 
 function DeveloperPage() {
   const { user, logout } = useAuth();
@@ -40,6 +41,10 @@ function DeveloperPage() {
         }
         if (activeRoute === "/backlog") {
           return <BacklogPage />;
+        }
+
+        if (activeRoute === "/analytics") {
+            return <AnalyticsPage />;
         }
         // Placeholder for other sections not yet implemented
         return (
