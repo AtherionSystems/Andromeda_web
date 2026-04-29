@@ -33,7 +33,7 @@ export function TeamVelocity() {
           <BarChart
             accessibilityLayer
             data={chartData}
-            margin={{ top: 8, right: 8, left: 2, bottom: 2 }}
+            margin={{ top: 14, right: 16, left: -10, bottom: 2 }}
           >
             <CartesianGrid vertical={false} />
             <YAxis
@@ -42,7 +42,7 @@ export function TeamVelocity() {
                 value: "Number of Tasks Completed", 
                 angle: -90, 
                 position: "insideLeft",
-                offset: 26,  
+                offset: 24,  
                 style: { fontWeight: 700, textAnchor: "middle" } 
               }}
             />

@@ -49,7 +49,7 @@ export function TaskDistributionByState() {
             </Pie>
             <ChartLegend
               content={<ChartLegendContent nameKey="state" />}
-              className="-translate-y-2 flex-wrap gap-2 [&>*]:basis-1/4 [&>*]:justify-center"
+              className="-translate-y-1 flex-wrap gap-1 [&>*]:basis-1/6 [&>*]:justify-center"
             />
           </PieChart>
         </ChartContainer>

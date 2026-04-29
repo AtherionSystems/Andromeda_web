@@ -33,25 +33,16 @@ export function RealTimeHoursPerSprint() {
           <BarChart
             accessibilityLayer
             data={chartData}
-            margin={{ top: 8, right: 8, left: 2, bottom: 2 }}
+            margin={{ top: 14, right: 16, left: -10, bottom: 2 }}
           >
             <CartesianGrid vertical={false} />
             <YAxis
               width={90}  
-              label={{ 
-                value: "Total Hours Worked", 
-                  angle: -90, 
-                  position: "insideLeft",
-                  offset: 26,  
-                  style: { fontWeight: 700, textAnchor: "middle" } 
+              label={{ value: "Total Hours Worked",  angle: -90,  position: "insideLeft", offset: 24,   style: { fontWeight: 700, textAnchor: "middle" } 
               }}
             />
             <XAxis
-              dataKey="sprintNumber"
-              height={50}
-              tickLine={false}
-              tickMargin={10}
-              axisLine={false}
+              dataKey="sprintNumber" height={50} tickLine={false} tickMargin={10}axisLine={false}
               label={{value: "Sprints",position: "bottom",offset: -16,style: { fontWeight: 700 },}}
               tickFormatter={(value) => value.slice(0, 10)}
             />
