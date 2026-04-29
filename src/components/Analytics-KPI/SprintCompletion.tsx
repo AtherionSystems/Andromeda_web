@@ -32,7 +32,7 @@ export function SprintCompletionRate() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <ChartContainer config={chartConfig} className="h-[140px] w-full">
+        <ChartContainer config={chartConfig} className="h-[240px] w-full">
           <LineChart
             data={chartData}
             margin={{ left: 0, right: 8, top: 4, bottom: 0 }}
