@@ -1,40 +1,34 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom"; // Importación necesaria
 import InputField from "../../components/InputField";
-import TwoFactorInput from "../../components/TwoFactorInput";
 import Button from "../../components/Button";
+import { useAuth } from "../../contexts/AuthContext";
+import type { ApiUser } from "../../types/api";
 
 function LoginForm() {
-  const [email, setEmail] = useState("");
+  const { login } = useAuth();
+  const navigate = useNavigate(); // Inicializamos el hook de navegación
+
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [code, setCode] = useState("");
+  const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({
-    email: "",
+    username: "",
     password: "",
     code: "",
   });
 
   const validate = () => {
-    const newErrors = { email: "", password: "", code: "" };
+    const newErrors = { username: "", password: "", code: "" };
     let isValid = true;
 
-    if (!email) {
-      newErrors.email = "Email is required";
-      isValid = false;
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
-      newErrors.email = "Invalid email format";
+    if (!username) {
+      newErrors.username = "Username is required";
       isValid = false;
     }
 
     if (!password) {
       newErrors.password = "Security key is required";
-      isValid = false;
-    } else if (password.length < 6) {
-      newErrors.password = "Must be at least 6 characters";
-      isValid = false;
-    }
-
-    if (code.length !== 6) {
-      newErrors.code = "Enter the 6-digit code";
       isValid = false;
     }
 
@@ -42,47 +36,99 @@ function LoginForm() {
     return isValid;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async (event?: React.FormEvent<HTMLFormElement>) => {
+    event?.preventDefault();
+
     if (!validate()) return;
-    console.log("LOGIN OK", { email, password, code });
+
+    setLoading(true);
+    try {
+      const response = await fetch("http://localhost:8080/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ username, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error("Login failed:", data);
+        setErrors((prev) => ({
+          ...prev,
+          username: data.message || "Invalid credentials",
+        }));
+        return;
+      }
+
+      // Procesamos el usuario según la estructura de tu API
+      const loggedUser = ((data as { user?: ApiUser }).user ?? data) as ApiUser;
+      
+      // 1. Actualizamos el contexto global (y localStorage)
+      login(loggedUser);
+
+      // 2. Redirección basada en el rol del usuario
+      const role = loggedUser.userType?.toLowerCase();
+      if (role === "developer") {
+        navigate("/developer", { replace: true });
+      } else {
+        navigate("/po", { replace: true });
+      }
+      
+    } catch (error) {
+      console.error("Network error:", error);
+      setErrors((prev) => ({
+        ...prev,
+        username: "Could not connect to server",
+      }));
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="flex flex-1 flex-col justify-center bg-white px-8 py-10 md:px-12 md:py-12 lg:p-[60px]">
-      <h2 className="mb-6 text-3xl font-semibold text-slate-900">Identify Credentials</h2>
+      <h2 className="mb-6 text-3xl font-semibold text-slate-900">
+        Identify Credentials
+      </h2>
 
-      <InputField
-        label="Corporate Email"
-        value={email}
-        onChange={(val) => {
-          setEmail(val);
-          if (errors.email) setErrors((prev) => ({ ...prev, email: "" }));
-        }}
-        placeholder="name@oracle.com"
-        error={errors.email}
-      />
-      <InputField
-        label="Security Key"
-        type="password"
-        value={password}
-        onChange={(val) => {
-          setPassword(val);
-          if (errors.password) setErrors((prev) => ({ ...prev, password: "" }));
-        }}
-        placeholder="Enter your password"
-        error={errors.password}
-      />
+      <form onSubmit={handleSubmit}>
+        <InputField
+          label="Username"
+          value={username}
+          onChange={(val) => {
+            setUsername(val);
+            if (errors.username) setErrors((prev) => ({ ...prev, username: "" }));
+          }}
+          placeholder="Enter your username"
+          error={errors.username}
+        />
 
-      <TwoFactorInput
-        onChange={(val) => {
-          setCode(val);
-          if (errors.code) setErrors((prev) => ({ ...prev, code: "" }));
-        }}
-        error={errors.code}
-      />
-      <Button text="Authorize Session" onClick={handleSubmit} />
+        <InputField
+          label="Security Key"
+          type="password"
+          value={password}
+          onChange={(val) => {
+            setPassword(val);
+            if (errors.password) setErrors((prev) => ({ ...prev, password: "" }));
+          }}
+          placeholder="Enter your password"
+          error={errors.password}
+        />
+
+        <div className="mt-2">
+          <Button
+            text={loading ? "Authorizing..." : "Authorize Session"}
+            onClick={() => handleSubmit()}
+            type="submit"
+          />
+        </div>
+      </form>
+
       <div className="mt-8 text-xs text-slate-600">
-        <span>© 2026 Atherion Systems. All rights reserved.</span> | <span>Privacy</span> | <span>Compliance</span>
+        <span>© 2026 Atherion Systems. All rights reserved.</span> |{" "}
+        <span>Privacy</span> | <span>Compliance</span>
       </div>
     </div>
   );
