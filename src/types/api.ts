@@ -75,6 +75,62 @@ export interface ApiProjectMember {
   joinedAt: string;
 }
 
+// ─── Dashboard KPI (API response shape) ──────────────────────────────────────
+
+export interface ApiTaskDistributionItem {
+  status: string
+  total: number
+}
+
+export interface ApiCompletionRateBySprintItem {
+  completedStories: number
+  completionRate: number
+  sprintName: string
+  totalStories: number
+}
+
+export interface ApiTeamVelocityItem {
+  pointsCompleted: number
+  pointsPlanned: number
+  sprintName: string
+}
+
+export interface ApiUserTasksPerSprintItem {
+  sprintName: string
+  tasksCompleted: number
+  userName: string
+}
+
+export interface ApiDashboardKPI {
+  completionRateBySprint: ApiCompletionRateBySprintItem[]
+  generatedAt: string
+  projectId: number
+  taskDistribution: ApiTaskDistributionItem[]
+  teamVelocity: ApiTeamVelocityItem[]
+  userTasksPerSprint: ApiUserTasksPerSprintItem[]
+}
+
+// ─── Dashboard KPI (frontend display shapes) ─────────────────────────────────
+
+export interface DashboardBurndownPoint {
+  day: string
+  ideal: number
+  actual: number
+}
+
+export interface DashboardTaskDistributionItem {
+  state: string
+  tasks: number
+  fill: string
+}
+
+export interface DashboardTeamMemberCompletion {
+  id: string
+  name: string
+  completion: number
+  avatarColor?: string
+}
+
 // ─── Sprints ─────────────────────────────────────────────────────────────────
 
 export type SprintStatus = "planned" | "active" | "completed";

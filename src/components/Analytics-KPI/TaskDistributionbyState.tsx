@@ -1,8 +1,9 @@
-import { Pie, PieChart, Cell } from "recharts"
+import { Pie, PieChart } from "recharts"
 import {Card,CardContent,CardDescription,CardHeader,CardTitle,} from "@/components/ui/card"
 import {ChartContainer,ChartTooltip,ChartTooltipContent,ChartLegend,ChartLegendContent,type ChartConfig,} from "@/components/ui/chart"
+import type { DashboardTaskDistributionItem } from "@/types/api"
 
-const chartData = [
+const fallbackData: DashboardTaskDistributionItem[] = [
   { state:"done",tasks: 275, fill:"#5C926D" },
   { state:"inProgress",tasks: 200, fill:"#DEB068" },
   { state:"todo",tasks: 187, fill:"#36677D" },
@@ -10,14 +11,20 @@ const chartData = [
 ]
 
 const chartConfig = {
-  tasks:{ label: "Tasks" },
-  done:{ label: "Done",color:"var(--chart-1)" },
-  inProgress:{ label: "In Progress",color: "var(--chart-2)" },
-  todo:{ label: "To Do",color: "var(--chart-3)" },
-  blocked:{ label: "Blocked",color: "var(--chart-4)" },
+  tasks:      { label: "Tasks" },
+  done:       { label: "Done",        color: "#5C926D" },
+  inProgress: { label: "In Progress", color: "#DEB068" },
+  todo:       { label: "To Do",       color: "#36677D" },
+  review:     { label: "Review",      color: "#8FBFD0" },
+  blocked:    { label: "Blocked",     color: "#C74634" },
 } satisfies ChartConfig
 
-export function TaskDistributionByState() {
+interface TaskDistributionByStateProps {
+  data?: DashboardTaskDistributionItem[]
+}
+
+export function TaskDistributionByState({ data }: TaskDistributionByStateProps) {
+  const chartData = data ?? fallbackData
   return (
     <Card className="flex flex-col gap-0 overflow-hidden rounded-lg border border-[#C2D4D4] bg-white">
       <CardHeader className="pb-0">
@@ -42,11 +49,7 @@ export function TaskDistributionByState() {
               innerRadius={55}
               outerRadius={90}
               paddingAngle={2}
-            >
-              {chartData.map((entry) => (
-                <Cell key={entry.state} fill={entry.fill} />
-              ))}
-            </Pie>
+            />
             <ChartLegend
               content={<ChartLegendContent nameKey="state" />}
               className="-translate-y-1 flex-wrap gap-1 [&>*]:basis-1/6 [&>*]:justify-center"
