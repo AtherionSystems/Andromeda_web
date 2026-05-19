@@ -3,6 +3,7 @@ import { SprintVelocityCard, CompletionRateCard } from "./SprintVelocity"
 import { SprintCompletionRate } from "./SprintCompletion"
 import { TeamVelocity } from "./TeamVelocity"
 import { RealTimeHoursPerSprint } from "./RealTimeHoursSprint"
+import HoursPerSprint from "./HoursPerUser"
 import { TaskDistributionByState } from "./TaskDistributionbyState"
 import { TeamTaskCompletion } from "./TeamTaskCompletion"
 import { getProjects } from "@/api/projects"
@@ -13,6 +14,7 @@ import type {
   ApiBurndownBySprintItem,
   ApiTeamVelocityItem,
   ApiUserTasksPerSprintItem,
+  ApiHoursPerUserItem,
   ApiTaskDistributionItem,
   DashboardBurndownPoint,
   DashboardTaskDistributionItem,
@@ -79,12 +81,9 @@ function calcSprintVelocity(raw: ApiTeamVelocityItem[]): { velocity: number; cha
 }
 
 /** SprintCompletionRate: { day: "Sprint N", ideal: 100, actual: completionRate } */
-function toBurndown(raw: ApiCompletionRateBySprintItem[]): DashboardBurndownPoint[] {
-  // 1. Calculamos el alcance total de todo el release (suma de todos los sprints)
+function toBurndown(raw: ApiBurndownBySprintItem[]): DashboardBurndownPoint[] {
   const projectTotalStories = raw.reduce((sum, item) => sum + item.totalStories, 0)
-  // Esta variable llevará la cuenta regresiva del trabajo restante
   let remainingStories = projectTotalStories
-  // 2. Inyectamos un punto inicial para que la gráfica arranque desde arriba a la izquierda
   const chartPoints: DashboardBurndownPoint[] = [
     { day: "Start", ideal: 100, actual: 100 }
   ]
@@ -119,8 +118,6 @@ function toTeamVelocityChart(
 
 /**
  * RealTimeHoursPerSprint: pivot por sprint, columna por usuario.
- * Devuelve { chartData, users } donde chartData tiene:
- *   { sprintNumber: "Sprint N", "Nombre Usuario": tasksCompleted, ... }
  */
 function pivotUserTasksPerSprint(raw: ApiUserTasksPerSprintItem[]): {
   chartData: Record<string, number | string>[]
@@ -130,10 +127,8 @@ function pivotUserTasksPerSprint(raw: ApiUserTasksPerSprintItem[]): {
   raw.forEach((r) => {
     if (!sprintOrder.includes(r.sprintName)) sprintOrder.push(r.sprintName)
   })
-
   const userSet = new Set(raw.map((r) => r.userName))
   const users   = Array.from(userSet)
-
   const chartData = sprintOrder.map((sprint) => {
     const entry: Record<string, number | string> = {
       sprintNumber: shortSprintName(sprint),
@@ -141,6 +136,32 @@ function pivotUserTasksPerSprint(raw: ApiUserTasksPerSprintItem[]): {
     raw
       .filter((r) => r.sprintName === sprint)
       .forEach((r) => { entry[r.userName] = r.tasksCompleted })
+    return entry
+  })
+
+  return { chartData, users }
+}
+
+/**
+  HoursPerSprint: pivot por sprint con horas reales trabajadas por usuario.
+ */
+function pivotHoursPerUser(raw: ApiHoursPerUserItem[]): {
+  chartData: Record<string, number | string>[]
+  users: string[]
+} {
+  const sprintOrder: string[] = []
+  raw.forEach((r) => {
+    if (!sprintOrder.includes(r.sprintName)) sprintOrder.push(r.sprintName)
+  })
+  const userSet = new Set(raw.map((r) => r.userName))
+  const users   = Array.from(userSet)
+  const chartData = sprintOrder.map((sprint) => {
+    const entry: Record<string, number | string> = {
+      sprintNumber: shortSprintName(sprint),
+    }
+    raw
+      .filter((r) => r.sprintName === sprint)
+      .forEach((r) => { entry[r.userName] = Number(r.actualHours) })
     return entry
   })
 
@@ -204,18 +225,25 @@ export function AnalyticsPage() {
   const { velocity, change } = kpi
     ? calcSprintVelocity(kpi.teamVelocity)
     : { velocity: undefined, change: undefined }
-  // En AnalyticsPage.tsx
-const rawBurndown = kpi?.burndownBySprint ?? kpi?.completionRateBySprint
-const burndown = rawBurndown?.length
+  const rawBurndown = kpi?.burndownBySprint ?? kpi?.completionRateBySprint
+  const burndown = rawBurndown?.length
   ? toBurndown(rawBurndown)
   : undefined
   const teamVelocityData = kpi?.teamVelocity.length
     ? toTeamVelocityChart(kpi.teamVelocity)
     : undefined
-  const { chartData: hoursData, users } = kpi?.userTasksPerSprint.length
+  
+  // Tasks per user per sprint (RealTimeHoursPerSprint)
+  const { chartData: tasksData, users: tasksUsers } = kpi?.userTasksPerSprint?.length
     ? pivotUserTasksPerSprint(kpi.userTasksPerSprint)
     : { chartData: undefined, users: undefined }
-  const teamCompletion   = kpi?.userTasksPerSprint.length
+
+  // Actual hours per user per sprint (for HoursPerSprint)
+  const { chartData: hoursData, users: hoursUsers } = kpi?.hoursPerUserBySprint?.length
+    ? pivotHoursPerUser(kpi.hoursPerUserBySprint)
+    : { chartData: undefined, users: undefined }
+
+  const teamCompletion   = kpi?.userTasksPerSprint?.length
     ? toTeamCompletion(kpi.userTasksPerSprint)
     : undefined
 
@@ -241,7 +269,7 @@ const burndown = rawBurndown?.length
       </div>
 
       <div className="flex flex-col gap-4">
-        {/* KPI Cards + Burndown */}
+        {/* KPI cards + burndown */}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-[220px_1fr]">
           <div className="flex flex-col gap-4">
             <SprintVelocityCard
@@ -257,15 +285,19 @@ const burndown = rawBurndown?.length
           <SprintCompletionRate data={burndown} />
         </div>
 
-        {/* Team Velocity + Tasks per user */}
+        {/* div 2 con bar charts solicitadas por el socio*/}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <TeamVelocity data={teamVelocityData} />
-          <RealTimeHoursPerSprint data={hoursData} users={users} />
+          <HoursPerSprint data={hoursData} users={hoursUsers} />
+          <RealTimeHoursPerSprint data={tasksData} users={tasksUsers} />
         </div>
 
-        {/* Pie chart + Team completion */}
+        {/* pie chart y bar graph */}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <TeamVelocity data={teamVelocityData} />
           <TaskDistributionByState data={taskDistribution} />
+        </div>
+
+         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <TeamTaskCompletion members={teamCompletion} isLoading={loading} />
         </div>
 

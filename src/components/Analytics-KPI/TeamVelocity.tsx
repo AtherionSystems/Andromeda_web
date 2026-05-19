@@ -53,7 +53,7 @@ export function TeamVelocity({ data }: TeamVelocityProps) {
               label={{ value: "Sprints", position: "bottom", offset: -16, style: { fontWeight: 700 } }}
               tickFormatter={(value) => value.slice(0, 10)}
             />
-            <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dashed" />} />
+            <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
             <Bar dataKey="pointsCompleted" fill="#C2D4D4" radius={4} />
             <Bar dataKey="pointsPlanned"   fill="#69777B" radius={4} />
           </BarChart>

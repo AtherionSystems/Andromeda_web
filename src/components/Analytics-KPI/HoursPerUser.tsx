@@ -13,12 +13,12 @@ const fallbackData = [
 ]
 const fallbackUsers = ["Dev1", "Dev2"]
 
-interface RealTimeHoursPerSprintProps {
+interface HoursPerSprintProps {
   data?:  Record<string, number | string>[]
   users?: string[]
 }
 
-export function RealTimeHoursPerSprint({ data, users }: RealTimeHoursPerSprintProps) {
+export function HoursPerSprint({ data, users }: HoursPerSprintProps) {
   const chartData  = data  ?? fallbackData
   const chartUsers = users ?? fallbackUsers
 
@@ -32,8 +32,8 @@ export function RealTimeHoursPerSprint({ data, users }: RealTimeHoursPerSprintPr
   return (
     <Card className="flex flex-col gap-0 overflow-hidden rounded-lg border border-[#C2D4D4] bg-white">
       <CardHeader>
-        <CardTitle>Tasks completed per user per sprint</CardTitle>
-        <CardDescription>Tasks completed per user each sprint, use it to monitor workload and balance effort.</CardDescription>
+        <CardTitle>Hours worked per user per sprint</CardTitle>
+        <CardDescription>Real hours logged per user each sprint.</CardDescription>
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[280px] w-full">
@@ -45,7 +45,7 @@ export function RealTimeHoursPerSprint({ data, users }: RealTimeHoursPerSprintPr
             <CartesianGrid vertical={false} />
             <YAxis
               width={90}
-              label={{ value: "Tasks Completed", angle: -90, position: "insideLeft", offset: 24, style: { fontWeight: 700, textAnchor: "middle" } }}
+              label={{ value: "Hours Worked", angle: -90, position: "insideLeft", offset: 24, style: { fontWeight: 700, textAnchor: "middle" } }}
             />
             <XAxis
               dataKey="sprintNumber"
@@ -72,4 +72,4 @@ export function RealTimeHoursPerSprint({ data, users }: RealTimeHoursPerSprintPr
   )
 }
 
-export default RealTimeHoursPerSprint
+export default HoursPerSprint

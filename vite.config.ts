@@ -19,11 +19,11 @@ export default defineConfig({
     host: '0.0.0.0',
     proxy: {
       '/api': {
-        target: 'http://160.34.209.27/',
+        target: 'http://localhost:8080',
         changeOrigin: true,
       },
       '/health': {
-        target: 'http://160.34.209.27/',
+        target: 'http://localhost:8080',
         changeOrigin: true,
       },
     },

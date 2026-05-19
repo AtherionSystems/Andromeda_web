@@ -6,11 +6,11 @@ import {ChartContainer,ChartTooltip,ChartTooltipContent,type ChartConfig,} from 
 import type { DashboardBurndownPoint } from "@/types/api";
 
 const fallbackData: DashboardBurndownPoint[] = [
-  { day: "Mon", ideal: 100, actual: 95 },
-  { day: "Tue", ideal: 83, actual: 88 },
-  { day: "Wed", ideal: 67, actual: 60 },
-  { day: "Thu", ideal: 50, actual: 55 },
-  { day: "Fri", ideal: 33, actual: 25 },
+  { day: "Sprint 1", ideal: 100, actual: 95 },
+  { day: "Sprint 2", ideal: 83, actual: 88 },
+  { day: "Sprint 3", ideal: 67, actual: 60 },
+  { day: "Sprint 4", ideal: 50, actual: 55 },
+  { day: "Sprint 5", ideal: 33, actual: 25 },
 ];
 
 const chartConfig = {

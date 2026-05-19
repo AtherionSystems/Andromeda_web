@@ -221,9 +221,9 @@ function ChartTooltipContent({
                       !hideIndicator && (
                         <div
                           className={cn(
-                            "shrink-0 rounded-[2px] border-(--color-border) bg-(--color-bg)",
+                            "shrink-0 border-(--color-border) bg-(--color-bg)",
                             {
-                              "h-2.5 w-2.5": indicator === "dot",
+                              "h-3 w-3 rounded-[1px]": indicator === "dot",
                               "w-1": indicator === "line",
                               "w-0 border-[1.5px] border-dashed bg-transparent":
                                 indicator === "dashed",
@@ -241,7 +241,7 @@ function ChartTooltipContent({
                     )}
                     <div
                       className={cn(
-                        "flex flex-1 justify-between leading-none",
+                        "grid flex-1 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-6 leading-none",
                         nestLabel ? "items-end" : "items-center"
                       )}
                     >
@@ -312,7 +312,7 @@ function ChartLegendContent({
                 <itemConfig.icon />
               ) : (
                 <div
-                  className="h-2 w-2 shrink-0 rounded-[2px]"
+                  className="h-3 w-3 shrink-0 rounded-[1px]"
                   style={{
                     backgroundColor: item.color,
                   }}
