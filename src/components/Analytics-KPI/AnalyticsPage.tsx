@@ -5,13 +5,12 @@ import { TeamVelocity } from "./TeamVelocity"
 import { RealTimeHoursPerSprint } from "./RealTimeHoursSprint"
 import { TaskDistributionByState } from "./TaskDistributionbyState"
 import { TeamTaskCompletion } from "./TeamTaskCompletion"
-import { TeamManagement } from "./TeamManagement"
 import { getProjects } from "@/api/projects"
 import { getDashboardKPI } from "@/api/dashboard"
 import type {
   ApiProject,
   ApiDashboardKPI,
-  ApiCompletionRateBySprintItem,
+  ApiBurndownBySprintItem,
   ApiTeamVelocityItem,
   ApiUserTasksPerSprintItem,
   ApiTaskDistributionItem,
@@ -81,11 +80,30 @@ function calcSprintVelocity(raw: ApiTeamVelocityItem[]): { velocity: number; cha
 
 /** SprintCompletionRate: { day: "Sprint N", ideal: 100, actual: completionRate } */
 function toBurndown(raw: ApiCompletionRateBySprintItem[]): DashboardBurndownPoint[] {
-  return raw.map((item) => ({
-    day:    shortSprintName(item.sprintName),
-    ideal:  100,
-    actual: Math.round(item.completionRate),
-  }))
+  // 1. Calculamos el alcance total de todo el release (suma de todos los sprints)
+  const projectTotalStories = raw.reduce((sum, item) => sum + item.totalStories, 0)
+  // Esta variable llevará la cuenta regresiva del trabajo restante
+  let remainingStories = projectTotalStories
+  // 2. Inyectamos un punto inicial para que la gráfica arranque desde arriba a la izquierda
+  const chartPoints: DashboardBurndownPoint[] = [
+    { day: "Start", ideal: 100, actual: 100 }
+  ]
+  raw.forEach((item, index) => {
+    const idealPoint = raw.length > 0
+      ? Math.round(100 - ((index + 1) / raw.length) * 100)
+      : 0
+    remainingStories -= item.completedStories
+    const actualRemaining = projectTotalStories > 0
+      ? Math.round((remainingStories / projectTotalStories) * 100)
+      : 0
+    chartPoints.push({
+      day:    shortSprintName(item.sprintName),
+      ideal:  idealPoint,
+      actual: actualRemaining,
+    })
+  })
+
+  return chartPoints
 }
 
 /** TeamVelocity: { sprintNumber: "Sprint N", pointsCompleted, pointsPlanned } */
@@ -180,15 +198,17 @@ export function AnalyticsPage() {
       .finally(() => setLoading(false))
   }, [selectedProjectId])
 
-  // Datos transformados (undefined mientras carga → componentes usan fallback)
-  const taskDistribution = kpi ? toTaskDistribution(kpi.taskDistribution)          : undefined
-  const completionRate   = kpi ? calcCompletionRate(kpi.taskDistribution)           : undefined
+  // Datos transformados (undefined mientras carga, componentes usan fallback)
+  const taskDistribution = kpi ? toTaskDistribution(kpi.taskDistribution): undefined
+  const completionRate   = kpi ? calcCompletionRate(kpi.taskDistribution): undefined
   const { velocity, change } = kpi
     ? calcSprintVelocity(kpi.teamVelocity)
     : { velocity: undefined, change: undefined }
-  const burndown         = kpi?.completionRateBySprint.length
-    ? toBurndown(kpi.completionRateBySprint)
-    : undefined
+  // En AnalyticsPage.tsx
+const rawBurndown = kpi?.burndownBySprint ?? kpi?.completionRateBySprint
+const burndown = rawBurndown?.length
+  ? toBurndown(rawBurndown)
+  : undefined
   const teamVelocityData = kpi?.teamVelocity.length
     ? toTeamVelocityChart(kpi.teamVelocity)
     : undefined
@@ -249,8 +269,6 @@ export function AnalyticsPage() {
           <TeamTaskCompletion members={teamCompletion} isLoading={loading} />
         </div>
 
-        {/* Team Management calendars */}
-        <TeamManagement />
       </div>
     </div>
   )

@@ -1,17 +1,8 @@
+
+{/*BURRRRRRRRRNDOWWWWWWWWWWWWWWWWWN*/}
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from "@/components/ui/chart";
+import {Card,CardContent,CardDescription,CardHeader,CardTitle,} from "@/components/ui/card";
+import {ChartContainer,ChartTooltip,ChartTooltipContent,type ChartConfig,} from "@/components/ui/chart";
 import type { DashboardBurndownPoint } from "@/types/api";
 
 const fallbackData: DashboardBurndownPoint[] = [
@@ -87,7 +78,7 @@ export function SprintCompletionRate({ data }: SprintCompletionRateProps) {
               tick={{ fontSize: 11 }}
               domain={[0, 100]}
               label={{
-                value: "Completion Rate (%)",
+                value: "Remaining Stories (%)",
                 angle: -90,
                 position: "insideLeft",
                 offset: -8,

@@ -2,16 +2,7 @@ import { useState } from "react";
 import SearchInput from "./SearchInput";
 import type { ApiUser } from "../../types/api";
 
-const TABS: Record<string, { label: string; value: string }[]> = {
-  po: [
-    { label: "Overview", value: "overview" },
-    { label: "System Status", value: "system-status" },
-  ],
-  developer: [
-    { label: "Docs", value: "docs" },
-    { label: "System Status", value: "system-status" },
-  ],
-};
+
 
 const ROLE_LABEL: Record<string, string> = {
   po: "Product Owner",
@@ -33,8 +24,6 @@ interface TopbarProps {
 }
 
 function Topbar({ user, role, searchValue, onSearchChange, onLogout }: TopbarProps) {
-  const tabs = TABS[role];
-  const [activeTab, setActiveTab] = useState(tabs[0].value);
 
   return (
     <header className="flex items-center px-5 h-11 bg-white border-b border-black/10 gap-5 shrink-0">
@@ -42,22 +31,6 @@ function Topbar({ user, role, searchValue, onSearchChange, onLogout }: TopbarPro
         {ROLE_LABEL[role] ?? role}
       </span>
 
-      <nav className="flex">
-        {tabs.map((tab) => (
-          <button
-            key={tab.value}
-            onClick={() => setActiveTab(tab.value)}
-            className={`px-3.5 h-11 border-none bg-transparent text-[12px] cursor-pointer
-              border-b-2 transition-colors
-              ${activeTab === tab.value
-                ? "text-[#C74634] border-b-[#C74634] font-medium"
-                : "text-[#5a7a8a] border-b-transparent font-normal hover:text-[#1a3a4a]"
-              }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </nav>
 
       <div className="flex-1" />
 

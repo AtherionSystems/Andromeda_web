@@ -82,11 +82,17 @@ export interface ApiTaskDistributionItem {
   total: number
 }
 
-export interface ApiCompletionRateBySprintItem {
+export interface ApiBurndownBySprintItem {
   completedStories: number
   completionRate: number
   sprintName: string
   totalStories: number
+}
+
+export interface ApiHoursPerUserItem {
+  sprintName: string
+  userName: string
+  hours: number
 }
 
 export interface ApiTeamVelocityItem {
@@ -102,7 +108,8 @@ export interface ApiUserTasksPerSprintItem {
 }
 
 export interface ApiDashboardKPI {
-  completionRateBySprint: ApiCompletionRateBySprintItem[]
+  burndownBySprint: ApiBurndownBySprintItem[]
+  hoursPerUserBySprint: ApiHoursPerUserItem[] 
   generatedAt: string
   projectId: number
   taskDistribution: ApiTaskDistributionItem[]

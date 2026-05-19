@@ -7,6 +7,7 @@ import tailwindcss from '@tailwindcss/vite'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 // https://vite.dev/config/
+// http://160.34.209.27/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
@@ -18,11 +19,11 @@ export default defineConfig({
     host: '0.0.0.0',
     proxy: {
       '/api': {
-        target: 'http://localhost:8080',
+        target: 'http://160.34.209.27/',
         changeOrigin: true,
       },
       '/health': {
-        target: 'http://localhost:8080',
+        target: 'http://160.34.209.27/',
         changeOrigin: true,
       },
     },
