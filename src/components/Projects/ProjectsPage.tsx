@@ -60,7 +60,7 @@ function ProjectsPage({ searchQuery, description }: ProjectsPageProps) {
         setMemberMap(map);
       } catch {
         setError(
-          "Could not load projects. Make sure the backend is running on port 8080.",
+          "Could not load projects. Make sure the backend is running on port 8080."
         );
       } finally {
         setLoading(false);
@@ -100,23 +100,19 @@ function ProjectsPage({ searchQuery, description }: ProjectsPageProps) {
           </p>
         </div>
         <div className="flex gap-2 mt-1">
-          <button
-            style={{ background: "#c74634" }}
-            className="w-8 h-8 border-none rounded bg-oracle-red text-white cursor-pointer text-sm flex items-center justify-center"
-          >
+          <button className="w-8 h-8 border-none rounded bg-oracle-red text-white cursor-pointer text-sm flex items-center justify-center">
             ✎
           </button>
-          <button
-            style={{ background: "#c74634" }}
-            className="flex items-center gap-1.5 px-3.5 h-8 bg-oracle-red text-white border-none rounded text-[12px] font-medium cursor-pointer"
-          >
+          <button className="flex items-center gap-1.5 px-3.5 h-8 bg-oracle-red text-white border-none rounded text-[12px] font-medium cursor-pointer">
             + NEW PROJECT
           </button>
         </div>
       </div>
 
       {/* States */}
-      {loading && <p className="text-[#6a8a9a] text-sm">Loading projects…</p>}
+      {loading && (
+        <p className="text-[#6a8a9a] text-sm">Loading projects…</p>
+      )}
 
       {error && (
         <div className="px-4 py-3 bg-[#fef2f2] border border-[#fecaca] rounded-lg text-[#c74634] text-sm">
