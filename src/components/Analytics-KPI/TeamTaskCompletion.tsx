@@ -64,11 +64,9 @@ export function TeamTaskCompletion({
             <RowSkeleton />
           </>
         )}
-
         {!isLoading && resolvedMembers.length === 0 && (
           <p className="text-sm text-muted-foreground">{emptyMessage}</p>
         )}
-
         {!isLoading &&
           resolvedMembers.map((member) => {
             const safeCompletion = Math.max(
@@ -89,7 +87,6 @@ export function TeamTaskCompletion({
             return (
               <div key={member.id} className="flex items-center gap-3">
                 <MemberAvatars members={[m]} max={1} />
-
                 <div className="flex flex-1 flex-col gap-1">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-foreground">
@@ -99,7 +96,10 @@ export function TeamTaskCompletion({
                       {safeCompletion}%
                     </span>
                   </div>
-                  <Progress value={safeCompletion} className="h-1.5" />
+                  <Progress
+                    value={safeCompletion}
+                    className="h-1.5 [&>div]:bg-[#C74634]"
+                  />
                 </div>
               </div>
             );
@@ -108,4 +108,5 @@ export function TeamTaskCompletion({
     </Card>
   );
 }
+
 export default TeamTaskCompletion;

@@ -51,7 +51,7 @@ export function HoursPerSprint({ data, users }: HoursPerSprintProps) {
     <Card className="flex flex-col gap-0 overflow-hidden rounded-lg border border-[#C2D4D4] bg-white">
       <CardHeader>
         <CardTitle className="text-base font-semibold">
-          Hours worked per user per sprint
+          Hours per User per Sprint
         </CardTitle>
         <CardDescription>
           Real hours logged per user each sprint.

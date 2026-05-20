@@ -54,11 +54,11 @@ export function RealTimeHoursPerSprint({
     <Card className="flex flex-col gap-0 overflow-hidden rounded-lg border border-[#C2D4D4] bg-white">
       <CardHeader>
         <CardTitle className="text-base font-semibold">
-          Tasks completed per user per sprint
+          Tasks Completed by Developer per Sprint
         </CardTitle>
         <CardDescription>
-          Tasks completed per user each sprint, use it to monitor workload and
-          balance effort.
+          Tasks completed per developer each sprint, use it to monitor workload
+          and balance effort.
         </CardDescription>
       </CardHeader>
       <CardContent>
