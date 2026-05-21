@@ -62,9 +62,19 @@ function LoginForm() {
         return;
       }
 
-      // Procesamos el usuario según la estructura de tu API
-      const loggedUser = ((data as { user?: ApiUser }).user ?? data) as ApiUser;
-      
+      // Backend may return { token, user: {...} } or flat { id, token, ... }.
+      // Either way the token must end up inside the stored user object so
+      // apiFetch can read it from andromeda_user.
+      const rawUser = (data as { user?: ApiUser }).user ?? (data as ApiUser);
+      const topToken = (data as { token?: string }).token;
+      const loggedUser: ApiUser =
+        topToken && !rawUser.token ? { ...rawUser, token: topToken } : rawUser;
+
+      if (import.meta.env.DEV) {
+        console.log("[auth] storing user:", loggedUser);
+        console.log("[auth] token present:", Boolean(loggedUser.token));
+      }
+
       // 1. Actualizamos el contexto global (y localStorage)
       login(loggedUser);
 

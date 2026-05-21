@@ -309,8 +309,10 @@ export default function PODashboard({ user: _user }: { user: ApiUser }) {
     async function checkHealth() {
       try {
         const res = await fetch("/health");
-        if (!res.ok) {
-          setHealthUp(false);
+        // Any HTTP response means the server is reachable (even 403).
+        // Only a network error (catch block) means it's truly down.
+        if (res.status === 403 || !res.ok) {
+          setHealthUp(true);
           return;
         }
         const data = (await res.json()) as HealthResponse | null;

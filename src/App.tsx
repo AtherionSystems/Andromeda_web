@@ -10,24 +10,31 @@ interface ProtectedRouteProps {
   allowedRole: "po" | "developer";
 }
 
+function roleDashboard(userType: string | undefined): string {
+  return userType?.toLowerCase() === "developer" ? "/developer" : "/po";
+}
+
 function ProtectedRoute({ children, allowedRole }: ProtectedRouteProps) {
   const { user } = useAuth();
-  const isDeveloper = user?.userType?.toLowerCase() === "developer";
 
   if (!user) return <Navigate to="/login" replace />;
-  if (allowedRole === "developer" && !isDeveloper)
+
+  const role = user.userType?.toLowerCase();
+  if (allowedRole === "developer" && role !== "developer")
     return <Navigate to="/po" replace />;
+  if (allowedRole === "po" && role === "developer")
+    return <Navigate to="/developer" replace />;
+
   return <>{children}</>;
 }
 
 function AppRoutes() {
   const { user } = useAuth();
-  const defaultDash = "/po";
-  const guestDash = "/login";
+  const defaultDash = user ? roleDashboard(user.userType) : "/login";
 
   return (
     <Routes>
-      <Route path="/" element={<Navigate to={user ? defaultDash : guestDash} replace />} />
+      <Route path="/" element={<Navigate to={defaultDash} replace />} />
       <Route
         path="/login"
         element={user ? <Navigate to={defaultDash} replace /> : <LoginPage />}
@@ -48,18 +55,18 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
-      <Route path="*" element={<Navigate to={user ? defaultDash : guestDash} replace />} />
+      <Route path="*" element={<Navigate to={defaultDash} replace />} />
     </Routes>
   );
 }
 
 function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
+    <BrowserRouter>
+      <AuthProvider>
         <AppRoutes />
-      </BrowserRouter>
-    </AuthProvider>
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
 
