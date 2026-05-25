@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { ApiUser, ApiTask, MemberRole } from "../../types/api";
+import type { ApiTask, MemberRole } from "../../types/api";
 import { getProjects } from "../../api/projects";
 import { getProjectTasks } from "../../api/tasks";
 import { getProjectMembers } from "../../api/members";
@@ -293,7 +293,7 @@ function Skeleton({ w = "100%", h = 14, radius = 4 }: { w?: string | number; h?:
 
 // ── Main component ───────────────────────────────────────────────────────────
 
-export default function PODashboard({ user: _user }: { user: ApiUser }) {
+export default function PODashboard() {
   const [loading, setLoading]           = useState(true);
   const [healthUp, setHealthUp]         = useState<boolean | null>(null);
   const [projectName, setProjectName]   = useState("Projects Overview");

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuth } from "../../contexts/auth";
 import AppLayout from "../../components/Layout/AppLayout";
 import ProjectsPage from "../../components/Projects/ProjectsPage";
 import PODashboard from "./PODashboard";
@@ -30,7 +30,7 @@ function POPage() {
       {(searchQuery) => {
         // 2. Lógica de enrutamiento interno basada en activeRoute
         if (activeRoute === "/") {
-          return <PODashboard user={user} />;
+          return <PODashboard />;
         }
         
         if (activeRoute === "/projects") {
