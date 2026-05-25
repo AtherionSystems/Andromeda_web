@@ -19,9 +19,6 @@ const BacklogColumn: React.FC<ColumnProps> = ({ title, tasks, onTaskClick, taskA
         <span className="text-[10px] font-bold tracking-[0.15em] text-red-700 uppercase">
           Sprint 1.2
         </span>
-        <span className="text-[10px] font-bold tracking-[0.15em] text-red-700 uppercase">
-          TEST ESLINT 
-        </span>
       </div>
       <div className="flex flex-col">
         {tasks.map((task) => (
