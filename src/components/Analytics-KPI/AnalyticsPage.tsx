@@ -179,7 +179,7 @@ function pivotHoursPerUser(raw: ApiHoursPerUserItem[]): {
     raw
       .filter((r) => r.sprintName === sprint)
       .forEach((r) => {
-        entry[r.userName] = Number(r.actualHours);
+        entry[r.userName] = Number(r.actualHours ?? r.hours ?? 0);
       });
     return entry;
   });
@@ -232,12 +232,28 @@ export function AnalyticsPage() {
 
   useEffect(() => {
     if (selectedProjectId === null) return;
-    setLoading(true);
-    setKpi(null);
-    getDashboardKPI(selectedProjectId)
-      .then(setKpi)
-      .catch(console.error)
-      .finally(() => setLoading(false));
+    const projectId = selectedProjectId;
+    let isActive = true;
+
+    async function loadKpi() {
+      setLoading(true);
+      setKpi(null);
+
+      try {
+        const data = await getDashboardKPI(projectId);
+        if (isActive) setKpi(data);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        if (isActive) setLoading(false);
+      }
+    }
+
+    void loadKpi();
+
+    return () => {
+      isActive = false;
+    };
   }, [selectedProjectId]);
 
   // Datos transformados (undefined mientras carga, componentes usan fallback)
@@ -250,7 +266,7 @@ export function AnalyticsPage() {
   const { velocity, change } = kpi
     ? calcSprintVelocity(kpi.teamVelocity)
     : { velocity: undefined, change: undefined };
-  const rawBurndown = kpi?.burndownBySprint ?? kpi?.completionRateBySprint;
+  const rawBurndown = kpi?.burndownBySprint;
   const burndown = rawBurndown?.length ? toBurndown(rawBurndown) : undefined;
   const teamVelocityData = kpi?.teamVelocity.length
     ? toTeamVelocityChart(kpi.teamVelocity)

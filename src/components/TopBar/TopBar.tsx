@@ -1,8 +1,5 @@
-import { useState } from "react";
 import SearchInput from "./SearchInput";
 import type { ApiUser } from "../../types/api";
-
-
 
 const ROLE_LABEL: Record<string, string> = {
   po: "Product Owner",

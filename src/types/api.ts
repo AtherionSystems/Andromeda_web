@@ -92,7 +92,8 @@ export interface ApiBurndownBySprintItem {
 export interface ApiHoursPerUserItem {
   sprintName: string
   userName: string
-  hours: number
+  hours?: number | null
+  actualHours?: number | null
 }
 
 export interface ApiTeamVelocityItem {
