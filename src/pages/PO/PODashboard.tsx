@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useTheme } from "../../contexts/themeContext";
+import { useTheme } from "../../contexts/useTheme";
 import type { ApiTask, MemberRole } from "../../types/api";
 import { getProjects } from "../../api/projects";
 import { getProjectTasks } from "../../api/tasks";

@@ -1,7 +1,7 @@
 import SearchInput from "./SearchInput";
 import { AvatarMenu } from "./AvatarMenu";
 import { ROLE_LABEL } from "../../lib/user";
-import { useTheme } from "../../contexts/themeContext";
+import { useTheme } from "../../contexts/useTheme";
 import type { ApiUser } from "../../types/api";
 
 interface TopbarProps {

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import TaskCard from "./TaskCard";
 import type { ApiTask } from "../../types/api";
@@ -30,14 +30,6 @@ const BacklogColumn: React.FC<ColumnProps> = ({
   const visibleTasks = tasks.slice(startIndex, startIndex + TASKS_PER_PAGE);
   const hasPreviousPage = currentPage > 0;
   const hasNextPage = currentPage < totalPages - 1;
-
-  useEffect(() => {
-    setPageIndex(0);
-  }, [tasks.length]);
-
-  useEffect(() => {
-    setPageIndex((current) => Math.min(current, totalPages - 1));
-  }, [totalPages]);
 
   return (
     <div className="flex h-full min-h-0 w-full max-w-[360px] flex-col rounded-xl bg-[#F4F7F9] p-5 overflow-hidden">

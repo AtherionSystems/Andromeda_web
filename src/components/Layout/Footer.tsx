@@ -1,5 +1,5 @@
 import React from "react";
-import { useTheme } from "../../contexts/themeContext";
+import { useTheme } from "../../contexts/useTheme";
 
 const LINKS = ["COMPLIANCE", "PRIVACY POLICY", "TERMS OF SERVICE"];
 

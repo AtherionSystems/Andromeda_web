@@ -1,5 +1,5 @@
 import React from "react";
-import { useTheme } from "../../contexts/themeContext";
+import { useTheme } from "../../contexts/useTheme";
 
 interface NavItemProps {
   label: string;

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import NavItem from "./NavItem";
-import { useTheme } from "../../contexts/themeContext";
+import { useTheme } from "../../contexts/useTheme";
 
 const Icons: Record<string, React.ReactNode> = {
   Dashboard: (

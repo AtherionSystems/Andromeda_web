@@ -3,7 +3,7 @@ import Sidebar from "../Sidebar/Sidebar";
 import Topbar from "../TopBar/TopBar";
 import Footer from "./Footer";
 import { useWindowSize } from "../../hooks/useWindowSize";
-import { useTheme } from "../../contexts/themeContext";
+import { useTheme } from "../../contexts/useTheme";
 import type { ApiUser } from "../../types/api";
 
 interface AppLayoutProps {

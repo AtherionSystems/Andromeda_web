@@ -1,11 +1,5 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-
-interface ThemeContextValue {
-  darkMode: boolean;
-  toggleDarkMode: () => void;
-}
-
-const ThemeContext = createContext<ThemeContextValue | null>(null);
+import { useEffect, useState, type ReactNode } from "react";
+import { ThemeContext } from "./themeContextValue";
 
 function getInitialDarkMode() {
   if (typeof window === "undefined") return false;
@@ -41,8 +35,3 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   );
 }
 
-export function useTheme() {
-  const ctx = useContext(ThemeContext);
-  if (!ctx) throw new Error("useTheme must be used inside <ThemeProvider>");
-  return ctx;
-}

@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { useClickOutside } from "../../hooks/useClickOutside";
-import { useTheme } from "../../contexts/themeContext";
+import { useTheme } from "../../contexts/useTheme";
 import { getInitials, ROLE_LABEL } from "../../lib/user";
 import type { ApiUser } from "../../types/api";
 
