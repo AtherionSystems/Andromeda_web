@@ -52,6 +52,8 @@ export interface ApiTask {
   // enriched client-side
   projectId?: number;
   projectName?: string;
+  sprintId?: number;
+  sprintName?: string;
 }
 
 export interface ApiTaskAssignment {

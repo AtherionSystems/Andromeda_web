@@ -19,13 +19,13 @@ interface TeamTaskCompletionProps {
 const defaultMembers: TeamMember[] = [
   {
     id: "1",
-    name: "Alfredo Luce",
+    name: "Developer 1",
     completion: 88,
     avatarColor: "bg-[#99C2A6]",
   },
   {
     id: "2",
-    name: "Santiago Quintana",
+    name: "Developer 2",
     completion: 66,
     avatarColor: "bg-[#69777B]",
   },

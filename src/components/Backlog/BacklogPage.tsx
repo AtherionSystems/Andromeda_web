@@ -27,6 +27,7 @@ function BacklogPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<ApiTask | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<number | "all">("all");
+  const [selectedSprintName, setSelectedSprintName] = useState<string | "all">("all");
   const [taskAssignments, setTaskAssignments] = useState<Record<number, Member[]>>({});
 
   useEffect(() => {
@@ -108,66 +109,104 @@ function BacklogPage() {
   }
 
   const selectedMembers = selectedTask ? (taskAssignments[selectedTask.id] ?? []) : [];
-  const visibleTasks =
+  const projectScopedTasks =
     selectedProjectId === "all"
       ? tasks
       : tasks.filter((task) => task.projectId === selectedProjectId);
+  const sprintOptions = projectScopedTasks.reduce<string[]>((options, task) => {
+    if (task.sprintName && !options.includes(task.sprintName)) {
+      options.push(task.sprintName);
+    }
+    return options;
+  }, []);
+  const visibleTasks =
+    selectedSprintName === "all"
+      ? projectScopedTasks
+      : projectScopedTasks.filter((task) => task.sprintName === selectedSprintName);
   const visibleTaskCount = visibleTasks.length;
 
   return (
-    <>
-      <div className="bg-[#fdfdfd] px-8 pt-6 pb-1">
+    <div className="flex h-full min-h-0 flex-col bg-[#fdfdfd]">
+      <div className="px-8 pt-6 pb-1">
         <div className="mb-2 flex items-start justify-between gap-4">
           <div className="flex flex-col items-start">
             <h2 className="text-2xl font-semibold text-slate-900 italic">Backlog</h2>
             <p className="mt-2 text-[18px] text-slate-500">{visibleTaskCount} tasks</p>
           </div>
 
-          <div className="min-w-[320px] text-right">
-            <label className="mb-2 block text-[11px] font-semibold uppercase tracking-wide text-slate-500 text-left">
-              Filter by project
-            </label>
-            <select
-              value={selectedProjectId}
-              onChange={(event) => {
-                const value = event.target.value === "all" ? "all" : Number(event.target.value);
-                setSelectedProjectId(value);
-                setSelectedTask(null);
-              }}
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm outline-none transition-colors focus:border-[#c74634]"
-            >
-              <option value="all">All Projects</option>
-              {projects.map((project) => (
-                <option key={project.id} value={project.id}>
-                  {project.name}
-                </option>
-              ))}
-            </select>
+          <div className="flex min-w-[320px] flex-col gap-3 text-right sm:flex-row sm:items-end sm:gap-4">
+            <div className="flex-1">
+              <label className="mb-2 block text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                Filter by project
+              </label>
+              <select
+                value={selectedProjectId}
+                onChange={(event) => {
+                  const value = event.target.value === "all" ? "all" : Number(event.target.value);
+                  setSelectedProjectId(value);
+                  setSelectedSprintName("all");
+                  setSelectedTask(null);
+                }}
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm outline-none transition-colors focus:border-[#c74634]"
+              >
+                <option value="all">All Projects</option>
+                {projects.map((project) => (
+                  <option key={project.id} value={project.id}>
+                    {project.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex-1">
+              <label className="mb-2 block text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                Filter by sprint
+              </label>
+              <select
+                value={selectedSprintName}
+                onChange={(event) => {
+                  setSelectedSprintName(event.target.value);
+                  setSelectedTask(null);
+                }}
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm outline-none transition-colors focus:border-[#c74634]"
+              >
+                <option value="all">All Sprints</option>
+                {sprintOptions.map((sprintName) => (
+                  <option key={sprintName} value={sprintName}>
+                    {sprintName}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="flex h-full gap-6 overflow-x-auto px-8 pb-8 pt-2 bg-[#fdfdfd]">
+      <div className="flex flex-1 min-h-0 items-stretch gap-6 overflow-hidden px-8 pb-8 pt-2">
         <BacklogColumn 
           title="To Do" 
+          subtitle={selectedSprintName === "all" ? "All Sprints" : selectedSprintName}
           tasks={visibleTasks.filter(t => t.status === "todo")} 
           onTaskClick={setSelectedTask}
           taskAssignments={taskAssignments}
         />
         <BacklogColumn 
           title="In Progress" 
+          subtitle={selectedSprintName === "all" ? "All Sprints" : selectedSprintName}
           tasks={visibleTasks.filter(t => t.status === "in_progress")} 
           onTaskClick={setSelectedTask}
           taskAssignments={taskAssignments}
         />
         <BacklogColumn 
           title="Review" 
+          subtitle={selectedSprintName === "all" ? "All Sprints" : selectedSprintName}
           tasks={visibleTasks.filter(t => t.status === "review")} 
           onTaskClick={setSelectedTask}
           taskAssignments={taskAssignments}
         />
         <BacklogColumn 
           title="Done" 
+          subtitle={selectedSprintName === "all" ? "All Sprints" : selectedSprintName}
           tasks={visibleTasks.filter(t => t.status === "done")} 
           onTaskClick={setSelectedTask}
           taskAssignments={taskAssignments}
@@ -236,7 +275,7 @@ function BacklogPage() {
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }
 

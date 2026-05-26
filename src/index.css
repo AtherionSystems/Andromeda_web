@@ -17,8 +17,18 @@
     min-height: 100vh;
     background-color: #ffffff;
     color: #1f2937;
+    transition: background-color 180ms ease, color 180ms ease;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  .dark body {
+    background-color: #020617;
+    color: #e2e8f0;
+  }
+
+  html.dark {
+    color-scheme: dark;
   }
 
   #root {

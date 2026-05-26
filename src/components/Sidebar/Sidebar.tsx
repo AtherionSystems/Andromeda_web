@@ -1,5 +1,6 @@
 import { useState } from "react";
 import NavItem from "./NavItem";
+import { useTheme } from "../../contexts/themeContext";
 
 const Icons: Record<string, React.ReactNode> = {
   Dashboard: (
@@ -52,7 +53,6 @@ const PO_NAV = [
   { label: "Projects", route: "/projects" },
   { label: "Backlog", route: "/backlog" },
   { label: "Analytics", route: "/analytics" },
-  { label: "Team", route: "/team" },
   { label: "Settings", route: "/settings" },
 ];
 
@@ -61,7 +61,6 @@ const DEV_NAV = [
   { label: "Projects", route: "/projects" },
   { label: "Backlog", route: "/backlog" },
   { label: "Analytics", route: "/analytics" },
-  { label: "Team", route: "/team" },
   { label: "Settings", route: "/settings" },
 ];
 
@@ -77,21 +76,28 @@ function Sidebar({ role, onLogout, onNavigate, activeRoute: externalRoute }: Sid
   const defaultRoute = role === "developer" ? "/" : "/projects";
   const [internalRoute, setInternalRoute] = useState(defaultRoute);
   const activeRoute = externalRoute ?? internalRoute;
+  const { darkMode } = useTheme();
 
   return (
-    <aside className="w-full h-full bg-white flex flex-col border-r border-black/10 overflow-hidden">
+    <aside
+      className="w-full h-full flex flex-col overflow-hidden border-r transition-colors duration-200"
+      style={{
+        backgroundColor: darkMode ? "#0f172a" : "#ffffff",
+        borderColor: darkMode ? "#1e293b" : "rgba(0,0,0,0.1)",
+      }}
+    >
       {/* Branding */}
-      <div className="px-4 pt-4 pb-3 border-b border-black/10">
+      <div className="px-4 pt-4 pb-3 border-b transition-colors duration-200" style={{ borderColor: darkMode ? "#1e293b" : "rgba(0,0,0,0.1)" }}>
         <img
           src="/Media/Images/OracleColour_Transparent.png"
           alt="Oracle Logo"
           style={{ maxWidth: "120px" }}
           className="w-full h-auto object-contain mb-2"
         />
-        <div className="text-[11px] font-semibold text-[#1a3a4a] leading-tight">
+        <div className="text-[11px] font-semibold leading-tight" style={{ color: darkMode ? "#e2e8f0" : "#1a3a4a" }}>
           Atherion Systems
         </div>
-        <div className="text-[9px] text-[#5a7a8a] tracking-widest uppercase mt-0.5">
+        <div className="text-[9px] tracking-widest uppercase mt-0.5" style={{ color: darkMode ? "#94a3b8" : "#5a7a8a" }}>
           Enterprise Platform
         </div>
       </div>
@@ -114,10 +120,11 @@ function Sidebar({ role, onLogout, onNavigate, activeRoute: externalRoute }: Sid
       </nav>
 
       {/* Sign out */}
-      <div className="border-t border-black/10 px-3 py-3">
+      <div className="border-t px-3 py-3 transition-colors duration-200" style={{ borderColor: darkMode ? "#1e293b" : "rgba(0,0,0,0.1)" }}>
         <button
           onClick={onLogout}
-          className="w-full flex items-center gap-2.5 px-3 py-2 rounded text-[11px] text-[#6a8a9a] hover:bg-[#f0f4f5] hover:text-[#c74634] transition-colors cursor-pointer border-none bg-transparent text-left"
+          className="w-full flex items-center gap-2.5 px-3 py-2 rounded text-[11px] hover:text-[#c74634] transition-colors cursor-pointer border-none bg-transparent text-left"
+          style={{ color: darkMode ? "#94a3b8" : "#6a8a9a" }}
         >
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" width="13" height="13">
             <path d="M6 2H3a1 1 0 00-1 1v10a1 1 0 001 1h3M11 11l3-3-3-3M14 8H6" />
