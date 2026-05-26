@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/auth";
+import { useTheme } from "../../contexts/useTheme";
 import AppLayout from "../../components/Layout/AppLayout";
 import ProjectsPage from "../../components/Projects/ProjectsPage";
 import BacklogPage from "../../components/Backlog/BacklogPage";
@@ -9,10 +10,12 @@ import { AnalyticsPage} from "@/components/Analytics-KPI/AnalyticsPage";
 
 function DeveloperPage() {
   const { user, logout } = useAuth();
+  const { setDarkMode } = useTheme();
   const navigate = useNavigate();
   const [activeRoute, setActiveRoute] = useState("/");
 
   function handleLogout() {
+    setDarkMode(false);
     logout();
     navigate("/login", { replace: true });
   }

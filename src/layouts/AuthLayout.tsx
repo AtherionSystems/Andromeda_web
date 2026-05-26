@@ -1,6 +1,6 @@
 function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-screen bg-white dark:bg-slate-950">
+    <div className="flex min-h-screen bg-white">
       {children}
     </div>
   );

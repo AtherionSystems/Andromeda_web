@@ -88,8 +88,8 @@ function LoginForm() {
   };
 
   return (
-    <div className="flex flex-1 flex-col justify-center bg-white px-8 py-10 md:px-12 md:py-12 lg:p-[60px] dark:bg-slate-950">
-      <h2 className="mb-6 text-3xl font-semibold text-slate-900 dark:text-slate-100">
+    <div className="flex flex-1 flex-col justify-center bg-white px-8 py-10 md:px-12 md:py-12 lg:p-[60px]">
+      <h2 className="mb-6 text-3xl font-semibold text-slate-900">
         Identify Credentials
       </h2>
 
@@ -126,7 +126,7 @@ function LoginForm() {
         </div>
       </form>
 
-      <div className="mt-8 text-xs text-slate-600 dark:text-slate-400">
+      <div className="mt-8 text-xs text-slate-600">
         <span>© 2026 Atherion Systems. All rights reserved.</span> |{" "}
         <span>Privacy</span> | <span>Compliance</span>
       </div>
