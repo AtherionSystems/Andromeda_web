@@ -1,4 +1,5 @@
 import React from "react";
+import { useTheme } from "../../contexts/useTheme";
 
 interface SearchInputProps {
   value: string;
@@ -25,15 +26,24 @@ const SearchInput: React.FC<SearchInputProps> = ({
   onChange,
   placeholder = "Search Project...",
 }) => {
+  const { darkMode } = useTheme();
+
   return (
-    <div className="flex items-center gap-1.5 border border-oracle-border rounded px-2 py-1 bg-[#f8fafa]">
+    <div
+      className="flex items-center gap-1.5 rounded px-2 py-1 transition-colors duration-200"
+      style={{
+        backgroundColor: darkMode ? "#1e293b" : "#f8fafa",
+        border: `1px solid ${darkMode ? "#334155" : "#dbe7ea"}`,
+      }}
+    >
       <SearchIcon />
       <input
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="border-none bg-transparent text-[12px] text-[#3a5a6a] outline-none w-[120px]"
+        className="border-none bg-transparent text-[12px] outline-none w-[120px]"
+        style={{ color: darkMode ? "#e2e8f0" : "#3a5a6a" }}
       />
     </div>
   );

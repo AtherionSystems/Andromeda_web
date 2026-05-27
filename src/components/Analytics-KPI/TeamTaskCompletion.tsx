@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import MemberAvatars from "@/components/Projects/MemberAvatars";
+import { useTheme } from "@/contexts/useTheme";
 import type { Member } from "@/types/project";
 
 interface TeamMember {
@@ -19,13 +20,13 @@ interface TeamTaskCompletionProps {
 const defaultMembers: TeamMember[] = [
   {
     id: "1",
-    name: "Alfredo Luce",
+    name: "Developer 1",
     completion: 88,
     avatarColor: "bg-[#99C2A6]",
   },
   {
     id: "2",
-    name: "Santiago Quintana",
+    name: "Developer 2",
     completion: 66,
     avatarColor: "bg-[#69777B]",
   },
@@ -49,11 +50,12 @@ export function TeamTaskCompletion({
   emptyMessage = "No team completion data yet.",
 }: TeamTaskCompletionProps) {
   const resolvedMembers = members ?? defaultMembers;
+  const { darkMode } = useTheme();
 
   return (
-    <Card className="flex flex-col gap-0 rounded-lg border border-[#C2D4D4] bg-white">
+    <Card className={`flex flex-col gap-0 rounded-lg border shadow-sm ${darkMode ? 'border-slate-700 bg-slate-800 text-slate-100' : 'border-[#C2D4D4] bg-white text-slate-900'}`}>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base font-semibold">
+        <CardTitle className="text-base font-semibold text-foreground">
           Team Task Completion
         </CardTitle>
       </CardHeader>
@@ -64,11 +66,9 @@ export function TeamTaskCompletion({
             <RowSkeleton />
           </>
         )}
-
         {!isLoading && resolvedMembers.length === 0 && (
           <p className="text-sm text-muted-foreground">{emptyMessage}</p>
         )}
-
         {!isLoading &&
           resolvedMembers.map((member) => {
             const safeCompletion = Math.max(
@@ -89,7 +89,6 @@ export function TeamTaskCompletion({
             return (
               <div key={member.id} className="flex items-center gap-3">
                 <MemberAvatars members={[m]} max={1} />
-
                 <div className="flex flex-1 flex-col gap-1">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-foreground">
@@ -99,7 +98,10 @@ export function TeamTaskCompletion({
                       {safeCompletion}%
                     </span>
                   </div>
-                  <Progress value={safeCompletion} className="h-1.5" />
+                  <Progress
+                    value={safeCompletion}
+                    className="h-1.5 [&>div]:bg-[#C74634]"
+                  />
                 </div>
               </div>
             );
@@ -108,4 +110,5 @@ export function TeamTaskCompletion({
     </Card>
   );
 }
+
 export default TeamTaskCompletion;

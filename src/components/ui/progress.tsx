@@ -1,5 +1,6 @@
 import * as React from "react"
 import { Progress as ProgressPrimitive } from "radix-ui"
+import { useTheme } from "@/contexts/useTheme"
 import { cn } from "@/lib/utils"
 
 function Progress({
@@ -7,14 +8,16 @@ function Progress({
   value,
   ...props
 }: React.ComponentProps<typeof ProgressPrimitive.Root>) {
+  const { darkMode } = useTheme()
+
   return (
     <ProgressPrimitive.Root
       data-slot="progress"
-     className={cn(
-  "relative flex h-1 w-full items-center overflow-hidden rounded-full border border-[#C2D4D4] bg-white",
-  className
-)}
-      style={{ borderColor: "#C2D4D4", backgroundColor: "#fff" }}
+      className={cn(
+        "relative flex h-1 w-full items-center overflow-hidden rounded-full border",
+        darkMode ? "border-slate-700 bg-slate-900" : "border-[#C2D4D4] bg-white",
+        className
+      )}
       {...props}
     >
       <ProgressPrimitive.Indicator

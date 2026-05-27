@@ -11,34 +11,52 @@ import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
-  type ChartConfig,
 } from "@/components/ui/chart";
+import type { ChartConfig } from "@/components/ui/chart";
 
-const fallbackData = [
-  { sprintNumber: "Sprint 1", pointsCompleted: 186, pointsPlanned: 220 },
-  { sprintNumber: "Sprint 2", pointsCompleted: 305, pointsPlanned: 320 },
-  { sprintNumber: "Sprint 3", pointsCompleted: 237, pointsPlanned: 260 },
-  { sprintNumber: "Sprint 4", pointsCompleted: 73, pointsPlanned: 100 },
+const USER_COLORS = [
+  "#C2D4D4",
+  "#69777B",
+  "#2a4a5a",
+  "#8FBFD0",
+  "#c74634",
+  "#5C926D",
+  "#DEB068",
 ];
 
-const chartConfig = {
-  pointsCompleted: { label: "Completed", color: "#C2D4D4" },
-  pointsPlanned: { label: "Planned", color: "#69777B" },
-} satisfies ChartConfig;
+const fallbackData = [
+  { sprintNumber: "Sprint 1", Dev1: 186, Dev2: 80 },
+  { sprintNumber: "Sprint 2", Dev1: 305, Dev2: 200 },
+  { sprintNumber: "Sprint 3", Dev1: 237, Dev2: 120 },
+  { sprintNumber: "Sprint 4", Dev1: 73, Dev2: 190 },
+];
+const fallbackUsers = ["Dev1", "Dev2"];
 
-interface TeamVelocityProps {
+interface HoursPerSprintProps {
   data?: Record<string, number | string>[];
+  users?: string[];
 }
 
-export function TeamVelocity({ data }: TeamVelocityProps) {
+export function HoursPerSprint({ data, users }: HoursPerSprintProps) {
   const chartData = data ?? fallbackData;
+  const chartUsers = users ?? fallbackUsers;
   const { darkMode } = useTheme();
+
+  const chartConfig: ChartConfig = Object.fromEntries(
+    chartUsers.map((name, i) => [
+      name,
+      { label: name, color: USER_COLORS[i % USER_COLORS.length] },
+    ]),
+  );
+
   return (
     <Card className={`flex flex-col gap-0 overflow-hidden rounded-lg border shadow-sm ${darkMode ? 'border-slate-700 bg-slate-800 text-slate-100' : 'border-[#C2D4D4] bg-white text-slate-900'}`}>
       <CardHeader>
-        <CardTitle className="text-base font-semibold text-foreground">Team Velocity</CardTitle>
+        <CardTitle className="text-base font-semibold text-foreground">
+          Hours per User per Sprint
+        </CardTitle>
         <CardDescription className="text-muted-foreground">
-          Story points planned vs completed per sprint.
+          Real hours logged per user each sprint.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -52,7 +70,7 @@ export function TeamVelocity({ data }: TeamVelocityProps) {
             <YAxis
               width={90}
               label={{
-                value: "Story Points",
+                value: "Hours Worked",
                 angle: -90,
                 position: "insideLeft",
                 offset: 24,
@@ -74,8 +92,14 @@ export function TeamVelocity({ data }: TeamVelocityProps) {
               tickFormatter={(value) => value.slice(0, 10)}
             />
             <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
-            <Bar dataKey="pointsCompleted" fill="#C2D4D4" radius={4} />
-            <Bar dataKey="pointsPlanned" fill="#69777B" radius={4} />
+            {chartUsers.map((name, i) => (
+              <Bar
+                key={name}
+                dataKey={name}
+                fill={USER_COLORS[i % USER_COLORS.length]}
+                radius={4}
+              />
+            ))}
           </BarChart>
         </ChartContainer>
       </CardContent>
@@ -83,4 +107,4 @@ export function TeamVelocity({ data }: TeamVelocityProps) {
   );
 }
 
-export default TeamVelocity;
+export default HoursPerSprint;

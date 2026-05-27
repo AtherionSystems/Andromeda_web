@@ -1,25 +1,17 @@
+
+{/*BURRRRRRRRRNDOWWWWWWWWWWWWWWWWWN*/}
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from "@/components/ui/chart";
+import { useTheme } from "@/contexts/useTheme";
+import {Card,CardContent,CardDescription,CardHeader,CardTitle,} from "@/components/ui/card";
+import {ChartContainer,ChartTooltip,ChartTooltipContent,type ChartConfig,} from "@/components/ui/chart";
 import type { DashboardBurndownPoint } from "@/types/api";
 
 const fallbackData: DashboardBurndownPoint[] = [
-  { day: "Mon", ideal: 100, actual: 95 },
-  { day: "Tue", ideal: 83, actual: 88 },
-  { day: "Wed", ideal: 67, actual: 60 },
-  { day: "Thu", ideal: 50, actual: 55 },
-  { day: "Fri", ideal: 33, actual: 25 },
+  { day: "Sprint 1", ideal: 100, actual: 95 },
+  { day: "Sprint 2", ideal: 83, actual: 88 },
+  { day: "Sprint 3", ideal: 67, actual: 60 },
+  { day: "Sprint 4", ideal: 50, actual: 55 },
+  { day: "Sprint 5", ideal: 33, actual: 25 },
 ];
 
 const chartConfig = {
@@ -39,10 +31,11 @@ interface SprintCompletionRateProps {
 
 export function SprintCompletionRate({ data }: SprintCompletionRateProps) {
   const chartData = data ?? fallbackData;
+  const { darkMode } = useTheme();
   return (
-    <Card className="flex flex-col gap-0 overflow-hidden rounded-lg border border-[#C2D4D4] bg-white">
+    <Card className={`flex flex-col gap-0 overflow-hidden rounded-lg border shadow-sm ${darkMode ? 'border-slate-700 bg-slate-800 text-slate-100' : 'border-[#C2D4D4] bg-white text-slate-900'}`}>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base font-semibold">
+        <CardTitle className="text-base font-semibold text-foreground">
           Sprint Completion Rate
         </CardTitle>
         <CardDescription className="text-xs text-muted-foreground">
@@ -87,7 +80,7 @@ export function SprintCompletionRate({ data }: SprintCompletionRateProps) {
               tick={{ fontSize: 11 }}
               domain={[0, 100]}
               label={{
-                value: "Completion Rate (%)",
+                value: "Remaining Stories (%)",
                 angle: -90,
                 position: "insideLeft",
                 offset: -8,

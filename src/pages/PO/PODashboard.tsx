@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import type { ApiUser, ApiTask, MemberRole } from "../../types/api";
+import { useTheme } from "../../contexts/useTheme";
+import type { ApiTask, MemberRole } from "../../types/api";
 import { getProjects } from "../../api/projects";
 import { getProjectTasks } from "../../api/tasks";
 import { getProjectMembers } from "../../api/members";
@@ -280,11 +281,18 @@ function SystemConfigCard({ healthUp }: { healthUp: boolean | null }) {
 
 // ── Skeleton loader ──────────────────────────────────────────────────────────
 
-function Skeleton({ w = "100%", h = 14, radius = 4 }: { w?: string | number; h?: number; radius?: number }) {
+function Skeleton({
+  w = "100%",
+  h = 14,
+  radius = 4,
+  darkMode,
+}: { w?: string | number; h?: number; radius?: number; darkMode?: boolean }) {
   return (
     <div style={{
       width: w, height: h, borderRadius: radius,
-      background: "linear-gradient(90deg, #f0f4f5 25%, #e4ecee 50%, #f0f4f5 75%)",
+      background: darkMode
+        ? "linear-gradient(90deg, #1f2937 25%, #334155 50%, #1f2937 75%)"
+        : "linear-gradient(90deg, #f0f4f5 25%, #e4ecee 50%, #f0f4f5 75%)",
       backgroundSize: "200% 100%",
       animation: "shimmer 1.4s infinite",
     }} />
@@ -293,7 +301,8 @@ function Skeleton({ w = "100%", h = 14, radius = 4 }: { w?: string | number; h?:
 
 // ── Main component ───────────────────────────────────────────────────────────
 
-export default function PODashboard({ user: _user }: { user: ApiUser }) {
+export default function PODashboard() {
+  const { darkMode } = useTheme();
   const [loading, setLoading]           = useState(true);
   const [healthUp, setHealthUp]         = useState<boolean | null>(null);
   const [projectName, setProjectName]   = useState("Projects Overview");
@@ -412,20 +421,20 @@ export default function PODashboard({ user: _user }: { user: ApiUser }) {
       <h1 style={{
         margin: "0 0 20px",
         fontSize: 24, fontWeight: 700, fontStyle: "italic",
-        color: "#111827", letterSpacing: -0.5,
+        color: darkMode ? "#e2e8f0" : "#111827", letterSpacing: -0.5,
       }}>
-        {loading ? <Skeleton w={320} h={28} /> : projectName}
+        {loading ? <Skeleton w={320} h={28} darkMode={darkMode} /> : projectName}
       </h1>
 
       {/* ── Top row ────────────────────────────────────────────────── */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 220px", gap: 14, marginBottom: 14 }}>
 
         {/* Sprint Velocity (illustrative) */}
-        <div style={{ background: "#fff", border: "1px solid #cdd8db", borderRadius: 10, padding: "16px 18px" }}>
-          <p style={{ margin: "0 0 2px", fontSize: 13, fontWeight: 700, color: "#1a3a4a" }}>
+        <div style={{ background: darkMode ? "#0f172a" : "#fff", border: `1px solid ${darkMode ? "#1e293b" : "#cdd8db"}`, borderRadius: 10, padding: "16px 18px" }}>
+          <p style={{ margin: "0 0 2px", fontSize: 13, fontWeight: 700, color: darkMode ? "#e2e8f0" : "#1a3a4a" }}>
             Sprint Velocity
           </p>
-          <p style={{ margin: 0, fontSize: 9, letterSpacing: 1.2, textTransform: "uppercase", color: "#6a8a9a" }}>
+          <p style={{ margin: 0, fontSize: 9, letterSpacing: 1.2, textTransform: "uppercase", color: darkMode ? "#94a3b8" : "#6a8a9a" }}>
             Q4 Release Cycle &bull; Atherion X Engine
           </p>
           <SprintVelocityChart />
@@ -435,12 +444,12 @@ export default function PODashboard({ user: _user }: { user: ApiUser }) {
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
 
           {/* Completion Rate */}
-          <div style={{ background: "#c74634", borderRadius: 10, padding: "16px 16px", flex: 1 }}>
+          <div style={{ background: "#c74634", borderRadius: 10, padding: "16px 16px", flex: 1, boxShadow: darkMode ? "0 1px 0 rgba(255,255,255,0.04) inset" : "none" }}>
             <p style={{ margin: "0 0 4px", fontSize: 9, letterSpacing: 1.1, textTransform: "uppercase", color: "rgba(255,255,255,0.7)", fontWeight: 600 }}>
               Completion Rate
             </p>
             {loading ? (
-              <Skeleton w={90} h={36} />
+              <Skeleton w={90} h={36} darkMode={darkMode} />
             ) : (
               <p style={{ margin: "0 0 6px", fontSize: 32, fontWeight: 800, color: "#fff", lineHeight: 1, letterSpacing: -1 }}>
                 {completionPct}%
@@ -452,12 +461,12 @@ export default function PODashboard({ user: _user }: { user: ApiUser }) {
           </div>
 
           {/* Active Blocks */}
-          <div style={{ background: "#2a4a5a", borderRadius: 10, padding: "14px 16px" }}>
+          <div style={{ background: "#2a4a5a", borderRadius: 10, padding: "14px 16px", boxShadow: darkMode ? "0 1px 0 rgba(255,255,255,0.04) inset" : "none" }}>
             <p style={{ margin: "0 0 4px", fontSize: 9, letterSpacing: 1.1, textTransform: "uppercase", color: "rgba(255,255,255,0.55)", fontWeight: 600 }}>
               Active Blocks
             </p>
             {loading ? (
-              <Skeleton w={50} h={30} />
+              <Skeleton w={50} h={30} darkMode={darkMode} />
             ) : (
               <p style={{ margin: "0 0 4px", fontSize: 28, fontWeight: 800, color: "#fff", lineHeight: 1, letterSpacing: -1 }}>
                 {String(activeBlocks).padStart(2, "0")}
@@ -474,10 +483,10 @@ export default function PODashboard({ user: _user }: { user: ApiUser }) {
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)", gap: 14 }}>
 
         {/* Team Distribution */}
-        <div style={{ background: "#fff", border: "1px solid #cdd8db", borderRadius: 10, padding: "14px 16px", minWidth: 0 }}>
+        <div style={{ background: darkMode ? "#0f172a" : "#fff", border: `1px solid ${darkMode ? "#1e293b" : "#cdd8db"}`, borderRadius: 10, padding: "14px 16px", minWidth: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: "#1a3a4a" }}>Team Distribution</span>
-            <svg viewBox="0 0 16 16" fill="none" stroke="#6a8a9a" strokeWidth="1.4" width="14" height="14">
+            <span style={{ fontSize: 13, fontWeight: 700, color: darkMode ? "#e2e8f0" : "#1a3a4a" }}>Team Distribution</span>
+            <svg viewBox="0 0 16 16" fill="none" stroke={darkMode ? "#94a3b8" : "#6a8a9a"} strokeWidth="1.4" width="14" height="14">
               <circle cx="6" cy="6" r="3" />
               <path d="M1 13c0-2.5 2-4 5-4s5 1.5 5 4M11 5c1.5 0 3 1 3 3" />
             </svg>
@@ -485,10 +494,10 @@ export default function PODashboard({ user: _user }: { user: ApiUser }) {
 
           {loading ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 8 }}>
-              {[0, 1, 2].map((i) => <Skeleton key={i} h={36} />)}
+              {[0, 1, 2].map((i) => <Skeleton key={i} h={36} darkMode={darkMode} />)}
             </div>
           ) : members.length === 0 ? (
-            <p style={{ fontSize: 12, color: "#6a8a9a", textAlign: "center", padding: "16px 0" }}>No members found.</p>
+            <p style={{ fontSize: 12, color: darkMode ? "#94a3b8" : "#6a8a9a", textAlign: "center", padding: "16px 0" }}>No members found.</p>
           ) : (
             <>
               {(showAllMembers ? members : members.slice(0, 3)).map((m, i) => (
@@ -512,13 +521,13 @@ export default function PODashboard({ user: _user }: { user: ApiUser }) {
         </div>
 
         {/* Current Objectives */}
-        <div style={{ background: "#fff", border: "1px solid #cdd8db", borderRadius: 10, padding: "14px 16px", minWidth: 0 }}>
+        <div style={{ background: darkMode ? "#0f172a" : "#fff", border: `1px solid ${darkMode ? "#1e293b" : "#cdd8db"}`, borderRadius: 10, padding: "14px 16px", minWidth: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: "#1a3a4a" }}>Current Objectives</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: darkMode ? "#e2e8f0" : "#1a3a4a" }}>Current Objectives</span>
             <span style={{
               fontSize: 9, fontWeight: 700,
               padding: "3px 8px", borderRadius: 4,
-              background: "#eff6ff", color: "#2563eb", letterSpacing: 0.4,
+              background: darkMode ? "rgba(59,130,246,0.15)" : "#eff6ff", color: "#2563eb", letterSpacing: 0.4,
             }}>
               OPEN
             </span>
@@ -526,10 +535,10 @@ export default function PODashboard({ user: _user }: { user: ApiUser }) {
 
           {loading ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 8 }}>
-              {[0, 1, 2].map((i) => <Skeleton key={i} h={48} />)}
+              {[0, 1, 2].map((i) => <Skeleton key={i} h={48} darkMode={darkMode} />)}
             </div>
           ) : objectives.length === 0 ? (
-            <p style={{ fontSize: 12, color: "#6a8a9a", textAlign: "center", padding: "16px 0" }}>
+            <p style={{ fontSize: 12, color: darkMode ? "#94a3b8" : "#6a8a9a", textAlign: "center", padding: "16px 0" }}>
               All tasks are completed.
             </p>
           ) : (
@@ -557,7 +566,7 @@ export default function PODashboard({ user: _user }: { user: ApiUser }) {
         {/* Upcoming + System Config */}
         <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
           <div style={{ background: "#fff", border: "1px solid #cdd8db", borderRadius: 10, padding: "14px 16px" }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: "#1a3a4a" }}>Upcoming</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: darkMode ? "#e2e8f0" : "#1a3a4a" }}>Upcoming</span>
             <div style={{ marginTop: 4 }}>
               {MOCK_EVENTS.map((ev) => <EventItem key={ev.title} ev={ev} />)}
             </div>
