@@ -333,7 +333,15 @@ export default function PODashboard({ user: _user }: { user: ApiUser }) {
   useEffect(() => {
     async function load() {
       try {
-        const projects = await getProjects();
+        const _projects = await getProjects();
+        // Guard: API may return null/undefined if the backend is unreachable or
+        // the response body isn't valid JSON (e.g. wrong VITE_API_BASE_URL).
+        const projects = Array.isArray(_projects) ? _projects : [];
+
+        if (projects.length === 0) {
+          // Nothing to display — leave everything at initial zero values
+          return;
+        }
 
         // Use first active project name as the page title
         const activeProject =

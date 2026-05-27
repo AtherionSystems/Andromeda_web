@@ -3,12 +3,13 @@ import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import basicSsl from '@vitejs/plugin-basic-ssl'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), basicSsl()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -16,6 +17,10 @@ export default defineConfig({
   },
   server: {
     host: '0.0.0.0',
+    port: 5173,        // fixed port — must match VITE_OCI_REDIRECT_URI and OCI registration
+    strictPort: true,  // fail instead of silently switching to 5174, 5175…
+    // Vite's default appType:'spa' already serves index.html for all paths,
+    // so /callback is handled correctly without extra config.
     proxy: {
       '/api': {
         target: 'http://localhost:8080',

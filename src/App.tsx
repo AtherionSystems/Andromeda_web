@@ -5,6 +5,15 @@ import POPage from "./pages/PO/POPage";
 import DeveloperPage from "./pages/Developer/DeveloperPage";
 import type { ReactNode } from "react";
 
+/** Shown briefly while bootstrap() exchanges the OCI auth code for tokens. */
+function OAuthCallbackPage() {
+  return (
+    <div className="flex items-center justify-center h-screen bg-[#f0f4f5]">
+      <p className="text-sm text-[#5a7a8a] animate-pulse">Authenticating…</p>
+    </div>
+  );
+}
+
 interface ProtectedRouteProps {
   children: ReactNode;
   allowedRole: "po" | "developer";
@@ -55,6 +64,8 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      {/* OCI IAM OAuth2 redirect target — handled by bootstrap() in main.tsx */}
+      <Route path="/callback" element={<OAuthCallbackPage />} />
       <Route path="*" element={<Navigate to={defaultDash} replace />} />
     </Routes>
   );
