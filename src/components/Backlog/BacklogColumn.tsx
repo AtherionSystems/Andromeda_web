@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTheme } from "../../contexts/useTheme";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import TaskCard from "./TaskCard";
 import type { ApiTask } from "../../types/api";
@@ -23,6 +24,7 @@ const BacklogColumn: React.FC<ColumnProps> = ({
   taskAssignments = {},
 }) => {
   const [pageIndex, setPageIndex] = useState(0);
+  const { darkMode } = useTheme();
 
   const totalPages = Math.max(1, Math.ceil(tasks.length / TASKS_PER_PAGE));
   const currentPage = Math.min(pageIndex, totalPages - 1);
@@ -32,11 +34,11 @@ const BacklogColumn: React.FC<ColumnProps> = ({
   const hasNextPage = currentPage < totalPages - 1;
 
   return (
-    <div className="flex h-full min-h-0 w-full max-w-[360px] flex-col rounded-xl bg-[#F4F7F9] p-5 overflow-hidden">
+    <div className={`flex h-full min-h-0 w-full max-w-[360px] flex-col rounded-xl p-5 overflow-hidden ${darkMode ? 'bg-slate-800 text-slate-100' : 'bg-[#F4F7F9] text-slate-800'}`}>
       <div className="mb-6 px-1">
-        <h3 className="font-serif text-2xl text-slate-800">{title}</h3>
+        <h3 className="font-serif text-2xl">{title}</h3>
         <div className="mt-2 flex flex-col items-start gap-2">
-          <span className="text-[10px] font-bold tracking-[0.15em] text-red-700 uppercase">
+          <span className={`text-[10px] font-bold tracking-[0.15em] uppercase ${darkMode ? 'text-red-400' : 'text-red-700'}`}>
             {subtitle}
           </span>
         </div>
@@ -51,23 +53,23 @@ const BacklogColumn: React.FC<ColumnProps> = ({
           />
         ))}
         {tasks.length === 0 && (
-          <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-200 py-12">
-            <p className="text-[11px] font-medium text-slate-400 uppercase tracking-widest">No Tasks</p>
+          <div className={`flex flex-col items-center justify-center rounded-lg border-2 border-dashed py-12 ${darkMode ? 'border-slate-600' : 'border-slate-200'}`}>
+            <p className={`text-[11px] font-medium uppercase tracking-widest ${darkMode ? 'text-slate-300' : 'text-slate-400'}`}>No Tasks</p>
           </div>
         )}
       </div>
 
-      <div className="mt-4 flex items-center justify-center gap-1 rounded-full border border-slate-200 bg-white px-1 py-1 shadow-sm flex-shrink-0">
+      <div className={`mt-4 flex items-center justify-center gap-1 rounded-full px-1 py-1 shadow-sm flex-shrink-0 ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
         <button
           type="button"
           onClick={() => setPageIndex((current) => Math.max(0, current - 1))}
           disabled={!hasPreviousPage}
           aria-label={`Previous ${title} tasks`}
-          className="flex h-6 w-6 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+          className={`flex h-6 w-6 items-center justify-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${darkMode ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-100'}`}
         >
           <ChevronLeft className="h-3.5 w-3.5" />
         </button>
-        <span className="min-w-10 text-center text-[10px] font-semibold text-slate-500">
+        <span className={`min-w-10 text-center text-[10px] font-semibold ${darkMode ? 'text-slate-300' : 'text-slate-500'}`}>
           {currentPage + 1}/{totalPages}
         </span>
         <button
@@ -75,7 +77,7 @@ const BacklogColumn: React.FC<ColumnProps> = ({
           onClick={() => setPageIndex((current) => Math.min(totalPages - 1, current + 1))}
           disabled={!hasNextPage}
           aria-label={`Next ${title} tasks`}
-          className="flex h-6 w-6 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+          className={`flex h-6 w-6 items-center justify-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${darkMode ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-100'}`}
         >
           <ChevronRight className="h-3.5 w-3.5" />
         </button>

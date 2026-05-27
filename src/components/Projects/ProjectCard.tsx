@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTheme } from "../../contexts/useTheme";
 import type { ApiProject } from "../../types/api";
 import type { Member } from "../../types/project";
 import MemberAvatars from "./MemberAvatars";
@@ -47,6 +48,7 @@ interface ProjectCardProps {
 
 function ProjectCard({ project, members, index, onClick }: ProjectCardProps) {
   const [hovered, setHovered] = useState(false);
+  const { darkMode } = useTheme();
 
   return (
     <article
@@ -57,8 +59,8 @@ function ProjectCard({ project, members, index, onClick }: ProjectCardProps) {
       tabIndex={0}
       aria-label={`Open project: ${project.name}`}
       onKeyDown={(e) => e.key === "Enter" && onClick?.(project)}
-      className={`bg-white rounded-lg overflow-hidden cursor-pointer
-        transition-shadow duration-150 border border-black/[0.08]
+      className={`rounded-lg overflow-hidden cursor-pointer transition-shadow duration-150 border
+        ${darkMode ? "bg-slate-800 border-slate-700" : "bg-white border-black/[0.08]"}
         ${
           hovered
             ? "shadow-[0_4px_16px_rgba(0,0,0,0.12)]"
@@ -74,14 +76,14 @@ function ProjectCard({ project, members, index, onClick }: ProjectCardProps) {
       <div className="p-3.5 pt-3">
         <div className="flex justify-between items-start">
           <div className="flex-1 pr-2">
-            <h3 className="text-[14px] font-medium text-[#1a3a4a] mb-1">
+            <h3 className={`text-[14px] font-medium mb-1 ${darkMode ? "text-slate-100" : "text-[#1a3a4a]"}`}>
               {project.name}
             </h3>
-            <p className="text-[11px] text-[#6a8a9a] leading-snug">
+            <p className={`text-[11px] leading-snug ${darkMode ? "text-slate-300" : "text-[#6a8a9a]"}`}>
               {project.description ?? "No description provided."}
             </p>
           </div>
-          <span className="text-[18px] font-light text-[#9abacc] shrink-0">
+          <span className={`text-[18px] font-light shrink-0 ${darkMode ? "text-slate-400" : "text-[#9abacc]"}`}>
             {String(index + 1).padStart(2, "0")}
           </span>
         </div>

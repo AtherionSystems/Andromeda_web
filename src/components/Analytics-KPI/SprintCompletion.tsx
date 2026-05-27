@@ -1,6 +1,7 @@
 
 {/*BURRRRRRRRRNDOWWWWWWWWWWWWWWWWWN*/}
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
+import { useTheme } from "@/contexts/useTheme";
 import {Card,CardContent,CardDescription,CardHeader,CardTitle,} from "@/components/ui/card";
 import {ChartContainer,ChartTooltip,ChartTooltipContent,type ChartConfig,} from "@/components/ui/chart";
 import type { DashboardBurndownPoint } from "@/types/api";
@@ -30,10 +31,11 @@ interface SprintCompletionRateProps {
 
 export function SprintCompletionRate({ data }: SprintCompletionRateProps) {
   const chartData = data ?? fallbackData;
+  const { darkMode } = useTheme();
   return (
-    <Card className="flex flex-col gap-0 overflow-hidden rounded-lg border border-[#C2D4D4] bg-white">
+    <Card className={`flex flex-col gap-0 overflow-hidden rounded-lg border shadow-sm ${darkMode ? 'border-slate-700 bg-slate-800 text-slate-100' : 'border-[#C2D4D4] bg-white text-slate-900'}`}>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base font-semibold">
+        <CardTitle className="text-base font-semibold text-foreground">
           Sprint Completion Rate
         </CardTitle>
         <CardDescription className="text-xs text-muted-foreground">

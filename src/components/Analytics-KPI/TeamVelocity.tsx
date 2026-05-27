@@ -1,4 +1,5 @@
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { useTheme } from "@/contexts/useTheme";
 import {
   Card,
   CardContent,
@@ -31,11 +32,12 @@ interface TeamVelocityProps {
 
 export function TeamVelocity({ data }: TeamVelocityProps) {
   const chartData = data ?? fallbackData;
+  const { darkMode } = useTheme();
   return (
-    <Card className="flex flex-col gap-0 overflow-hidden rounded-lg border border-[#C2D4D4] bg-white">
+    <Card className={`flex flex-col gap-0 overflow-hidden rounded-lg border shadow-sm ${darkMode ? 'border-slate-700 bg-slate-800 text-slate-100' : 'border-[#C2D4D4] bg-white text-slate-900'}`}>
       <CardHeader>
-        <CardTitle className="text-base font-semibold">Team Velocity</CardTitle>
-        <CardDescription>
+        <CardTitle className="text-base font-semibold text-foreground">Team Velocity</CardTitle>
+        <CardDescription className="text-muted-foreground">
           Story points planned vs completed per sprint.
         </CardDescription>
       </CardHeader>

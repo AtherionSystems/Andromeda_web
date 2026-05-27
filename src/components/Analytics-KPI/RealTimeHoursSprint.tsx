@@ -1,4 +1,5 @@
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { useTheme } from "@/contexts/useTheme";
 import {
   Card,
   CardContent,
@@ -42,6 +43,7 @@ export function RealTimeHoursPerSprint({
 }: RealTimeHoursPerSprintProps) {
   const chartData = data ?? fallbackData;
   const chartUsers = users ?? fallbackUsers;
+  const { darkMode } = useTheme();
 
   const chartConfig: ChartConfig = Object.fromEntries(
     chartUsers.map((name, i) => [
@@ -51,12 +53,12 @@ export function RealTimeHoursPerSprint({
   );
 
   return (
-    <Card className="flex flex-col gap-0 overflow-hidden rounded-lg border border-[#C2D4D4] bg-white">
+    <Card className={`flex flex-col gap-0 overflow-hidden rounded-lg border shadow-sm ${darkMode ? 'border-slate-700 bg-slate-800 text-slate-100' : 'border-[#C2D4D4] bg-white text-slate-900'}`}>
       <CardHeader>
-        <CardTitle className="text-base font-semibold">
+        <CardTitle className="text-base font-semibold text-foreground">
           Tasks Completed by Developer per Sprint
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="text-muted-foreground">
           Tasks completed per developer each sprint, use it to monitor workload
           and balance effort.
         </CardDescription>

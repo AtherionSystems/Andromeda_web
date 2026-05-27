@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTheme } from "@/contexts/useTheme";
 import { SprintVelocityCard, CompletionRateCard } from "./SprintVelocity";
 import { SprintCompletionRate } from "./SprintCompletion";
 import { TeamVelocity } from "./TeamVelocity";
@@ -220,6 +221,7 @@ export function AnalyticsPage() {
   );
   const [kpi, setKpi] = useState<ApiDashboardKPI | null>(null);
   const [loading, setLoading] = useState(false);
+  const { darkMode } = useTheme();
 
   useEffect(() => {
     getProjects()
@@ -289,7 +291,7 @@ export function AnalyticsPage() {
     : undefined;
 
   return (
-    <div className="min-h-screen bg-background p-6">
+    <div className={`min-h-screen p-6 ${darkMode ? "bg-slate-950" : "bg-background"}`}>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold tracking-tight text-foreground">
           Analytics Dashboard
@@ -298,7 +300,7 @@ export function AnalyticsPage() {
           <select
             value={selectedProjectId ?? ""}
             onChange={(e) => setSelectedProjectId(Number(e.target.value))}
-            className="rounded-md border border-[#C2D4D4] bg-white px-3 py-1.5 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-[#2a4a5a]"
+            className={`rounded-md border px-3 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 ${darkMode ? "border-slate-700 bg-slate-800 text-slate-100 focus:ring-slate-500" : "border-[#C2D4D4] bg-white text-slate-900 focus:ring-[#2a4a5a]"}`}
           >
             {projects.map((p) => (
               <option key={p.id} value={p.id}>
