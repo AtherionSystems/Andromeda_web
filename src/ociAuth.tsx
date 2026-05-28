@@ -86,8 +86,8 @@ export function loadTokens(): OciTokenSet | null {
 
 export function clearTokens(): void {
   sessionStorage.removeItem(STORAGE_KEY_TOKENS);
-  sessionStorage.removeItem(STORAGE_KEY_CODE_VERIF);
-  sessionStorage.removeItem(STORAGE_KEY_STATE);
+  localStorage.removeItem(STORAGE_KEY_CODE_VERIF);
+  localStorage.removeItem(STORAGE_KEY_STATE);
 }
 
 export function isTokenExpired(tokens: OciTokenSet): boolean {
@@ -102,8 +102,8 @@ export async function login(): Promise<void> {
   const challenge = await generateCodeChallenge(verifier);
   const state     = generateState();
 
-  sessionStorage.setItem(STORAGE_KEY_CODE_VERIF, verifier);
-  sessionStorage.setItem(STORAGE_KEY_STATE, state);
+  localStorage.setItem(STORAGE_KEY_CODE_VERIF, verifier);
+  localStorage.setItem(STORAGE_KEY_STATE, state);
 
   const params = new URLSearchParams({
     response_type:         'code',
@@ -133,8 +133,8 @@ export async function handleCallback(): Promise<OciTokenSet> {
 
   if (!code) throw new Error('No authorization code in callback URL');
 
-  const savedState   = sessionStorage.getItem(STORAGE_KEY_STATE);
-  const codeVerifier = sessionStorage.getItem(STORAGE_KEY_CODE_VERIF);
+  const savedState   = localStorage.getItem(STORAGE_KEY_STATE);
+  const codeVerifier = localStorage.getItem(STORAGE_KEY_CODE_VERIF);
 
   if (!savedState || state !== savedState) {
     throw new Error('OAuth2 state mismatch — possible CSRF attack');
