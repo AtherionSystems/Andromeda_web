@@ -40,15 +40,9 @@ function BacklogPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<ApiTask | null>(null);
-  const [selectedProjectId, setSelectedProjectId] = useState<number | "all">(
-    "all",
-  );
-  const [selectedSprintId, setSelectedSprintId] = useState<number | "all">(
-    "all",
-  );
-  const [taskAssignments, setTaskAssignments] = useState<
-    Record<number, Member[]>
-  >({});
+  const [selectedProjectId, setSelectedProjectId] = useState<number | "all">("all");
+  const [selectedSprintName, setSelectedSprintName] = useState<string | "all">("all");
+  const [taskAssignments, setTaskAssignments] = useState<Record<number, Member[]>>({});
   const theme = useContext(ThemeContext);
   const darkMode = theme?.darkMode ?? false;
 
@@ -287,32 +281,18 @@ function BacklogPage() {
       : (sprints.find((s) => s.id === selectedSprintId)?.name ?? "All Sprints");
 
   return (
-    <div
-      className={`flex h-full min-h-0 flex-col ${darkMode ? "bg-slate-900" : "bg-white"}`}
-    >
+    <div className={`flex h-full min-h-0 flex-col ${darkMode ? 'bg-slate-900' : 'bg-white'}`}>
       <div className="px-8 pt-6 pb-1">
-        <div
-          className={`rounded-2xl px-5 py-4 ${darkMode ? "bg-slate-900" : "bg-white"}`}
-        >
+        <div className={`rounded-2xl px-5 py-4 ${darkMode ? 'bg-slate-900' : 'bg-white'}`}>
           <div className="mb-2 flex items-start justify-between gap-4">
             <div className="flex flex-col items-start">
-              <h2
-                className={`text-2xl font-semibold italic ${darkMode ? "text-slate-100" : "text-slate-900"}`}
-              >
-                Backlog
-              </h2>
-              <p
-                className={`mt-2 text-[18px] ${darkMode ? "text-slate-400" : "text-slate-500"}`}
-              >
-                {visibleTaskCount} tasks
-              </p>
+              <h2 className={`text-2xl font-semibold italic ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>Backlog</h2>
+              <p className={`mt-2 text-[18px] ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>{visibleTaskCount} tasks</p>
             </div>
 
             <div className="flex min-w-[320px] flex-col gap-3 text-right sm:flex-row sm:items-end sm:gap-4">
               <div className="flex-1">
-                <label
-                  className={`mb-2 block text-left text-[11px] font-semibold uppercase tracking-wide ${darkMode ? "text-slate-300" : "text-slate-500"}`}
-                >
+                <label className={`mb-2 block text-left text-[11px] font-semibold uppercase tracking-wide ${darkMode ? 'text-slate-300' : 'text-slate-500'}`}>
                   Filter by project
                 </label>
                 <select
@@ -374,39 +354,31 @@ function BacklogPage() {
       </div>
 
       <div className="flex flex-1 min-h-0 items-stretch gap-6 overflow-hidden px-8 pb-8 pt-2">
-        <BacklogColumn
-          title="To Do"
-          subtitle={
-            selectedSprintName === "all" ? "All Sprints" : selectedSprintName
-          }
-          tasks={visibleTasks.filter((t) => t.status === "todo")}
+        <BacklogColumn 
+          title="To Do" 
+          subtitle={selectedSprintName === "all" ? "All Sprints" : selectedSprintName}
+          tasks={visibleTasks.filter(t => t.status === "todo")} 
           onTaskClick={setSelectedTask}
           taskAssignments={taskAssignments}
         />
-        <BacklogColumn
-          title="In Progress"
-          subtitle={
-            selectedSprintName === "all" ? "All Sprints" : selectedSprintName
-          }
-          tasks={visibleTasks.filter((t) => t.status === "in_progress")}
+        <BacklogColumn 
+          title="In Progress" 
+          subtitle={selectedSprintName === "all" ? "All Sprints" : selectedSprintName}
+          tasks={visibleTasks.filter(t => t.status === "in_progress")} 
           onTaskClick={setSelectedTask}
           taskAssignments={taskAssignments}
         />
-        <BacklogColumn
-          title="Review"
-          subtitle={
-            selectedSprintName === "all" ? "All Sprints" : selectedSprintName
-          }
-          tasks={visibleTasks.filter((t) => t.status === "review")}
+        <BacklogColumn 
+          title="Review" 
+          subtitle={selectedSprintName === "all" ? "All Sprints" : selectedSprintName}
+          tasks={visibleTasks.filter(t => t.status === "review")} 
           onTaskClick={setSelectedTask}
           taskAssignments={taskAssignments}
         />
-        <BacklogColumn
-          title="Done"
-          subtitle={
-            selectedSprintName === "all" ? "All Sprints" : selectedSprintName
-          }
-          tasks={visibleTasks.filter((t) => t.status === "done")}
+        <BacklogColumn 
+          title="Done" 
+          subtitle={selectedSprintName === "all" ? "All Sprints" : selectedSprintName}
+          tasks={visibleTasks.filter(t => t.status === "done")} 
           onTaskClick={setSelectedTask}
           taskAssignments={taskAssignments}
         />
