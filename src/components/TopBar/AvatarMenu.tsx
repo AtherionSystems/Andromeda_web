@@ -62,7 +62,7 @@ export function AvatarMenu({ user, role, onViewProfile, onLogout }: AvatarMenuPr
             className={`w-full flex items-center gap-2.5 px-4 py-2 text-[13px] transition-colors text-left border-none bg-transparent cursor-pointer ${darkMode ? "text-slate-200 hover:bg-slate-700" : "text-gray-700 hover:bg-gray-50"}`}
                 >
                     <img
-              src={darkMode ? "/Media/Icons/visibilityWhite.svg" : "/Media/Icons/visibility.png"}
+              src={darkMode ? "/Media/Icons/visibilityWhite.svg" : "/Media/Icons/visibility.svg"}
                       alt="Visibility icon"
               className={`h-4 w-4 shrink-0 object-contain ${darkMode ? "opacity-100" : "opacity-70"}`}
                     />

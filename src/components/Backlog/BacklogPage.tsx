@@ -242,8 +242,17 @@ function BacklogPage() {
 
   if (loading)
     return (
-      <div className="p-10 text-slate-400 dark:text-slate-300">
-        Loading Backlog...
+      <div className="flex min-h-[60vh] items-center justify-center px-6">
+        <div className="flex flex-col items-center gap-4">
+          <img
+            src="/Media/Animations/RedGearGIF.gif"
+            alt="Loading animation"
+            className="h-28 w-28 object-contain"
+          />
+          <p className="text-sm font-semibold tracking-wide text-[#C74634]">
+            Loading Backlog...
+          </p>
+        </div>
       </div>
     );
 

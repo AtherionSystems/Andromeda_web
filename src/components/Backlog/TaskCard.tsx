@@ -8,9 +8,10 @@ interface TaskCardProps {
   task: ApiTask;
   assignedMembers?: Member[]; // Recibimos los miembros asignados
   onClick: (task: ApiTask) => void;
+  index?: number;
 }
 
-const TaskCard: React.FC<TaskCardProps> = ({ task, assignedMembers = [], onClick }) => {
+const TaskCard: React.FC<TaskCardProps> = ({ task, assignedMembers = [], onClick, index }) => {
   const priorityStyles: Record<string, string> = {
     critical: "#C74634",
     high: "#FFB13F",
@@ -25,7 +26,8 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, assignedMembers = [], onClick
   return (
     <div 
       onClick={() => onClick(task)}
-      className={`group relative mb-4 flex flex-col border-l-2 border-transparent p-5 shadow-sm transition-all hover:shadow-md cursor-pointer ${darkMode ? 'bg-slate-900 text-slate-100' : 'bg-white text-slate-900'} borderradius rounded -10px`}
+      className={`card-entrance group relative mb-4 flex flex-col border-l-2 border-transparent p-5 shadow-sm transition-all hover:shadow-md cursor-pointer ${darkMode ? 'bg-slate-900 text-slate-100' : 'bg-white text-slate-900'} borderradius rounded -10px`}
+      style={{ animationDelay: `${(index ?? 0) * 70}ms` }}
     >
       <div className="absolute left-0 top-0 h-full w-[3px] borderradius rounded-20px" style={{ backgroundColor: barColor }} />
 

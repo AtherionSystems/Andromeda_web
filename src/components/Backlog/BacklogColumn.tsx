@@ -44,12 +44,13 @@ const BacklogColumn: React.FC<ColumnProps> = ({
         </div>
       </div>
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto pr-1">
-        {visibleTasks.map((task) => (
+        {visibleTasks.map((task, i) => (
           <TaskCard
             key={task.id}
             task={task}
             onClick={(selectedTask) => onTaskClick?.(selectedTask)}
             assignedMembers={taskAssignments[task.id] || []}
+            index={startIndex + i}
           />
         ))}
         {tasks.length === 0 && (

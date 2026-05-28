@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { useAuth } from "./contexts/auth";
 import LoginPage from "./pages/Login/LoginPage";
+import ForgotPasswordPage from "./pages/Login/ForgotPasswordPage";
 import POPage from "./pages/PO/POPage";
 import DeveloperPage from "./pages/Developer/DeveloperPage";
 import type { ReactNode } from "react";
@@ -32,6 +33,10 @@ function AppRoutes() {
       <Route
         path="/login"
         element={user ? <Navigate to={defaultDash} replace /> : <LoginPage />}
+      />
+      <Route
+        path="/forgot-password"
+        element={user ? <Navigate to={defaultDash} replace /> : <ForgotPasswordPage />}
       />
       <Route
         path="/po"

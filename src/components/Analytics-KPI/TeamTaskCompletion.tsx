@@ -17,17 +17,21 @@ interface TeamTaskCompletionProps {
   emptyMessage?: string;
 }
 
+interface TeamTaskCompletionPropsWithIndex extends TeamTaskCompletionProps {
+  index?: number;
+}
+
 const defaultMembers: TeamMember[] = [
   {
     id: "1",
     name: "Developer 1",
-    completion: 88,
+    completion: 0,
     avatarColor: "bg-[#99C2A6]",
   },
   {
     id: "2",
     name: "Developer 2",
-    completion: 66,
+    completion: 0,
     avatarColor: "bg-[#69777B]",
   },
 ];
@@ -48,12 +52,13 @@ export function TeamTaskCompletion({
   members,
   isLoading = false,
   emptyMessage = "No team completion data yet.",
-}: TeamTaskCompletionProps) {
+  index,
+}: TeamTaskCompletionPropsWithIndex) {
   const resolvedMembers = members ?? defaultMembers;
   const { darkMode } = useTheme();
 
   return (
-    <Card className={`flex flex-col gap-0 rounded-lg border shadow-sm ${darkMode ? 'border-slate-700 bg-slate-800 text-slate-100' : 'border-[#C2D4D4] bg-white text-slate-900'}`}>
+    <Card style={{ animationDelay: `${(index ?? 0) * 70}ms` }} className={`card-entrance flex flex-col gap-0 rounded-lg border shadow-sm ${darkMode ? 'border-slate-700 bg-slate-800 text-slate-100' : 'border-[#C2D4D4] bg-white text-slate-900'}`}>
       <CardHeader className="pb-2">
         <CardTitle className="text-base font-semibold text-foreground">
           Team Task Completion

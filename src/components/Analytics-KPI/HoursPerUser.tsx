@@ -35,9 +35,10 @@ const fallbackUsers = ["Dev1", "Dev2"];
 interface HoursPerSprintProps {
   data?: Record<string, number | string>[];
   users?: string[];
+  index?: number;
 }
 
-export function HoursPerSprint({ data, users }: HoursPerSprintProps) {
+export function HoursPerSprint({ data, users, index }: HoursPerSprintProps) {
   const chartData = data ?? fallbackData;
   const chartUsers = users ?? fallbackUsers;
   const { darkMode } = useTheme();
@@ -50,7 +51,7 @@ export function HoursPerSprint({ data, users }: HoursPerSprintProps) {
   );
 
   return (
-    <Card className={`flex flex-col gap-0 overflow-hidden rounded-lg border shadow-sm ${darkMode ? 'border-slate-700 bg-slate-800 text-slate-100' : 'border-[#C2D4D4] bg-white text-slate-900'}`}>
+    <Card style={{ animationDelay: `${(index ?? 0) * 70}ms` }} className={`card-entrance flex flex-col gap-0 overflow-hidden rounded-lg border shadow-sm ${darkMode ? 'border-slate-700 bg-slate-800 text-slate-100' : 'border-[#C2D4D4] bg-white text-slate-900'}`}>
       <CardHeader>
         <CardTitle className="text-base font-semibold text-foreground">
           Hours per User per Sprint
