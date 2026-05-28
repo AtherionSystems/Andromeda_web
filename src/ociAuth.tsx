@@ -245,7 +245,7 @@ export function logout(): void {
   clearTokens();
 
   const params = new URLSearchParams({
-    post_logout_redirect_uri: window.location.origin + '/',
+    post_logout_redirect_uri: window.location.origin + '/logged-out',
   });
 
   if (tokens?.id_token) {

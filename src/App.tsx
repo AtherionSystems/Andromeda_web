@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import LoginPage from "./pages/Login/LoginPage";
+import LoggedOut from "./pages/Login/LoggedOut";
 import POPage from "./pages/PO/POPage";
 import DeveloperPage from "./pages/Developer/DeveloperPage";
 import type { ReactNode } from "react";
@@ -64,6 +65,7 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      <Route path="/logged-out" element={<LoggedOut />} />
       {/* OCI IAM OAuth2 redirect target — handled by bootstrap() in main.tsx */}
       <Route path="/callback" element={<OAuthCallbackPage />} />
       <Route path="*" element={<Navigate to={defaultDash} replace />} />

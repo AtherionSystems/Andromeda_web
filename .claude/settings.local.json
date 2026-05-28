@@ -1,5 +1,9 @@
 {
   "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem *)",
+      "PowerShell(Get-ChildItem -Path \"D:\\\\1.SQM\\\\1.UNIVERSIDAD\\\\6.SEXTOSEMESTRE\\\\PlaneaciónDeSoftware\\\\RETO\\\\Andromeda_Web\" | Select-Object Name, @{n='Type';e={if\\($_.PSIsContainer\\){'Dir'}else{'File'}}})"
+    ],
     "additionalDirectories": [
       "c:\\Users\\manua\\Downloads\\TatrasSem6\\AtherionSystems\\AndromedaWeb\\src\\components\\Sidebar"
     ]
