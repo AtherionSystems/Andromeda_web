@@ -1,0 +1,184 @@
+================================================================================
+  ANDROMEDA WEB — AUTH SYSTEM GUIDE
+  Branch: featAuth
+================================================================================
+
+--------------------------------------------------------------------------------
+1. HOW AUTH WORKS (end-to-end)
+--------------------------------------------------------------------------------
+
+LOGIN FLOW
+----------
+1. User submits credentials in LoginForm.tsx.
+2. A raw fetch hits POST http://localhost:8080/api/auth/login directly.
+3. The backend returns a response. Two shapes are handled:
+
+     Shape A (flat):    { id, name, token, userType, ... }
+     Shape B (nested):  { token: "...", user: { id, name, userType, ... } }
+
+4. LoginForm merges them into a single ApiUser object that always contains
+   the token field:
+
+     const rawUser = data.user ?? data;
+     const topToken = data.token;
+     const loggedUser = (topToken && !rawUser.token)
+       ? { ...rawUser, token: topToken }
+       : rawUser;
+
+5. AuthContext.login(loggedUser) is called.
+   - Saves the full user object (including token) to localStorage under
+     the key "andromeda_user".
+   - Updates the in-memory React state.
+
+6. The user is redirected to /developer or /po based on userType.
+
+
+AUTHENTICATED REQUESTS
+----------------------
+Every API call goes through apiFetch() in src/api/client.ts.
+
+On each call, apiFetch:
+  1. Reads "andromeda_user" from localStorage.
+  2. Parses it and extracts the .token field.
+  3. Attaches the header:  Authorization: Bearer <token>
+  4. Makes the fetch request.
+
+The token lives inside the "andromeda_user" object — there is NO separate
+"token" key in localStorage.
+
+
+SESSION PERSISTENCE
+-------------------
+- On page reload, AuthContext initializes its state from localStorage
+  synchronously via the useState initializer. There is no async gap, so
+  there is no flash to /login on refresh.
+- Logout clears both the React state and localStorage.
+
+
+--------------------------------------------------------------------------------
+2. KEY FILES
+--------------------------------------------------------------------------------
+
+  src/contexts/AuthContext.tsx
+    - AuthProvider: holds the user state, exposes login() and logout().
+    - STORAGE_KEY = "andromeda_user"  <-- single source of truth for storage.
+    - useState initializer reads from localStorage synchronously.
+
+  src/api/client.ts
+    - apiFetch<T>(): the single HTTP client for all data requests.
+    - getStoredToken(): reads and parses "andromeda_user" to extract the token.
+    - Attaches Authorization header on every request when a token is present.
+    - DEV-mode logs: logs each request path and the first 10 chars of the token.
+
+  src/api/auth.ts
+    - login(): thin wrapper around apiFetch for POST /api/auth/login.
+    - Not used by LoginForm directly (LoginForm uses raw fetch for the login
+      call itself, since the token does not exist yet at that point).
+
+  src/types/api.ts
+    - ApiUser interface includes token: string.
+
+  src/pages/Login/LoginForm.tsx
+    - Handles the login fetch, token extraction, and role-based redirect.
+
+  src/App.tsx
+    - Routing, ProtectedRoute, role-based default redirect.
+
+
+--------------------------------------------------------------------------------
+3. ROUTING & ROLE PROTECTION
+--------------------------------------------------------------------------------
+
+PROVIDER ORDER
+--------------
+  <BrowserRouter>          <-- outermost, so AuthProvider can use nav hooks
+    <AuthProvider>
+      <AppRoutes />
+    </AuthProvider>
+  </BrowserRouter>
+
+
+PROTECTED ROUTES
+----------------
+ProtectedRoute checks two conditions:
+
+  1. No user at all    -> redirect to /login
+  2. Wrong role        -> redirect to the correct dashboard
+
+     allowedRole="developer" + user is NOT developer  -> /po
+     allowedRole="po"        + user IS developer       -> /developer
+
+Both /po and /developer are fully guarded. A developer cannot access /po
+by navigating manually, and vice versa.
+
+
+DEFAULT REDIRECT (role-based)
+------------------------------
+  roleDashboard(userType):
+    "developer"  ->  /developer
+    anything else -> /po
+
+Used for: /, /login (already authed), and the wildcard * route.
+
+
+--------------------------------------------------------------------------------
+4. HEALTH CHECK
+--------------------------------------------------------------------------------
+
+PODashboard polls GET /health to show a system status indicator.
+
+The /health endpoint on the backend requires authentication, so an
+unauthenticated request returns 403. A 403 still means the server is
+reachable. The check treats any HTTP response as "Operational"; only a
+network error (connection refused, timeout) sets the indicator to
+"Unavailable".
+
+
+--------------------------------------------------------------------------------
+5. CHANGES MADE (summary)
+--------------------------------------------------------------------------------
+
+src/types/api.ts
+  - Added  token: string  to ApiUser interface.
+
+src/api/client.ts
+  - Replaced localStorage.getItem("token") with getStoredToken(), which
+    parses "andromeda_user" and extracts .token.
+  - DEV-mode warning when user object exists but token field is missing.
+  - DEV-mode log on every request showing method, path, and token prefix.
+
+src/api/auth.ts
+  - Removed a dead localStorage.setItem("token", ...) that was never
+    reached (LoginForm bypasses this function for the login call).
+
+src/pages/Login/LoginForm.tsx
+  - Added token merge logic to handle both flat and nested backend response
+    shapes, ensuring the token always ends up in the stored user object.
+  - Added DEV-mode logs to confirm what is stored and whether token is present.
+
+src/App.tsx
+  - Flipped provider order: BrowserRouter now wraps AuthProvider.
+  - Fixed ProtectedRoute: added role check for allowedRole="po" so
+    developers cannot access /po by navigating manually.
+  - Replaced hardcoded "/po" default redirect with roleDashboard() so
+    developers land on /developer after login or on any unmatched route.
+
+src/pages/PO/PODashboard.tsx
+  - Health check now treats any HTTP response (including 403) as "server up".
+    Only a thrown network error marks the server as unavailable.
+
+
+--------------------------------------------------------------------------------
+6. THINGS TO WATCH
+--------------------------------------------------------------------------------
+
+- The token is stored as plain text in localStorage. This is standard for
+  SPAs but means XSS can steal it. Ensure the app has no XSS vectors.
+
+- If the backend ever changes its login response shape, update the merge
+  logic in LoginForm.tsx (the rawUser / topToken block).
+
+- The DEV-mode console logs in client.ts and LoginForm.tsx are guarded by
+  import.meta.env.DEV and will not appear in production builds.
+
+================================================================================
