@@ -24,7 +24,7 @@ function Skeleton({ w = "100%", h = 14, radius = 4 }: { w?: string | number; h?:
 
 export function SprintVelocityCard({ velocity = 42.8, velocityChange = 12, loading = false }: SprintVelocityCardProps) {
   return (
-    <div style={{ background: "#2a4a5a", borderRadius: 10, padding: "12px 16px 8px 16px", flex: 1 }}>
+    <div className="flex-1 rounded-[10px] bg-[#2a4a5a] p-[12px_16px_8px_16px]">
       <p style={{ margin: "0 0 4px", fontSize: 9, letterSpacing: 1.1, textTransform: "uppercase", color: "rgba(255,255,255,0.55)", fontWeight: 600 }}>
         Sprint Velocity
       </p>
@@ -47,7 +47,7 @@ export function SprintVelocityCard({ velocity = 42.8, velocityChange = 12, loadi
 
 export function CompletionRateCard({ completionRate = 94, loading = false }: CompletionRateCardProps) {
   return (
-    <div style={{ background: "#c74634", borderRadius: 10, padding: "14px 16px 8px 16px", flex: 1 }}>
+    <div className="flex-1 rounded-[10px] bg-[#c74634] p-[14px_16px_8px_16px]">
       <p style={{ margin: "0 0 4px", fontSize: 9, letterSpacing: 1.1, textTransform: "uppercase", color: "rgba(255,255,255,0.7)", fontWeight: 600 }}>
         Completion Rate
       </p>

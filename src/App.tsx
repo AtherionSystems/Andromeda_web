@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { AuthProvider } from "./contexts/AuthContext";
+import { useAuth } from "./contexts/auth";
 import LoginPage from "./pages/Login/LoginPage";
 import LoggedOut from "./pages/Login/LoggedOut";
 import POPage from "./pages/PO/POPage";

@@ -8,6 +8,7 @@ import basicSsl from '@vitejs/plugin-basic-ssl'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 // https://vite.dev/config/
+// http://160.34.209.27/
 export default defineConfig({
   plugins: [react(), tailwindcss(), basicSsl()],
   resolve: {

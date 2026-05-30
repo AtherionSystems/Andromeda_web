@@ -3,6 +3,7 @@ import Sidebar from "../Sidebar/Sidebar";
 import Topbar from "../TopBar/TopBar";
 import Footer from "./Footer";
 import { useWindowSize } from "../../hooks/useWindowSize";
+import { useTheme } from "../../contexts/useTheme";
 import type { ApiUser } from "../../types/api";
 
 interface AppLayoutProps {
@@ -17,11 +18,19 @@ interface AppLayoutProps {
 function AppLayout({ user, role, onLogout, onNavigate, activeRoute, children }: AppLayoutProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const { breakpoint } = useWindowSize();
+  const { darkMode } = useTheme();
+  function handleViewProfile() {
+    if (onNavigate) onNavigate("/profile");
+  }
 
   return (
     <div
-      className={`flex w-full h-screen bg-[#f0f4f5] font-sans text-[13px]
+      className={`flex w-full h-screen font-sans text-[13px] transition-colors duration-200
       ${breakpoint === "mobile" ? "flex-col" : "flex-row"}`}
+      style={{
+        backgroundColor: darkMode ? "#020617" : "#f0f4f5",
+        color: darkMode ? "#e2e8f0" : "#334155",
+      }}
     >
       <div
         className={`shrink-0 overflow-hidden
@@ -36,6 +45,7 @@ function AppLayout({ user, role, onLogout, onNavigate, activeRoute, children }: 
           role={role}
           searchValue={searchQuery}
           onSearchChange={setSearchQuery}
+          onViewProfile={handleViewProfile}
           onLogout={onLogout}
         />
 

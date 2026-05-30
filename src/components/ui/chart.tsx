@@ -3,6 +3,7 @@ import * as React from "react"
 import * as RechartsPrimitive from "recharts"
 import type { TooltipValueType } from "recharts"
 
+import { useTheme } from "@/contexts/useTheme"
 import { cn } from "@/lib/utils"
 
 // Format: { THEME_NAME: CSS_SELECTOR }
@@ -57,6 +58,7 @@ function ChartContainer({
 }) {
   const uniqueId = React.useId()
   const chartId = `chart-${id ?? uniqueId.replace(/:/g, "")}`
+  const { darkMode } = useTheme()
 
   return (
     <ChartContext.Provider value={{ config }}>
@@ -64,12 +66,33 @@ function ChartContainer({
         data-slot="chart"
         data-chart={chartId}
         className={cn(
-          "flex aspect-video justify-center text-xs [&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-cartesian-grid_line[stroke='#ccc']]:stroke-border/50 [&_.recharts-curve.recharts-tooltip-cursor]:stroke-border [&_.recharts-dot[stroke='#fff']]:stroke-transparent [&_.recharts-layer]:outline-hidden [&_.recharts-polar-grid_[stroke='#ccc']]:stroke-border [&_.recharts-radial-bar-background-sector]:fill-muted [&_.recharts-rectangle.recharts-tooltip-cursor]:fill-muted [&_.recharts-reference-line_[stroke='#ccc']]:stroke-border [&_.recharts-sector]:outline-hidden [&_.recharts-sector[stroke='#fff']]:stroke-transparent [&_.recharts-surface]:outline-hidden",
+          `flex aspect-video justify-center text-xs ${darkMode ? "text-slate-100 [&_.recharts-cartesian-axis-tick_text]:fill-slate-100 [&_.recharts-cartesian-grid_line[stroke='#ccc']]:stroke-slate-600/60" : "text-slate-700 [&_.recharts-cartesian-axis-tick_text]:fill-slate-600 [&_.recharts-cartesian-grid_line[stroke='#ccc']]:stroke-border/50"} [&_.recharts-curve.recharts-tooltip-cursor]:stroke-border [&_.recharts-dot[stroke='#fff']]:stroke-transparent [&_.recharts-layer]:outline-hidden [&_.recharts-polar-grid_[stroke='#ccc']]:stroke-border [&_.recharts-radial-bar-background-sector]:fill-muted [&_.recharts-rectangle.recharts-tooltip-cursor]:fill-muted [&_.recharts-reference-line_[stroke='#ccc']]:stroke-border [&_.recharts-sector]:outline-hidden [&_.recharts-sector[stroke='#fff']]:stroke-transparent [&_.recharts-surface]:outline-hidden`,
           className
         )}
         {...props}
       >
         <ChartStyle id={chartId} config={config} />
+        <style
+          dangerouslySetInnerHTML={{
+            __html: darkMode
+              ? `
+                [data-chart="${chartId}"] .recharts-cartesian-axis-tick text,
+                [data-chart="${chartId}"] .recharts-text,
+                [data-chart="${chartId}"] .recharts-legend-item-text {
+                  fill: #ffffff !important;
+                  color: #ffffff !important;
+                }
+              `
+              : `
+                [data-chart="${chartId}"] .recharts-cartesian-axis-tick text,
+                [data-chart="${chartId}"] .recharts-text,
+                [data-chart="${chartId}"] .recharts-legend-item-text {
+                  fill: #475569 !important;
+                  color: #475569 !important;
+                }
+              `,
+          }}
+        />
         <RechartsPrimitive.ResponsiveContainer
           initialDimension={initialDimension}
         >
@@ -144,6 +167,7 @@ function ChartTooltipContent({
     "accessibilityLayer"
   >) {
   const { config } = useChart()
+  const { darkMode } = useTheme()
 
   const tooltipLabel = React.useMemo(() => {
     if (hideLabel || !payload?.length) {
@@ -190,7 +214,7 @@ function ChartTooltipContent({
   return (
     <div
       className={cn(
-        "grid min-w-32 items-start gap-1.5 rounded-lg border border-[#C2D4D4] bg-white px-2.5 py-1.5 text-xs shadow-xl",
+        `grid min-w-32 items-start gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs shadow-xl ${darkMode ? 'border-slate-700 bg-slate-800 text-slate-100' : 'border-slate-200 bg-white text-slate-900'}`,
         className
       )}
     >
@@ -221,9 +245,9 @@ function ChartTooltipContent({
                       !hideIndicator && (
                         <div
                           className={cn(
-                            "shrink-0 rounded-[2px] border-(--color-border) bg-(--color-bg)",
+                            "shrink-0 border-(--color-border) bg-(--color-bg)",
                             {
-                              "h-2.5 w-2.5": indicator === "dot",
+                              "h-3 w-3 rounded-[1px]": indicator === "dot",
                               "w-1": indicator === "line",
                               "w-0 border-[1.5px] border-dashed bg-transparent":
                                 indicator === "dashed",
@@ -241,7 +265,7 @@ function ChartTooltipContent({
                     )}
                     <div
                       className={cn(
-                        "flex flex-1 justify-between leading-none",
+                        "grid flex-1 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-6 leading-none",
                         nestLabel ? "items-end" : "items-center"
                       )}
                     >
@@ -290,7 +314,7 @@ function ChartLegendContent({
   return (
     <div
       className={cn(
-        "flex items-center justify-center gap-4",
+        "flex items-center justify-center gap-4 text-foreground",
         verticalAlign === "top" ? "pb-3" : "pt-3",
         className
       )}
@@ -305,20 +329,20 @@ function ChartLegendContent({
             <div
               key={index}
               className={cn(
-                "flex items-center gap-1.5 [&>svg]:h-3 [&>svg]:w-3 [&>svg]:text-muted-foreground"
+                "flex items-center gap-1.5 text-foreground [&>svg]:h-3 [&>svg]:w-3 [&>svg]:text-current"
               )}
             >
               {itemConfig?.icon && !hideIcon ? (
                 <itemConfig.icon />
               ) : (
                 <div
-                  className="h-2 w-2 shrink-0 rounded-[2px]"
+                  className="h-3 w-3 shrink-0 rounded-[1px]"
                   style={{
                     backgroundColor: item.color,
                   }}
                 />
               )}
-              {itemConfig?.label}
+              <span className="text-current">{itemConfig?.label}</span>
             </div>
           )
         })}
