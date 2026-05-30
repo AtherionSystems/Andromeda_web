@@ -1,0 +1,10 @@
+####################################################################################################################
+# WARNING: Do not store sensitive information in this file, as its contents will be included in the Qodana report. #
+####################################################################################################################
+# NOTE: qodana-js requires a JetBrains Ultimate license.
+# This project uses ESLint + TypeScript for code quality checks (see .github/workflows/code_quality.yml).
+# To re-enable Qodana: obtain an Ultimate license at https://www.jetbrains.com/student/ and update QODANA_TOKEN.
+version: "1.0"
+linter: jetbrains/qodana-js:2025.3
+profile:
+  name: qodana.starter
