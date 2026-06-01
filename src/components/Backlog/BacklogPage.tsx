@@ -61,11 +61,13 @@ function BacklogPage() {
             if (task.projectId == null) return [task.id, [] as Member[]] as const;
 
             const assignments = await getTaskAssignments(task.projectId, task.id);
-            const members: Member[] = assignments.map((assignment) => ({
-              initials: memberInitials(assignment.user.username),
-              color: AVATAR_COLORS[assignment.user.id % AVATAR_COLORS.length],
-              name: assignment.user.username,
-            }));
+            const members: Member[] = assignments
+              .filter((assignment) => assignment.user != null)
+              .map((assignment) => ({
+                initials: memberInitials(assignment.user.username),
+                color: AVATAR_COLORS[assignment.user.id % AVATAR_COLORS.length],
+                name: assignment.user.username,
+              }));
 
             return [task.id, members] as const;
           })
