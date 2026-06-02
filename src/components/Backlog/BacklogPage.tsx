@@ -11,6 +11,21 @@ import {
 import MemberAvatars from "../Projects/MemberAvatars";
 import { ThemeContext } from "../../contexts/themeContextValue";
 
+interface RawAssignee {
+  userName: string | null;
+  userId: number;
+}
+
+interface RawTaskWithAssignees extends ApiTask {
+  assignees?: RawAssignee[];
+}
+
+interface SprintTaskEntry {
+  sprintId: number;
+  sprintName: string;
+  tasks?: RawTaskWithAssignees[];
+}
+
 const AVATAR_COLORS = [
   "#4a3f7a",
   "#2a6a5a",
@@ -181,9 +196,9 @@ function BacklogPage() {
         const projectName = projects.find(
           (p) => p.id === selectedProjectId,
         )?.name;
-        const enrichedTasks: ApiTask[] = (sprintTasks as any[]).flatMap(
+        const enrichedTasks: ApiTask[] = (sprintTasks as SprintTaskEntry[]).flatMap(
           (entry) =>
-            (entry.tasks ?? []).map((task: any) => ({
+            (entry.tasks ?? []).map((task) => ({
               ...task,
               projectId: selectedProjectId as number,
               projectName,
@@ -201,10 +216,10 @@ function BacklogPage() {
         // Fetch assignments para las nuevas tasks
         const assignmentMap: Record<number, Member[]> = {};
         for (const task of enrichedTasks) {
-          const assignees = (task as any).assignees ?? [];
+          const assignees = (task as RawTaskWithAssignees).assignees ?? [];
           assignmentMap[task.id] = assignees
-            .filter((a: any) => a.userName != null)
-            .map((a: any) => ({
+            .filter((a): a is RawAssignee & { userName: string } => a.userName != null)
+            .map((a) => ({
               initials: memberInitials(a.userName),
               color: AVATAR_COLORS[a.userId % AVATAR_COLORS.length],
               name: a.userName,
@@ -220,7 +235,7 @@ function BacklogPage() {
     };
 
     fetchSprintTasks();
-  }, [selectedSprintId]);
+  }, [selectedSprintId, selectedProjectId, projects]);
 
   useEffect(() => {
     if (!selectedTask) return;

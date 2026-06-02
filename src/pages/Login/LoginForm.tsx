@@ -19,7 +19,6 @@ function LoginForm() {
   const { login } = useAuth();
   const { darkMode } = useTheme();
   const navigate = useNavigate();
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
   // OAuth2 callback error surfaced by bootstrap() in main.tsx
@@ -31,7 +30,7 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [isTransitioning] = useState(false);
   
   // Added a 'root' error for server/auth failures
   const [ociLoading, setOciLoading] = useState(false);

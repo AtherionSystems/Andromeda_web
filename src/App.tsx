@@ -7,6 +7,7 @@ import LoggedOut from "./pages/Login/LoggedOut";
 import POPage from "./pages/PO/POPage";
 import DeveloperPage from "./pages/Developer/DeveloperPage";
 import type { ReactNode } from "react";
+import { ThemeProvider } from "./contexts/themeContext";
 
 /** Shown briefly while bootstrap() exchanges the OCI auth code for tokens. */
 function OAuthCallbackPage() {
@@ -82,9 +83,11 @@ function AppRoutes() {
 function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <AppRoutes />
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
+      </ThemeProvider>
     </BrowserRouter>
   );
 }
