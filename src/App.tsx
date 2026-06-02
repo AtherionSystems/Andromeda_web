@@ -3,10 +3,12 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { ThemeProvider } from "./contexts/themeContext";
 import { useAuth } from "./contexts/auth";
 import LoginPage from "./pages/Login/LoginPage";
+import ForgotPasswordPage from "./pages/Login/ForgotPasswordPage";
 import LoggedOut from "./pages/Login/LoggedOut";
 import POPage from "./pages/PO/POPage";
 import DeveloperPage from "./pages/Developer/DeveloperPage";
 import type { ReactNode } from "react";
+import { ThemeProvider } from "./contexts/themeContext";
 
 /** Shown briefly while bootstrap() exchanges the OCI auth code for tokens. */
 function OAuthCallbackPage() {
@@ -50,6 +52,10 @@ function AppRoutes() {
       <Route
         path="/login"
         element={user ? <Navigate to={defaultDash} replace /> : <LoginPage />}
+      />
+      <Route
+        path="/forgot-password"
+        element={user ? <Navigate to={defaultDash} replace /> : <ForgotPasswordPage />}
       />
       <Route
         path="/po"

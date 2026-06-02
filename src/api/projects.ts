@@ -1,5 +1,5 @@
 import { apiFetch } from "./client";
-import type { ApiProject } from "../types/api";
+import type { ApiProject, ApiSprint } from "../types/api";
 
 export const getProjects = (): Promise<ApiProject[]> =>
   apiFetch("/api/projects");
@@ -7,14 +7,17 @@ export const getProjects = (): Promise<ApiProject[]> =>
 export const getProject = (id: number): Promise<ApiProject> =>
   apiFetch(`/api/projects/${id}`);
 
+export const getProjectSprints = (projectId: number): Promise<ApiSprint[]> =>
+  apiFetch(`/api/projects/${projectId}/sprints`);
+
 export const createProject = (
-  body: Partial<Omit<ApiProject, "id" | "createdAt">>
+  body: Partial<Omit<ApiProject, "id" | "createdAt">>,
 ): Promise<ApiProject> =>
   apiFetch("/api/projects", { method: "POST", body: JSON.stringify(body) });
 
 export const updateProject = (
   id: number,
-  body: Partial<Omit<ApiProject, "id" | "createdAt">>
+  body: Partial<Omit<ApiProject, "id" | "createdAt">>,
 ): Promise<ApiProject> =>
   apiFetch(`/api/projects/${id}`, {
     method: "PATCH",

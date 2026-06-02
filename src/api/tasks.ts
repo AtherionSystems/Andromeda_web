@@ -4,18 +4,26 @@ import type { ApiTask, ApiTaskAssignment } from "../types/api";
 export const getProjectTasks = (projectId: number): Promise<ApiTask[]> =>
   apiFetch(`/api/projects/${projectId}/tasks`);
 
+export const getSprintTasks = (
+  projectId: number,
+  sprintId: number,
+): Promise<ApiTask[]> =>
+  apiFetch(`/api/projects/${projectId}/sprints/${sprintId}/tasks`);
+
 export const getTask = (projectId: number, taskId: number): Promise<ApiTask> =>
   apiFetch(`/api/projects/${projectId}/tasks/${taskId}`);
 
 export const getTaskAssignments = (
   projectId: number,
-  taskId: number
+  taskId: number,
 ): Promise<ApiTaskAssignment[]> =>
   apiFetch(`/api/projects/${projectId}/tasks/${taskId}/assignments`);
 
 export const createTask = (
   projectId: number,
-  body: Partial<Omit<ApiTask, "id" | "createdAt" | "projectId" | "projectName">>
+  body: Partial<
+    Omit<ApiTask, "id" | "createdAt" | "projectId" | "projectName">
+  >,
 ): Promise<ApiTask> =>
   apiFetch(`/api/projects/${projectId}/tasks`, {
     method: "POST",
@@ -25,7 +33,9 @@ export const createTask = (
 export const updateTask = (
   projectId: number,
   taskId: number,
-  body: Partial<Omit<ApiTask, "id" | "createdAt" | "projectId" | "projectName">>
+  body: Partial<
+    Omit<ApiTask, "id" | "createdAt" | "projectId" | "projectName">
+  >,
 ): Promise<ApiTask> =>
   apiFetch(`/api/projects/${projectId}/tasks/${taskId}`, {
     method: "PATCH",

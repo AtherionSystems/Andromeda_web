@@ -319,29 +319,31 @@ export function AnalyticsPage() {
               velocity={velocity}
               velocityChange={change}
               loading={loading}
+              index={0}
             />
             <CompletionRateCard
               completionRate={completionRate}
               loading={loading}
+              index={1}
             />
           </div>
-          <SprintCompletionRate data={burndown} />
+          <SprintCompletionRate data={burndown} index={2} />
         </div>
 
         {/* div 2 con bar charts solicitadas por el socio*/}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <HoursPerSprint data={hoursData} users={hoursUsers} />
-          <RealTimeHoursPerSprint data={tasksData} users={tasksUsers} />
+          <HoursPerSprint data={hoursData} users={hoursUsers} index={3} />
+          <RealTimeHoursPerSprint data={tasksData} users={tasksUsers} index={4} />
         </div>
 
         {/* pie chart y bar graph */}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <TeamVelocity data={teamVelocityData} />
-          <TaskDistributionByState data={taskDistribution} />
+          <TeamVelocity data={teamVelocityData} index={5} />
+          <TaskDistributionByState data={taskDistribution} index={6} />
         </div>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <TeamTaskCompletion members={teamCompletion} isLoading={loading} />
+          <TeamTaskCompletion members={teamCompletion} isLoading={loading} index={7} />
         </div>
       </div>
     </div>

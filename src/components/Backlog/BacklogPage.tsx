@@ -1,13 +1,39 @@
 import { useState, useEffect, useContext } from "react";
 import BacklogColumn from "../../components/Backlog/BacklogColumn";
-import type { ApiProject, ApiTask } from "../../types/api";
+import type { ApiProject, ApiTask, ApiSprint } from "../../types/api";
 import type { Member } from "../../types/project";
-import { getProjects } from "../../api/projects";
-import { getProjectTasks, getTaskAssignments } from "../../api/tasks";
+import { getProjects, getProjectSprints } from "../../api/projects";
+import {
+  getProjectTasks,
+  getTaskAssignments,
+  getSprintTasks,
+} from "../../api/tasks";
 import MemberAvatars from "../Projects/MemberAvatars";
 import { ThemeContext } from "../../contexts/themeContextValue";
 
-const AVATAR_COLORS = ["#4a3f7a", "#2a6a5a", "#c74634", "#d97706", "#2a4a7a", "#6a2a4a"];
+interface RawAssignee {
+  userName: string | null;
+  userId: number;
+}
+
+interface RawTaskWithAssignees extends ApiTask {
+  assignees?: RawAssignee[];
+}
+
+interface SprintTaskEntry {
+  sprintId: number;
+  sprintName: string;
+  tasks?: RawTaskWithAssignees[];
+}
+
+const AVATAR_COLORS = [
+  "#4a3f7a",
+  "#2a6a5a",
+  "#c74634",
+  "#d97706",
+  "#2a4a7a",
+  "#6a2a4a",
+];
 const PRIORITY_COLORS: Record<string, string> = {
   critical: "#C74634",
   high: "#FFB13F",
@@ -24,12 +50,20 @@ function memberInitials(username: string): string {
 function BacklogPage() {
   const [projects, setProjects] = useState<ApiProject[]>([]);
   const [tasks, setTasks] = useState<ApiTask[]>([]);
+  const [sprints, setSprints] = useState<ApiSprint[]>([]);
+  const [loadingSprints, setLoadingSprints] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<ApiTask | null>(null);
-  const [selectedProjectId, setSelectedProjectId] = useState<number | "all">("all");
-  const [selectedSprintName, setSelectedSprintName] = useState<string | "all">("all");
-  const [taskAssignments, setTaskAssignments] = useState<Record<number, Member[]>>({});
+  const [selectedProjectId, setSelectedProjectId] = useState<number | "all">(
+    "all",
+  );
+  const [selectedSprintId, setSelectedSprintId] = useState<number | "all">(
+    "all",
+  );
+  const [taskAssignments, setTaskAssignments] = useState<
+    Record<number, Member[]>
+  >({});
   const theme = useContext(ThemeContext);
   const darkMode = theme?.darkMode ?? false;
 
@@ -48,7 +82,7 @@ function BacklogPage() {
               projectId: project.id,
               projectName: project.name,
             }));
-          })
+          }),
         );
 
         const allTasks = taskArrays.flat();
@@ -58,17 +92,21 @@ function BacklogPage() {
 
         const taskAssignmentsPairs = await Promise.all(
           allTasks.map(async (task) => {
-            if (task.projectId == null) return [task.id, [] as Member[]] as const;
-
-            const assignments = await getTaskAssignments(task.projectId, task.id);
-            const members: Member[] = assignments.map((assignment) => ({
-              initials: memberInitials(assignment.user.username),
-              color: AVATAR_COLORS[assignment.user.id % AVATAR_COLORS.length],
-              name: assignment.user.username,
-            }));
-
+            if (task.projectId == null)
+              return [task.id, [] as Member[]] as const;
+            const assignments = await getTaskAssignments(
+              task.projectId,
+              task.id,
+            );
+            const members: Member[] = assignments
+              .filter((assignment) => assignment.assignedUserName != null)
+              .map((assignment) => ({
+                initials: memberInitials(assignment.assignedUserName!),
+                color: AVATAR_COLORS[assignment.id % AVATAR_COLORS.length],
+                name: assignment.assignedUserName!,
+              }));
             return [task.id, members] as const;
-          })
+          }),
         );
 
         for (const [taskId, members] of taskAssignmentsPairs) {
@@ -86,6 +124,118 @@ function BacklogPage() {
 
     fetchTasks();
   }, []);
+
+  // Fetch de Sprints
+  useEffect(() => {
+    if (selectedProjectId === "all") {
+      setSprints([]);
+      setSelectedSprintId("all");
+      return;
+    }
+
+    const fetchSprints = async () => {
+      setLoadingSprints(true);
+      setSelectedSprintId("all");
+      try {
+        const projectSprints = await getProjectSprints(selectedProjectId);
+        setSprints(projectSprints);
+      } catch (err) {
+        console.error("Error fetching sprints:", err);
+        setSprints([]);
+      } finally {
+        setLoadingSprints(false);
+      }
+    };
+
+    fetchSprints();
+  }, [selectedProjectId]);
+
+  // Fetch a Sprint Tasks
+  useEffect(() => {
+    if (selectedProjectId === "all") return;
+
+    // regresa tasks originales completas
+    if (selectedSprintId === "all") {
+      const restoreProjectTasks = async () => {
+        setLoadingSprints(true);
+        try {
+          const projectTasks = await getProjectTasks(
+            selectedProjectId as number,
+          );
+          const projectName = projects.find(
+            (p) => p.id === selectedProjectId,
+          )?.name;
+          const enrichedTasks = projectTasks.map((task) => ({
+            ...task,
+            projectId: selectedProjectId as number,
+            projectName,
+          }));
+          setTasks((prev) => [
+            ...prev.filter((t) => t.projectId !== selectedProjectId),
+            ...enrichedTasks,
+          ]);
+        } catch (err) {
+          console.error("Error restoring project tasks:", err);
+        } finally {
+          setLoadingSprints(false);
+        }
+      };
+      restoreProjectTasks();
+      return;
+    }
+
+    //Fetch a los sprint tasks especificos
+    const fetchSprintTasks = async () => {
+      setLoadingSprints(true);
+      try {
+        const sprintTasks = await getSprintTasks(
+          selectedProjectId as number,
+          selectedSprintId as number,
+        );
+
+        const projectName = projects.find(
+          (p) => p.id === selectedProjectId,
+        )?.name;
+        const enrichedTasks: ApiTask[] = (sprintTasks as SprintTaskEntry[]).flatMap(
+          (entry) =>
+            (entry.tasks ?? []).map((task) => ({
+              ...task,
+              projectId: selectedProjectId as number,
+              projectName,
+              sprintId: entry.sprintId,
+              sprintName: entry.sprintName,
+            })),
+        );
+
+        // Reemplaza tasks del proyecto actual, conserva las de otros proyectos
+        setTasks((prev) => [
+          ...prev.filter((t) => t.projectId !== selectedProjectId),
+          ...enrichedTasks,
+        ]);
+
+        // Fetch assignments para las nuevas tasks
+        const assignmentMap: Record<number, Member[]> = {};
+        for (const task of enrichedTasks) {
+          const assignees = (task as RawTaskWithAssignees).assignees ?? [];
+          assignmentMap[task.id] = assignees
+            .filter((a): a is RawAssignee & { userName: string } => a.userName != null)
+            .map((a) => ({
+              initials: memberInitials(a.userName),
+              color: AVATAR_COLORS[a.userId % AVATAR_COLORS.length],
+              name: a.userName,
+            }));
+        }
+
+        setTaskAssignments((prev) => ({ ...prev, ...assignmentMap }));
+      } catch (err) {
+        console.error("Error fetching sprint tasks:", err);
+      } finally {
+        setLoadingSprints(false);
+      }
+    };
+
+    fetchSprintTasks();
+  }, [selectedSprintId, selectedProjectId, projects]);
 
   useEffect(() => {
     if (!selectedTask) return;
@@ -106,58 +256,92 @@ function BacklogPage() {
   }, [darkMode]);
 
   if (loading)
-    return <div className="p-10 text-slate-400 dark:text-slate-300">Loading Backlog...</div>;
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center px-6">
+        <div className="flex flex-col items-center gap-4">
+          <img
+            src="/Media/Animations/RedGearGIF.gif"
+            alt="Loading animation"
+            className="h-28 w-28 object-contain"
+          />
+          <p className="text-sm font-semibold tracking-wide text-[#C74634]">
+            Loading Backlog...
+          </p>
+        </div>
+      </div>
+    );
 
   if (error) {
     return (
       <div className="p-10 text-slate-500 dark:text-slate-300">
-        <p className="text-sm font-medium text-slate-700 dark:text-slate-100">Backlog unavailable</p>
+        <p className="text-sm font-medium text-slate-700 dark:text-slate-100">
+          Backlog unavailable
+        </p>
         <p className="mt-1 text-sm">{error}</p>
       </div>
     );
   }
 
-  const selectedMembers = selectedTask ? (taskAssignments[selectedTask.id] ?? []) : [];
+  // Filters
   const projectScopedTasks =
     selectedProjectId === "all"
       ? tasks
       : tasks.filter((task) => task.projectId === selectedProjectId);
-  const sprintOptions = projectScopedTasks.reduce<string[]>((options, task) => {
-    if (task.sprintName && !options.includes(task.sprintName)) {
-      options.push(task.sprintName);
-    }
-    return options;
-  }, []);
+
   const visibleTasks =
-    selectedSprintName === "all"
-      ? projectScopedTasks
-      : projectScopedTasks.filter((task) => task.sprintName === selectedSprintName);
+    selectedSprintId === "all" ? projectScopedTasks : projectScopedTasks;
+
   const visibleTaskCount = visibleTasks.length;
+  const selectedMembers = selectedTask
+    ? (taskAssignments[selectedTask.id] ?? [])
+    : [];
+
+  const selectedSprintName =
+    selectedSprintId === "all"
+      ? "All Sprints"
+      : (sprints.find((s) => s.id === selectedSprintId)?.name ?? "All Sprints");
 
   return (
-    <div className={`flex h-full min-h-0 flex-col ${darkMode ? 'bg-slate-900' : 'bg-white'}`}>
+    <div
+      className={`flex h-full min-h-0 flex-col ${darkMode ? "bg-slate-900" : "bg-white"}`}
+    >
       <div className="px-8 pt-6 pb-1">
-        <div className={`rounded-2xl px-5 py-4 ${darkMode ? 'bg-slate-900' : 'bg-white'}`}>
+        <div
+          className={`rounded-2xl px-5 py-4 ${darkMode ? "bg-slate-900" : "bg-white"}`}
+        >
           <div className="mb-2 flex items-start justify-between gap-4">
             <div className="flex flex-col items-start">
-              <h2 className={`text-2xl font-semibold italic ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>Backlog</h2>
-              <p className={`mt-2 text-[18px] ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>{visibleTaskCount} tasks</p>
+              <h2
+                className={`text-2xl font-semibold italic ${darkMode ? "text-slate-100" : "text-slate-900"}`}
+              >
+                Backlog
+              </h2>
+              <p
+                className={`mt-2 text-[18px] ${darkMode ? "text-slate-400" : "text-slate-500"}`}
+              >
+                {visibleTaskCount} tasks
+              </p>
             </div>
 
             <div className="flex min-w-[320px] flex-col gap-3 text-right sm:flex-row sm:items-end sm:gap-4">
               <div className="flex-1">
-                <label className={`mb-2 block text-left text-[11px] font-semibold uppercase tracking-wide ${darkMode ? 'text-slate-300' : 'text-slate-500'}`}>
+                <label
+                  className={`mb-2 block text-left text-[11px] font-semibold uppercase tracking-wide ${darkMode ? "text-slate-300" : "text-slate-500"}`}
+                >
                   Filter by project
                 </label>
                 <select
                   value={selectedProjectId}
                   onChange={(event) => {
-                    const value = event.target.value === "all" ? "all" : Number(event.target.value);
+                    const value =
+                      event.target.value === "all"
+                        ? "all"
+                        : Number(event.target.value);
                     setSelectedProjectId(value);
-                    setSelectedSprintName("all");
+                    setSelectedSprintId("all");
                     setSelectedTask(null);
                   }}
-                  className={`w-full rounded-lg border px-3 py-2 text-sm shadow-sm outline-none transition-colors focus:border-[#c74634] ${darkMode ? 'bg-slate-800 border-slate-700 text-slate-200' : 'bg-white border-slate-200 text-slate-700'}`}
+                  className={`w-full rounded-lg border px-3 py-2 text-sm shadow-sm outline-none transition-colors focus:border-[#c74634] ${darkMode ? "bg-slate-800 border-slate-700 text-slate-200" : "bg-white border-slate-200 text-slate-700"}`}
                 >
                   <option value="all">All Projects</option>
                   {projects.map((project) => (
@@ -169,23 +353,34 @@ function BacklogPage() {
               </div>
 
               <div className="flex-1">
-                <label className={`mb-2 block text-left text-[11px] font-semibold uppercase tracking-wide ${darkMode ? 'text-slate-300' : 'text-slate-500'}`}>
+                <label
+                  className={`mb-2 block text-left text-[11px] font-semibold uppercase tracking-wide ${darkMode ? "text-slate-300" : "text-slate-500"}`}
+                >
                   Filter by sprint
                 </label>
                 <select
-                  value={selectedSprintName}
-                  onChange={(event) => {
-                    setSelectedSprintName(event.target.value);
+                  value={selectedSprintId}
+                  onChange={(e) => {
+                    const value =
+                      e.target.value === "all" ? "all" : Number(e.target.value);
+                    setSelectedSprintId(value);
                     setSelectedTask(null);
                   }}
-                  className={`w-full rounded-lg border px-3 py-2 text-sm shadow-sm outline-none transition-colors focus:border-[#c74634] ${darkMode ? 'bg-slate-800 border-slate-700 text-slate-200' : 'bg-white border-slate-200 text-slate-700'}`}
+                  disabled={selectedProjectId === "all" || loadingSprints}
+                  className={`w-full rounded-lg border px-3 py-2 text-sm shadow-sm outline-none transition-colors focus:border-[#c74634] disabled:opacity-50 disabled:cursor-not-allowed ${darkMode ? "bg-slate-800 border-slate-700 text-slate-200" : "bg-white border-slate-200 text-slate-700"}`}
                 >
-                  <option value="all">All Sprints</option>
-                  {sprintOptions.map((sprintName) => (
-                    <option key={sprintName} value={sprintName}>
-                      {sprintName}
-                    </option>
-                  ))}
+                  {loadingSprints ? (
+                    <option>Loading sprints...</option>
+                  ) : (
+                    <>
+                      <option value="all">All Sprints</option>
+                      {sprints.map((sprint) => (
+                        <option key={sprint.id} value={sprint.id}>
+                          {sprint.name}
+                        </option>
+                      ))}
+                    </>
+                  )}
                 </select>
               </div>
             </div>
@@ -194,31 +389,39 @@ function BacklogPage() {
       </div>
 
       <div className="flex flex-1 min-h-0 items-stretch gap-6 overflow-hidden px-8 pb-8 pt-2">
-        <BacklogColumn 
-          title="To Do" 
-          subtitle={selectedSprintName === "all" ? "All Sprints" : selectedSprintName}
-          tasks={visibleTasks.filter(t => t.status === "todo")} 
+        <BacklogColumn
+          title="To Do"
+          subtitle={
+            selectedSprintName === "all" ? "All Sprints" : selectedSprintName
+          }
+          tasks={visibleTasks.filter((t) => t.status === "todo")}
           onTaskClick={setSelectedTask}
           taskAssignments={taskAssignments}
         />
-        <BacklogColumn 
-          title="In Progress" 
-          subtitle={selectedSprintName === "all" ? "All Sprints" : selectedSprintName}
-          tasks={visibleTasks.filter(t => t.status === "in_progress")} 
+        <BacklogColumn
+          title="In Progress"
+          subtitle={
+            selectedSprintName === "all" ? "All Sprints" : selectedSprintName
+          }
+          tasks={visibleTasks.filter((t) => t.status === "in_progress")}
           onTaskClick={setSelectedTask}
           taskAssignments={taskAssignments}
         />
-        <BacklogColumn 
-          title="Review" 
-          subtitle={selectedSprintName === "all" ? "All Sprints" : selectedSprintName}
-          tasks={visibleTasks.filter(t => t.status === "review")} 
+        <BacklogColumn
+          title="Review"
+          subtitle={
+            selectedSprintName === "all" ? "All Sprints" : selectedSprintName
+          }
+          tasks={visibleTasks.filter((t) => t.status === "review")}
           onTaskClick={setSelectedTask}
           taskAssignments={taskAssignments}
         />
-        <BacklogColumn 
-          title="Done" 
-          subtitle={selectedSprintName === "all" ? "All Sprints" : selectedSprintName}
-          tasks={visibleTasks.filter(t => t.status === "done")} 
+        <BacklogColumn
+          title="Done"
+          subtitle={
+            selectedSprintName === "all" ? "All Sprints" : selectedSprintName
+          }
+          tasks={visibleTasks.filter((t) => t.status === "done")}
           onTaskClick={setSelectedTask}
           taskAssignments={taskAssignments}
         />
@@ -236,7 +439,9 @@ function BacklogPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 flex items-center justify-between">
-              <h4 className="text-base font-semibold text-slate-900 dark:text-slate-100">Task Detail</h4>
+              <h4 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                Task Detail
+              </h4>
               <button
                 onClick={() => setSelectedTask(null)}
                 className="rounded px-2 py-1 text-xs text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700"
@@ -245,18 +450,27 @@ function BacklogPage() {
               </button>
             </div>
 
-            <p className="mt-1 text-lg font-semibold text-slate-900 dark:text-slate-100">{selectedTask.title}</p>
+            <p className="mt-1 text-lg font-semibold text-slate-900 dark:text-slate-100">
+              {selectedTask.title}
+            </p>
             <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
               {selectedTask.description || "No description available."}
             </p>
 
             <div className="mt-4 rounded-lg bg-slate-50 p-3 dark:bg-slate-700">
-              <p className="text-slate-400 text-xs dark:text-slate-300">Assignees</p>
+              <p className="text-slate-400 text-xs dark:text-slate-300">
+                Assignees
+              </p>
               {selectedMembers.length === 0 ? (
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-300">No assignees</p>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-300">
+                  No assignees
+                </p>
               ) : (
                 <div className="mt-1">
-                  <MemberAvatars members={selectedMembers} max={selectedMembers.length} />
+                  <MemberAvatars
+                    members={selectedMembers}
+                    max={selectedMembers.length}
+                  />
                 </div>
               )}
             </div>
@@ -265,19 +479,25 @@ function BacklogPage() {
               <div className="rounded-lg bg-slate-50 p-3 col-span-2 dark:bg-slate-700">
                 <p className="text-slate-400 dark:text-slate-300">Project</p>
                 <p className="font-medium text-slate-700 dark:text-slate-100">
-                  {selectedTask.projectName || `#${selectedTask.projectId ?? "N/A"}`}
+                  {selectedTask.projectName ||
+                    `#${selectedTask.projectId ?? "N/A"}`}
                 </p>
               </div>
               <div className="rounded-lg bg-slate-50 p-3 dark:bg-slate-700">
                 <p className="text-slate-400 dark:text-slate-300">Status</p>
-                <p className="font-medium text-slate-700 dark:text-slate-100">{selectedTask.status}</p>
+                <p className="font-medium text-slate-700 dark:text-slate-100">
+                  {selectedTask.status}
+                </p>
               </div>
               <div className="rounded-lg bg-slate-50 p-3 dark:bg-slate-700">
                 <p className="text-slate-400 dark:text-slate-300">Priority</p>
                 <div className="flex items-center gap-2 font-medium text-slate-700 dark:text-slate-100">
                   <span
                     className="inline-block h-2.5 w-2.5 rounded-full"
-                    style={{ backgroundColor: PRIORITY_COLORS[selectedTask.priority] ?? "#94a3b8" }}
+                    style={{
+                      backgroundColor:
+                        PRIORITY_COLORS[selectedTask.priority] ?? "#94a3b8",
+                    }}
                   />
                   <span>{selectedTask.priority}</span>
                 </div>

@@ -36,3 +36,115 @@
     height: 100vh;
   }
 }
+
+@keyframes andromedaOverlayFade {
+  0% {
+    opacity: 0;
+  }
+
+  10% {
+    opacity: 1;
+  }
+
+  78% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes andromedaLogoPopAndLift {
+  0% {
+    opacity: 0;
+    transform: scale(0.72) translateY(24px);
+  }
+
+  38% {
+    opacity: 1;
+    transform: scale(1.08) translateY(0);
+  }
+
+  70% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(0.9) translateY(-28px);
+  }
+}
+
+@keyframes andromedaSweep {
+  0% {
+    opacity: 0;
+    transform: translateX(-55%) skewX(-22deg);
+  }
+
+  15% {
+    opacity: 0.9;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateX(140%) skewX(-22deg);
+  }
+}
+
+.andromeda-login-transition {
+  animation: andromedaOverlayFade 2500ms cubic-bezier(0.19, 1, 0.22, 1) forwards;
+}
+
+.andromeda-login-transition-light {
+  background-color: #8fa8a8;
+}
+
+.andromeda-login-transition-dark {
+  background-color: #2b3a4d;
+}
+
+.andromeda-login-logo {
+  animation: andromedaLogoPopAndLift 2500ms cubic-bezier(0.19, 1, 0.22, 1) forwards;
+}
+
+.andromeda-login-sweep {
+  position: absolute;
+  inset: 0;
+  animation: andromedaSweep 2200ms ease-out forwards;
+}
+
+.andromeda-login-sweep-light {
+  background: linear-gradient(
+    105deg,
+    rgba(199, 70, 52, 0) 20%,
+    rgba(255, 255, 255, 0.55) 48%,
+    rgba(255, 255, 255, 0) 76%
+  );
+}
+
+.andromeda-login-sweep-dark {
+  background: linear-gradient(
+    105deg,
+    rgba(148, 163, 184, 0) 20%,
+    rgba(148, 163, 184, 0.24) 48%,
+    rgba(148, 163, 184, 0) 76%
+  );
+}
+
+@keyframes cardEntrance {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.995);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.card-entrance {
+  will-change: transform, opacity;
+  animation: cardEntrance 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}

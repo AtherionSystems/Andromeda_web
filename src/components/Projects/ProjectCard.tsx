@@ -59,13 +59,14 @@ function ProjectCard({ project, members, index, onClick }: ProjectCardProps) {
       tabIndex={0}
       aria-label={`Open project: ${project.name}`}
       onKeyDown={(e) => e.key === "Enter" && onClick?.(project)}
-      className={`rounded-lg overflow-hidden cursor-pointer transition-shadow duration-150 border
+      className={`card-entrance rounded-lg overflow-hidden cursor-pointer transition-shadow duration-150 border
         ${darkMode ? "bg-slate-800 border-slate-700" : "bg-white border-black/[0.08]"}
         ${
           hovered
             ? "shadow-[0_4px_16px_rgba(0,0,0,0.12)]"
             : "shadow-[0_1px_4px_rgba(0,0,0,0.06)]"
         }`}
+      style={{ animationDelay: `${index * 70}ms` }}
     >
       {/* Cover */}
       <div className="h-[140px] overflow-hidden">
