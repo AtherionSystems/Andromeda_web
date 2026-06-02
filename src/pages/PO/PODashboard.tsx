@@ -318,8 +318,10 @@ export default function PODashboard() {
     async function checkHealth() {
       try {
         const res = await fetch("/health");
-        if (!res.ok) {
-          setHealthUp(false);
+        // Any HTTP response means the server is reachable (even 403).
+        // Only a network error (catch block) means it's truly down.
+        if (res.status === 403 || !res.ok) {
+          setHealthUp(true);
           return;
         }
         const data = (await res.json()) as HealthResponse | null;
@@ -340,7 +342,15 @@ export default function PODashboard() {
   useEffect(() => {
     async function load() {
       try {
-        const projects = await getProjects();
+        const _projects = await getProjects();
+        // Guard: API may return null/undefined if the backend is unreachable or
+        // the response body isn't valid JSON (e.g. wrong VITE_API_BASE_URL).
+        const projects = Array.isArray(_projects) ? _projects : [];
+
+        if (projects.length === 0) {
+          // Nothing to display — leave everything at initial zero values
+          return;
+        }
 
         // Use first active project name as the page title
         const activeProject =

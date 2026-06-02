@@ -9,6 +9,7 @@ export interface ApiUser {
   userTypeId: number;
   userType: string; // e.g. "developer", "admin", "manager"
   createdAt: string;
+  token: string;
 }
 
 export interface LoginRequest {
