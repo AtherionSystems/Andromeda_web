@@ -5,6 +5,7 @@ interface SearchInputProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  inputClassName?: string;
 }
 
 const SearchIcon = () => (
@@ -25,6 +26,7 @@ const SearchInput: React.FC<SearchInputProps> = ({
   value,
   onChange,
   placeholder = "Search Project...",
+  inputClassName = "w-[120px]",
 }) => {
   const { darkMode } = useTheme();
 
@@ -42,7 +44,7 @@ const SearchInput: React.FC<SearchInputProps> = ({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="border-none bg-transparent text-[12px] outline-none w-[120px]"
+        className={`border-none bg-transparent text-[12px] outline-none ${inputClassName}`}
         style={{ color: darkMode ? "#e2e8f0" : "#3a5a6a" }}
       />
     </div>

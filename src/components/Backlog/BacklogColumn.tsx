@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useTheme } from "../../contexts/useTheme";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import TaskCard from "./TaskCard";
@@ -12,8 +12,7 @@ interface ColumnProps {
   subtitle?: string;
   tasks: ApiTask[];
   onTaskClick?: (task: ApiTask) => void;
-  // Opcional: un mapa que relacione TaskID con Miembros si los tienes por separado
-  taskAssignments?: Record<number, Member[]>; 
+  taskAssignments?: Record<number, Member[]>;
 }
 
 const BacklogColumn: React.FC<ColumnProps> = ({
@@ -24,7 +23,16 @@ const BacklogColumn: React.FC<ColumnProps> = ({
   taskAssignments = {},
 }) => {
   const [pageIndex, setPageIndex] = useState(0);
+  const prevIdsRef = useRef(tasks.map((t) => t.id).join(","));
   const { darkMode } = useTheme();
+
+  useEffect(() => {
+    const nextIds = tasks.map((t) => t.id).join(",");
+    if (nextIds === prevIdsRef.current) return;
+    prevIdsRef.current = nextIds;
+    const raf = requestAnimationFrame(() => setPageIndex(0));
+    return () => cancelAnimationFrame(raf);
+  }, [tasks]);
 
   const totalPages = Math.max(1, Math.ceil(tasks.length / TASKS_PER_PAGE));
   const currentPage = Math.min(pageIndex, totalPages - 1);

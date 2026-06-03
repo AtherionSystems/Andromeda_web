@@ -1,4 +1,3 @@
-import SearchInput from "./SearchInput";
 import { AvatarMenu } from "./AvatarMenu";
 import { ROLE_LABEL } from "../../lib/user";
 import { useTheme } from "../../contexts/useTheme";
@@ -7,13 +6,11 @@ import type { ApiUser } from "../../types/api";
 interface TopbarProps {
   user: ApiUser;
   role: "po" | "developer";
-  searchValue: string;
-  onSearchChange: (v: string) => void;
   onViewProfile: () => void;
   onLogout: () => void;
 }
 
-function Topbar({ user, role, searchValue, onSearchChange, onViewProfile, onLogout }: TopbarProps) {
+function Topbar({ user, role, onViewProfile, onLogout }: TopbarProps) {
   const { darkMode } = useTheme();
 
   return (
@@ -29,9 +26,8 @@ function Topbar({ user, role, searchValue, onSearchChange, onViewProfile, onLogo
       </span>
       <div className="flex-1" />
       <div className="flex items-center gap-3">
-        <SearchInput value={searchValue} onChange={onSearchChange} />
         {/*<HelpButton />*/}
-       {/* <NotificationsButton />*/}
+        {/* <NotificationsButton />*/}
         <AvatarMenu user={user} role={role} onViewProfile={onViewProfile} onLogout={onLogout} />
       </div>
     </header>

@@ -1,21 +1,19 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/auth";
-import { useTheme } from "../../contexts/useTheme";
 import AppLayout from "../../components/Layout/AppLayout";
 import ProjectsPage from "../../components/Projects/ProjectsPage";
 import BacklogPage from "../../components/Backlog/BacklogPage";
 import DeveloperDashboard from "./DeveloperDashboard";
 import { AnalyticsPage} from "@/components/Analytics-KPI/AnalyticsPage";
+import Configuration from "../Configuration";
 
 function DeveloperPage() {
   const { user, logout } = useAuth();
-  const { setDarkMode } = useTheme();
   const navigate = useNavigate();
   const [activeRoute, setActiveRoute] = useState("/");
 
   function handleLogout() {
-    setDarkMode(false);
     logout();
     navigate("/login", { replace: true });
   }
@@ -30,14 +28,13 @@ function DeveloperPage() {
       onNavigate={setActiveRoute}
       activeRoute={activeRoute}
     >
-      {(searchQuery) => {
+      {() => {
         if (activeRoute === "/") {
           return <DeveloperDashboard user={user} />;
         }
         if (activeRoute === "/projects") {
           return (
             <ProjectsPage
-              searchQuery={searchQuery}
               description="Review your current project portfolio, teams and key performance indicators for all active initiatives in your department. Provide deep visibility into technical tasks to optimize software delivery cycles and team velocity."
             />
           );
@@ -48,6 +45,10 @@ function DeveloperPage() {
 
         if (activeRoute === "/analytics") {
             return <AnalyticsPage />;
+        }
+
+        if (activeRoute === "/settings") {
+          return <Configuration />;
         }
         // Placeholder for other sections not yet implemented
         return (

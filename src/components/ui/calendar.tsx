@@ -32,7 +32,7 @@ function Calendar({ selected, onSelect, disabled, className }: CalendarProps) {
     const d = new Date(disabled.before);
     d.setHours(0, 0, 0, 0);
     return d;
-  }, [disabled?.before]);
+  }, [disabled]);
 
   const disabledBeforeStamp = React.useMemo(() => {
     if (!disabledBefore) return null;

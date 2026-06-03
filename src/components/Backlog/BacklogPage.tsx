@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext } from "react";
+import { useState, useEffect, useContext, useRef } from "react";
 import BacklogColumn from "../../components/Backlog/BacklogColumn";
 import type { ApiProject, ApiTask, ApiSprint } from "../../types/api";
 import type { Member } from "../../types/project";
@@ -51,7 +51,7 @@ function BacklogPage() {
   const [projects, setProjects] = useState<ApiProject[]>([]);
   const [tasks, setTasks] = useState<ApiTask[]>([]);
   const [sprints, setSprints] = useState<ApiSprint[]>([]);
-  const [loadingSprints, setLoadingSprints] = useState(false);
+  const [loadingSprintList, setLoadingSprintList] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<ApiTask | null>(null);
@@ -64,6 +64,7 @@ function BacklogPage() {
   const [taskAssignments, setTaskAssignments] = useState<
     Record<number, Member[]>
   >({});
+  const baseTasksRef = useRef<ApiTask[]>([]);
   const theme = useContext(ThemeContext);
   const darkMode = theme?.darkMode ?? false;
 
@@ -86,6 +87,7 @@ function BacklogPage() {
         );
 
         const allTasks = taskArrays.flat();
+        baseTasksRef.current = allTasks;
         setTasks(allTasks);
 
         const assignmentMap: Record<number, Member[]> = {};
@@ -134,7 +136,7 @@ function BacklogPage() {
     }
 
     const fetchSprints = async () => {
-      setLoadingSprints(true);
+      setLoadingSprintList(true);
       setSelectedSprintId("all");
       try {
         const projectSprints = await getProjectSprints(selectedProjectId);
@@ -143,7 +145,7 @@ function BacklogPage() {
         console.error("Error fetching sprints:", err);
         setSprints([]);
       } finally {
-        setLoadingSprints(false);
+        setLoadingSprintList(false);
       }
     };
 
@@ -154,39 +156,17 @@ function BacklogPage() {
   useEffect(() => {
     if (selectedProjectId === "all") return;
 
-    // regresa tasks originales completas
+    // regresa tasks originales completas desde el cache (sin API call)
     if (selectedSprintId === "all") {
-      const restoreProjectTasks = async () => {
-        setLoadingSprints(true);
-        try {
-          const projectTasks = await getProjectTasks(
-            selectedProjectId as number,
-          );
-          const projectName = projects.find(
-            (p) => p.id === selectedProjectId,
-          )?.name;
-          const enrichedTasks = projectTasks.map((task) => ({
-            ...task,
-            projectId: selectedProjectId as number,
-            projectName,
-          }));
-          setTasks((prev) => [
-            ...prev.filter((t) => t.projectId !== selectedProjectId),
-            ...enrichedTasks,
-          ]);
-        } catch (err) {
-          console.error("Error restoring project tasks:", err);
-        } finally {
-          setLoadingSprints(false);
-        }
-      };
-      restoreProjectTasks();
+      setTasks((prev) => [
+        ...prev.filter((t) => t.projectId !== selectedProjectId),
+        ...baseTasksRef.current.filter((t) => t.projectId === selectedProjectId),
+      ]);
       return;
     }
 
     //Fetch a los sprint tasks especificos
     const fetchSprintTasks = async () => {
-      setLoadingSprints(true);
       try {
         const sprintTasks = await getSprintTasks(
           selectedProjectId as number,
@@ -229,8 +209,6 @@ function BacklogPage() {
         setTaskAssignments((prev) => ({ ...prev, ...assignmentMap }));
       } catch (err) {
         console.error("Error fetching sprint tasks:", err);
-      } finally {
-        setLoadingSprints(false);
       }
     };
 
@@ -310,9 +288,9 @@ function BacklogPage() {
           className={`rounded-2xl px-5 py-4 ${darkMode ? "bg-slate-900" : "bg-white"}`}
         >
           <div className="mb-2 flex items-start justify-between gap-4">
-            <div className="flex flex-col items-start">
+            <div className="flex flex-col items-start -ml-5">
               <h2
-                className={`text-2xl font-semibold italic ${darkMode ? "text-slate-100" : "text-slate-900"}`}
+                className={`text-2xl font-bold tracking-tight ${darkMode ? "text-foreground" : "text-foreground"}`}
               >
                 Backlog
               </h2>
@@ -323,8 +301,8 @@ function BacklogPage() {
               </p>
             </div>
 
-            <div className="flex min-w-[320px] flex-col gap-3 text-right sm:flex-row sm:items-end sm:gap-4">
-              <div className="flex-1">
+            <div className="flex min-w-[320px] flex-col gap-3 text-right sm:flex-row sm:items-end sm:gap-4 -mr-5">
+              <div className="flex-[1.5]">
                 <label
                   className={`mb-2 block text-left text-[11px] font-semibold uppercase tracking-wide ${darkMode ? "text-slate-300" : "text-slate-500"}`}
                 >
@@ -366,10 +344,10 @@ function BacklogPage() {
                     setSelectedSprintId(value);
                     setSelectedTask(null);
                   }}
-                  disabled={selectedProjectId === "all" || loadingSprints}
+                  disabled={selectedProjectId === "all" || loadingSprintList}
                   className={`w-full rounded-lg border px-3 py-2 text-sm shadow-sm outline-none transition-colors focus:border-[#c74634] disabled:opacity-50 disabled:cursor-not-allowed ${darkMode ? "bg-slate-800 border-slate-700 text-slate-200" : "bg-white border-slate-200 text-slate-700"}`}
                 >
-                  {loadingSprints ? (
+                  {loadingSprintList ? (
                     <option>Loading sprints...</option>
                   ) : (
                     <>

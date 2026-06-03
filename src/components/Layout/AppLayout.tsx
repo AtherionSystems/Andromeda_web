@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import Sidebar from "../Sidebar/Sidebar";
 import Topbar from "../TopBar/TopBar";
 import Footer from "./Footer";
@@ -12,11 +12,10 @@ interface AppLayoutProps {
   onLogout: () => void;
   onNavigate?: (route: string) => void;
   activeRoute?: string;
-  children: (searchQuery: string) => ReactNode;
+  children: () => ReactNode;
 }
 
 function AppLayout({ user, role, onLogout, onNavigate, activeRoute, children }: AppLayoutProps) {
-  const [searchQuery, setSearchQuery] = useState("");
   const { breakpoint } = useWindowSize();
   const { darkMode } = useTheme();
   function handleViewProfile() {
@@ -43,14 +42,12 @@ function AppLayout({ user, role, onLogout, onNavigate, activeRoute, children }: 
         <Topbar
           user={user}
           role={role}
-          searchValue={searchQuery}
-          onSearchChange={setSearchQuery}
           onViewProfile={handleViewProfile}
           onLogout={onLogout}
         />
 
         <div className="flex flex-col flex-1 overflow-y-auto">
-          <main className="flex-1 px-6 py-5">{children(searchQuery)}</main>
+          <main className="flex-1 px-6 py-5">{children()}</main>
           <div className="mt-auto">
             <Footer />
           </div>

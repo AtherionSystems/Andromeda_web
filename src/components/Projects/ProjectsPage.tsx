@@ -6,9 +6,9 @@ import type { ApiProject, ApiProjectMember } from "../../types/api";
 import type { Member } from "../../types/project";
 import ProjectCard from "./ProjectCard";
 import NewProjectModal from "./NewProjectModal";
+import SearchInput from "../TopBar/SearchInput";
 
 interface ProjectsPageProps {
-  searchQuery: string;
   description?: string;
 }
 
@@ -35,13 +35,14 @@ function memberToAvatar(pm: ApiProjectMember): Member {
   return { initials, color, name: pm.username };
 }
 
-function ProjectsPage({ searchQuery, description }: ProjectsPageProps) {
+function ProjectsPage({ description }: ProjectsPageProps) {
   const { breakpoint } = useWindowSize();
   const [projects, setProjects] = useState<ApiProject[]>([]);
   const [memberMap, setMemberMap] = useState<Record<number, Member[]>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -91,10 +92,7 @@ function ProjectsPage({ searchQuery, description }: ProjectsPageProps) {
         }`}
       >
         <div>
-          <p className="text-[10px] tracking-[1.2px] uppercase text-oracle-muted mb-1">
-            Current Active Projects
-          </p>
-          <h1 className="text-[22px] font-normal text-oracle-dark">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
             My Projects
           </h1>
           <p className="text-[12px] text-oracle-muted mt-1 max-w-[420px] leading-relaxed">
@@ -102,20 +100,23 @@ function ProjectsPage({ searchQuery, description }: ProjectsPageProps) {
               "Review and manage your current project portfolio, teams and key performance indicators for all active initiatives assigned to your department."}
           </p>
         </div>
-        <div className="flex gap-2 mt-1">
-          <button
-            style={{ background: "#c74634" }}
-            className="w-8 h-8 border-none rounded bg-oracle-red text-white cursor-pointer text-sm flex items-center justify-center"
-          >
-            ✎
-          </button>
-          <button
-            style={{ background: "#c74634" }}
-            className="flex items-center gap-1.5 px-3.5 h-8 bg-oracle-red text-white border-none rounded text-[12px] font-medium cursor-pointer"
-            onClick={() => setModalOpen(true)}
-          >
-            + NEW PROJECT
-          </button>
+        <div className="flex flex-col items-end gap-2 mt-1">
+          <SearchInput value={searchQuery} onChange={setSearchQuery} inputClassName="w-[260px] text-[13px]" />
+          <div className="flex gap-2">
+            <button
+              style={{ background: "#c74634" }}
+              className="w-8 h-8 border-none rounded bg-oracle-red text-white cursor-pointer text-sm flex items-center justify-center"
+            >
+              ✎
+            </button>
+            <button
+              style={{ background: "#c74634" }}
+              className="flex items-center gap-1.5 px-3.5 h-8 bg-oracle-red text-white border-none rounded text-[12px] font-medium cursor-pointer"
+              onClick={() => setModalOpen(true)}
+            >
+              + NEW PROJECT
+            </button>
+          </div>
         </div>
       </div>
 
