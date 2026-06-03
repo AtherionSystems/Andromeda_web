@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import InputField from "../../components/InputField";
 import Button from "../../components/Button";
 import { useAuth } from "../../contexts/auth";
+import { useTheme } from "../../contexts/useTheme";
 import { login as ociLogin } from "../../ociAuth";
 import type { ApiUser } from "../../types/api";
 
