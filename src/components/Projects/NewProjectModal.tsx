@@ -162,7 +162,7 @@ function NewProjectModal({ isOpen, onClose, onCreated }: Props) {
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Smart Network Monitor"
+                  placeholder="Enter the project name"
                   className={inputClass}
                 />
               </div>

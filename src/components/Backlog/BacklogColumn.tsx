@@ -42,7 +42,7 @@ const BacklogColumn: React.FC<ColumnProps> = ({
   const hasNextPage = currentPage < totalPages - 1;
 
   return (
-    <div className={`flex h-full min-h-0 w-full max-w-[360px] flex-col rounded-xl p-5 overflow-hidden ${darkMode ? 'bg-slate-800 text-slate-100' : 'bg-[#F4F7F9] text-slate-800'}`}>
+    <div className={`flex h-full min-h-0 w-full max-w-[360px] flex-col rounded-xl p-5 overflow-hidden ${darkMode ? 'bg-gradient-to-b from-slate-700 to-slate-800 text-slate-100' : 'bg-gradient-to-b from-[#e4eef2] to-[#F4F7F9] text-slate-800'}`}>
       <div className="mb-6 px-1">
         <h3 className="font-serif text-2xl">{title}</h3>
         <div className="mt-2 flex flex-col items-start gap-2">
