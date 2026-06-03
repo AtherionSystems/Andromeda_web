@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useWindowSize } from "../../hooks/useWindowSize";
 import { getProjects } from "../../api/projects";
 import { getProjectMembers } from "../../api/members";
 import type { ApiProject, ApiProjectMember } from "../../types/api";
 import type { Member } from "../../types/project";
 import ProjectCard from "./ProjectCard";
+import NewProjectModal from "./NewProjectModal";
 
 interface ProjectsPageProps {
   searchQuery: string;
@@ -40,34 +41,36 @@ function ProjectsPage({ searchQuery, description }: ProjectsPageProps) {
   const [memberMap, setMemberMap] = useState<Record<number, Member[]>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [allProjects, allMembers] = await Promise.all([
+        getProjects(),
+        getProjectMembers(),
+      ]);
+      setProjects(allProjects);
+
+      const map: Record<number, Member[]> = {};
+      allMembers.forEach((pm) => {
+        if (!map[pm.projectId]) map[pm.projectId] = [];
+        map[pm.projectId].push(memberToAvatar(pm));
+      });
+      setMemberMap(map);
+    } catch {
+      setError(
+        "Could not load projects. Make sure the backend is running.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    async function load() {
-      setLoading(true);
-      setError(null);
-      try {
-        const [allProjects, allMembers] = await Promise.all([
-          getProjects(),
-          getProjectMembers(),
-        ]);
-        setProjects(allProjects);
-
-        const map: Record<number, Member[]> = {};
-        allMembers.forEach((pm) => {
-          if (!map[pm.projectId]) map[pm.projectId] = [];
-          map[pm.projectId].push(memberToAvatar(pm));
-        });
-        setMemberMap(map);
-      } catch {
-        setError(
-          "Could not load projects. Make sure the backend is running on port 8080.",
-        );
-      } finally {
-        setLoading(false);
-      }
-    }
     load();
-  }, []);
+  }, [load]);
 
   const filtered = projects.filter((p) => {
     const q = searchQuery.toLowerCase();
@@ -109,6 +112,7 @@ function ProjectsPage({ searchQuery, description }: ProjectsPageProps) {
           <button
             style={{ background: "#c74634" }}
             className="flex items-center gap-1.5 px-3.5 h-8 bg-oracle-red text-white border-none rounded text-[12px] font-medium cursor-pointer"
+            onClick={() => setModalOpen(true)}
           >
             + NEW PROJECT
           </button>
@@ -161,6 +165,11 @@ function ProjectsPage({ searchQuery, description }: ProjectsPageProps) {
           )}
         </div>
       )}
+      <NewProjectModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onCreated={load}
+      />
     </div>
   );
 }
