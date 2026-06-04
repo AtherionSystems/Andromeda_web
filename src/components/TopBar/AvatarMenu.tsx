@@ -23,7 +23,7 @@ export function AvatarMenu({ user, role, onViewProfile, onLogout }: AvatarMenuPr
       <button
         onClick={() => setOpen(p => !p)}
         title={user.name}
-      className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-semibold cursor-pointer border-none transition-colors ${darkMode ? "bg-slate-700 hover:bg-slate-600" : "bg-[#4a3f7a] hover:bg-[#3a2f6a]"}`}
+      className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-[12px] font-semibold cursor-pointer border-none transition-colors ${darkMode ? "bg-slate-700 hover:bg-slate-600" : "bg-[#4a3f7a] hover:bg-[#3a2f6a]"}`}
       >
         {getInitials(user.name)}
       </button>

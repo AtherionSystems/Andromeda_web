@@ -8,6 +8,8 @@ const PROJECT_AVATAR_BG = [
   "#2a6a5a", "#d97706", "#6a2a4a", "#2a4a7a",
 ];
 
+const PAGE_SIZE = 4;
+
 function projectInitials(name: string): string {
   const words = name.trim().split(/\s+/);
   if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
@@ -26,79 +28,102 @@ function ChevronIcon({ open }: { open: boolean }) {
   );
 }
 
+function ArrowButton({ onClick, disabled, dir }: { onClick: () => void; disabled: boolean; dir: "left" | "right" }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`flex items-center justify-center w-[22px] h-[22px] rounded border border-[#dce8ea] shrink-0
+        ${disabled ? "bg-transparent text-[#c0cdd0] cursor-default" : "bg-[#f0f4f5] text-[#1a3a4a] cursor-pointer"}`}
+    >
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" width="10" height="10">
+        {dir === "left"
+          ? <path d="M10 4L6 8l4 4" strokeLinecap="round" strokeLinejoin="round" />
+          : <path d="M6 4l4 4-4 4" strokeLinecap="round" strokeLinejoin="round" />}
+      </svg>
+    </button>
+  );
+}
+
 function ProjectRow({ group, idx, darkMode }: { group: ProjectGroup; idx: number; darkMode: boolean }) {
   const [open, setOpen] = useState(false);
-  const avatarBg = PROJECT_AVATAR_BG[idx % PROJECT_AVATAR_BG.length];
+  const [page, setPage] = useState(0);
+
+  const avatarBg   = PROJECT_AVATAR_BG[idx % PROJECT_AVATAR_BG.length];
+  const totalPages = Math.ceil(group.members.length / PAGE_SIZE);
+  const visible    = group.members.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
 
   return (
-    <div style={{ borderBottom: `1px solid ${darkMode ? "#1e293b" : "#f0f4f5"}` }}>
+    <div
+      className={`rounded-lg mb-1.5 overflow-hidden ${darkMode ? "bg-slate-800" : "bg-[#f7fbfc]"}`}
+      style={{
+        boxShadow: darkMode
+          ? "0 1px 4px rgba(0,0,0,0.4)"
+          : "0 1px 4px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04)",
+      }}
+    >
+      {/* Header button */}
       <button
-        onClick={() => setOpen((p) => !p)}
-        style={{
-          width: "100%", display: "flex", alignItems: "center", gap: 10,
-          padding: "11px 0", background: "none", border: "none", cursor: "pointer",
-          textAlign: "left",
-        }}
+        onClick={() => { setOpen((p) => !p); setPage(0); }}
+        className="w-full flex items-center gap-2.5 px-3 py-3.5 border-0 bg-transparent cursor-pointer text-left"
       >
-        <div style={{
-          width: 36, height: 36, borderRadius: 8,
-          background: avatarBg, flexShrink: 0,
-          display: "flex", alignItems: "center", justifyContent: "center",
-        }}>
-          <span style={{ fontSize: 11, fontWeight: 800, color: "#fff", letterSpacing: 0.5 }}>
+        <div
+          className="w-[42px] h-[42px] rounded-[9px] shrink-0 flex items-center justify-center"
+          style={{ background: avatarBg }}
+        >
+          <span className="text-[13px] font-extrabold text-white tracking-[0.5px]">
             {projectInitials(group.project.name)}
           </span>
         </div>
 
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{
-            margin: 0, fontSize: 12, fontWeight: 700,
-            color: darkMode ? "#e2e8f0" : "#1a3a4a",
-            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-          }}>
+        <div className="flex-1 min-w-0">
+          <p className={`m-0 text-sm font-bold truncate ${darkMode ? "text-slate-200" : "text-[#1a3a4a]"}`}>
             {group.project.name}
           </p>
-          <p style={{ margin: "1px 0 0", fontSize: 10, color: darkMode ? "#64748b" : "#6a8a9a", textTransform: "capitalize" }}>
+          <p className={`mt-0.5 text-[13px] capitalize ${darkMode ? "text-slate-500" : "text-[#6a8a9a]"}`}>
             {group.members.length} Member{group.members.length !== 1 ? "s" : ""} &bull; {group.project.status}
           </p>
         </div>
 
-        <span style={{ color: darkMode ? "#64748b" : "#94a3b8", flexShrink: 0 }}>
+        <span className={`shrink-0 mr-1 ${darkMode ? "text-slate-500" : "text-slate-400"}`}>
           <ChevronIcon open={open} />
         </span>
       </button>
 
+      {/* Expanded member list */}
       {open && group.members.length > 0 && (
-        <div style={{ paddingBottom: 8 }}>
-          {group.members.map((m, i) => (
-            <div
-              key={m.userId}
-              style={{ display: "flex", alignItems: "center", gap: 9, padding: "6px 0 6px 46px" }}
-            >
-              <div style={{
-                width: 26, height: 26, borderRadius: "50%", flexShrink: 0,
-                background: AVATAR_COLORS[i % AVATAR_COLORS.length],
-                display: "flex", alignItems: "center", justifyContent: "center",
-              }}>
-                <span style={{ fontSize: 9, fontWeight: 700, color: "#fff" }}>{m.initials}</span>
+        <div
+          className={`pt-2 pb-2 rounded-b-[6px] ${darkMode ? "bg-white/[0.04]" : "bg-[#f0f4f5]"}`}
+          style={{ boxShadow: "inset 0 4px 6px -2px rgba(0,0,0,0.08)" }}
+        >
+          {visible.map((m, i) => (
+            <div key={m.userId} className="flex items-center gap-2.5 py-[7px] pr-2.5 pl-14">
+              <div
+                className="w-[38px] h-[38px] rounded-full shrink-0 flex items-center justify-center"
+                style={{ background: AVATAR_COLORS[(page * PAGE_SIZE + i) % AVATAR_COLORS.length] }}
+              >
+                <span className="text-[13px] font-bold text-white">{m.initials}</span>
               </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{
-                  margin: 0, fontSize: 11, fontWeight: 600,
-                  color: darkMode ? "#cbd5e1" : "#1a3a4a",
-                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                }}>
+              <div className="flex-1 min-w-0">
+                <p className={`m-0 text-[14px] font-semibold truncate ${darkMode ? "text-slate-100" : "text-[#1a3a4a]"}`}>
                   {m.username}
                 </p>
-                <p style={{
-                  margin: 0, fontSize: 9, letterSpacing: 0.6,
-                  textTransform: "uppercase", color: darkMode ? "#475569" : "#94a3b8",
-                }}>
+                <p className={`m-0 text-[11px] uppercase tracking-[0.6px] ${darkMode ? "text-slate-400" : "text-slate-400"}`}>
                   {m.role}
                 </p>
               </div>
             </div>
           ))}
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-end gap-1.5 pr-2.5 pt-1.5">
+              <span className={`text-[12px] font-semibold ${darkMode ? "text-white" : "text-[#1a3a4a]"}`}>
+                {page + 1} / {totalPages}
+              </span>
+              <ArrowButton dir="left"  onClick={() => setPage((p) => p - 1)} disabled={page === 0} />
+              <ArrowButton dir="right" onClick={() => setPage((p) => p + 1)} disabled={page === totalPages - 1} />
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -118,27 +143,26 @@ export default function TeamDistributionCard({ loading, darkMode, projectGroups 
   const visible = showAll ? projectGroups : projectGroups.slice(0, PREVIEW_COUNT);
 
   return (
-    <div style={{
-      background: darkMode ? "#0f172a" : "#fff",
-      border: `1px solid ${darkMode ? "#1e293b" : "#cdd8db"}`,
-      borderRadius: 10, padding: "14px 16px", minWidth: 0,
-    }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-        <span style={{ fontSize: 13, fontWeight: 700, color: darkMode ? "#e2e8f0" : "#1a3a4a" }}>
+    <div className={`rounded-[10px] p-[14px_16px] min-w-0 border ${darkMode ? "bg-[#0f172a] border-[#1e293b]" : "bg-white border-[#cdd8db]"}`}>
+      <div className="flex justify-between items-center mb-1">
+        <span className={`text-[16px] font-bold ${darkMode ? "text-slate-200" : "text-[#1a3a4a]"}`}>
           Team Distribution
         </span>
-        <svg viewBox="0 0 16 16" fill="none" stroke={darkMode ? "#94a3b8" : "#6a8a9a"} strokeWidth="1.4" width="14" height="14">
-          <circle cx="6" cy="6" r="3" />
-          <path d="M1 13c0-2.5 2-4 5-4s5 1.5 5 4M11 5c1.5 0 3 1 3 3" />
-        </svg>
+        <img
+          src="/Media/Icons/groupIcon.svg"
+          alt="group"
+          width={22}
+          height={22}
+          className={darkMode ? "opacity-60" : "opacity-75"}
+        />
       </div>
 
       {loading ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 8 }}>
+        <div className="flex flex-col gap-3 mt-2">
           {[0, 1, 2].map((i) => <Skeleton key={i} h={44} darkMode={darkMode} />)}
         </div>
       ) : projectGroups.length === 0 ? (
-        <p style={{ fontSize: 12, color: darkMode ? "#94a3b8" : "#6a8a9a", textAlign: "center", padding: "16px 0" }}>
+        <p className={`text-xs text-center py-4 ${darkMode ? "text-slate-400" : "text-[#6a8a9a]"}`}>
           No projects found.
         </p>
       ) : (
@@ -146,19 +170,12 @@ export default function TeamDistributionCard({ loading, darkMode, projectGroups 
           {visible.map((g, i) => (
             <ProjectRow key={g.project.id} group={g} idx={i} darkMode={darkMode} />
           ))}
-
           {projectGroups.length > PREVIEW_COUNT && (
             <button
               onClick={() => setShowAll((p) => !p)}
-              style={{
-                marginTop: 12, fontSize: 10, fontWeight: 700,
-                color: "#c74634", background: "none", border: "none",
-                cursor: "pointer", letterSpacing: 0.5, textTransform: "uppercase", padding: 0,
-              }}
+              className="mt-3 text-[10px] font-bold text-[#c74634] bg-transparent border-0 cursor-pointer tracking-[0.5px] uppercase p-0"
             >
-              {showAll
-                ? "Show Less"
-                : `View All Teams (${String(projectGroups.length).padStart(2, "0")})`}
+              {showAll ? "Show Less" : `View All Teams (${String(projectGroups.length).padStart(2, "0")})`}
             </button>
           )}
         </>

@@ -11,16 +11,16 @@ import type { ProjectEffortData } from "./types";
 import Skeleton from "./Skeleton";
 
 const chartConfig = {
-  done:        { label: "Done",        color: "#c74634" },
+  done:        { label: "Done",        color: "#5C926D" },
   in_progress: { label: "In Progress", color: "#2a4a5a" },
-  review:      { label: "Review",      color: "#d97706" },
-  todo:        { label: "To Do",       color: "#dce8ea" },
+  review:      { label: "Review",      color: "#f9a94e" },
+  todo:        { label: "To Do",       color: "#c74634" },
 } satisfies ChartConfig;
 
 function abbr(name: string): string {
   const words = name.trim().split(/\s+/);
-  if (words.length === 1) return name.slice(0, 6);
-  return words.map((w) => w[0]).join("").toUpperCase().slice(0, 5);
+  if (words.length === 1) return name.slice(0, 12);
+  return words[0] + " " + words.slice(1).map((w) => w[0]).join("").toUpperCase();
 }
 
 interface SprintVelocityChartProps {
@@ -30,45 +30,51 @@ interface SprintVelocityChartProps {
 }
 
 export default function SprintVelocityChart({ darkMode, data, loading }: SprintVelocityChartProps) {
-  const chartData = data.map((d) => ({ ...d, project: abbr(d.project) }));
+  const chartData = data
+    .map((d) => ({ ...d, project: abbr(d.project) }))
+    .sort((a, b) => (a.done + a.in_progress + a.review + a.todo) - (b.done + b.in_progress + b.review + b.todo));
+  const tickColor = darkMode ? "#94a3b8" : "#6a8a9a";
+  const gridColor = darkMode ? "#1e293b" : "#f0f4f5";
 
   return (
-    <div style={{
-      background: darkMode ? "#0f172a" : "#fff",
-      border: `1px solid ${darkMode ? "#1e293b" : "#cdd8db"}`,
-      borderRadius: 10, padding: "16px 18px",
-    }}>
-      <p style={{ margin: "0 0 2px", fontSize: 13, fontWeight: 700, color: darkMode ? "#e2e8f0" : "#1a3a4a" }}>
+    <div className={`rounded-[10px] px-[18px] py-4 border ${darkMode ? "bg-[#0f172a] border-[#1e293b]" : "bg-white border-[#cdd8db]"}`}>
+      <p className={`m-0 mb-0.5 text-[16px] font-bold ${darkMode ? "text-slate-200" : "text-[#1a3a4a]"}`}>
         Project Effort
       </p>
-      <p style={{ margin: "0 0 16px", fontSize: 9, letterSpacing: 1.2, textTransform: "uppercase", color: darkMode ? "#94a3b8" : "#6a8a9a" }}>
+      <p className={`m-0 mb-4 text-[10px] uppercase tracking-[1.2px] ${darkMode ? "text-slate-400" : "text-[#6a8a9a]"}`}>
         Task distribution by status across all projects
       </p>
 
       {loading ? (
         <Skeleton h={140} darkMode={darkMode} />
       ) : data.length === 0 ? (
-        <p style={{ fontSize: 12, color: darkMode ? "#94a3b8" : "#6a8a9a", textAlign: "center", padding: "40px 0" }}>
+        <p className={`text-xs text-center py-10 ${darkMode ? "text-slate-400" : "text-[#6a8a9a]"}`}>
           No data available.
         </p>
       ) : (
-        <ChartContainer config={chartConfig} style={{ height: 240, width: "100%" }}>
-          <BarChart data={chartData} barSize={28}>
-            <CartesianGrid vertical={false} stroke={darkMode ? "#1e293b" : "#f0f4f5"} />
+        <ChartContainer config={chartConfig} className="h-[240px] w-full">
+          <BarChart data={chartData} barSize={14} barCategoryGap="20%">
+            <CartesianGrid vertical={false} stroke={gridColor} />
             <XAxis
               dataKey="project"
               tickLine={false}
               axisLine={false}
               tickMargin={8}
-              tick={{ fontSize: 10, fill: darkMode ? "#94a3b8" : "#6a8a9a" }}
+              interval={0}
+              height={60}
+              tick={{ fontSize: 10, fill: tickColor, angle: -35, textAnchor: "end" }}
             />
-            <YAxis hide />
-            <ChartTooltip content={<ChartTooltipContent hideLabel />} />
+            <YAxis
+              tickLine={false}
+              axisLine={false}
+              tick={{ fontSize: 10, fill: tickColor }}
+            />
+            <ChartTooltip content={<ChartTooltipContent />} />
             <ChartLegend content={<ChartLegendContent />} />
-            <Bar dataKey="done"        stackId="a" fill="var(--color-done)"        radius={[0, 0, 0, 0]} />
-            <Bar dataKey="review"      stackId="a" fill="var(--color-review)"      radius={[0, 0, 0, 0]} />
-            <Bar dataKey="in_progress" stackId="a" fill="var(--color-in_progress)" radius={[0, 0, 0, 0]} />
-            <Bar dataKey="todo"        stackId="a" fill="var(--color-todo)"        radius={[4, 4, 0, 0]} />
+            <Bar dataKey="done"        fill="var(--color-done)"        radius={4} />
+            <Bar dataKey="review"      fill="var(--color-review)"      radius={4} />
+            <Bar dataKey="in_progress" fill="var(--color-in_progress)" radius={4} />
+            <Bar dataKey="todo"        fill="var(--color-todo)"        radius={4} />
           </BarChart>
         </ChartContainer>
       )}

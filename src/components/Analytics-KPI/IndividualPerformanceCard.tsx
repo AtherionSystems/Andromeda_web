@@ -80,20 +80,20 @@ export function IndividualPerformanceCard({ hoursRaw, tasksRaw, loading }: Indiv
   return (
     <div className={`rounded-lg border shadow-sm ${darkMode ? "border-slate-600 bg-slate-900" : "border-[#98ADB3] bg-[#dde6e8]"}`}>
       {/* Header */}
-      <div className="flex items-center justify-between px-5 pt-4 pb-1">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-5 pt-4 pb-1">
         <h2 className={`text-xl font-bold ${darkMode ? "text-slate-100" : "text-slate-900"}`}>
           Individual & Team Performance
         </h2>
-        
+
         {allUsers.length > 0 && (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
             <span className={`text-sm ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
               Filter by Developer:
             </span>
             <select
               value={selectedUser ?? ""}
               onChange={(e) => setSelectedUser(e.target.value || null)}
-              className={selectClass}
+              className={`w-full sm:w-auto ${selectClass}`}
             >
               <option value="">All Developers</option>
               {allUsers.map((u) => (

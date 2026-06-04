@@ -7,10 +7,10 @@ import type { EnrichedTask, ProjectEffortData, ProjectGroup } from "../../compon
 import { PRIORITY_ORDER, memberStatus, initials } from "../../components/dashboard/types";
 import Skeleton from "../../components/dashboard/Skeleton";
 import SprintVelocityChart from "../../components/dashboard/SprintVelocityChart";
-import KpiCards from "../../components/dashboard/KpiCards";
 import TeamDistributionCard from "../../components/dashboard/TeamDistributionCard";
 import CurrentObjectivesCard from "../../components/dashboard/CurrentObjectivesCard";
 import UpcomingCard from "../../components/dashboard/UpcomingCard";
+import SystemConfigCard from "../../components/dashboard/SystemConfigCard";
 
 interface HealthResponse {
   status?: string;
@@ -20,8 +20,6 @@ export default function PODashboard() {
   const { darkMode } = useTheme();
   const [loading, setLoading]             = useState(true);
   const [healthUp, setHealthUp]           = useState<boolean | null>(null);
-  const [completionPct, setCompletionPct] = useState(0);
-  const [activeBlocks, setActiveBlocks]   = useState(0);
   const [objectives, setObjectives]       = useState<EnrichedTask[]>([]);
   const [projectGroups, setProjectGroups] = useState<ProjectGroup[]>([]);
   const [effortData, setEffortData]       = useState<ProjectEffortData[]>([]);
@@ -48,7 +46,6 @@ export default function PODashboard() {
         const projects = Array.isArray(_projects) ? _projects : [];
         if (projects.length === 0) return;
 
-        // Load tasks and members for ALL projects in parallel
         const [taskArrays, memberArrays] = await Promise.all([
           Promise.all(
             projects.map(async (p) => {
@@ -65,11 +62,6 @@ export default function PODashboard() {
 
         const allTasks = taskArrays.flat();
 
-        // Global KPIs
-        const done = allTasks.filter((t) => t.status === "done").length;
-        setCompletionPct(allTasks.length > 0 ? Math.round((done / allTasks.length) * 100) : 0);
-        setActiveBlocks(allTasks.filter((t) => t.priority === "critical" && t.status !== "done").length);
-
         // Open tasks sorted by priority across all projects
         setObjectives(
           allTasks
@@ -77,7 +69,7 @@ export default function PODashboard() {
             .sort((a, b) => (PRIORITY_ORDER[a.priority] ?? 4) - (PRIORITY_ORDER[b.priority] ?? 4))
         );
 
-        // Build per-project groups for TeamDistributionCard
+        // Per-project groups for TeamDistributionCard
         const groups: ProjectGroup[] = projects.map((p, pi) => {
           const seen = new Set<number>();
           const members = memberArrays[pi]
@@ -120,39 +112,38 @@ export default function PODashboard() {
   }, []);
 
   return (
-    <div style={{ paddingBottom: 24 }}>
-      <h1 style={{
-        margin: "0 0 20px",
-        fontSize: 24, fontWeight: 700, fontStyle: "italic",
-        color: darkMode ? "#e2e8f0" : "#111827", letterSpacing: -0.5,
-      }}>
+    <div className="pb-6">
+      <h1 className={`mb-5 text-2xl font-bold italic tracking-tight ${darkMode ? "text-slate-200" : "text-gray-900"}`}>
         {loading ? <Skeleton w={320} h={28} darkMode={darkMode} /> : "Projects Overview"}
       </h1>
 
-      {/* Top row */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 220px", gap: 14, marginBottom: 14 }}>
-        <SprintVelocityChart darkMode={darkMode} data={effortData} loading={loading} />
-        <KpiCards
-          loading={loading}
-          darkMode={darkMode}
-          completionPct={completionPct}
-          activeBlocks={activeBlocks}
-        />
-      </div>
+      {/* Main two-column grid: stacks on mobile, side-by-side on large screens */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-3.5 items-start">
 
-      {/* Bottom row */}
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)", gap: 14 }}>
-        <TeamDistributionCard
-          loading={loading}
-          darkMode={darkMode}
-          projectGroups={projectGroups}
-        />
-        <CurrentObjectivesCard
-          loading={loading}
-          darkMode={darkMode}
-          objectives={objectives}
-        />
-        <UpcomingCard darkMode={darkMode} healthUp={healthUp} />
+        {/* Left column: chart + two cards */}
+        <div className="flex flex-col gap-3.5">
+          <SprintVelocityChart darkMode={darkMode} data={effortData} loading={loading} />
+
+          {/* Bottom cards: stack on mobile, side-by-side on md+ */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+            <TeamDistributionCard
+              loading={loading}
+              darkMode={darkMode}
+              projectGroups={projectGroups}
+            />
+            <CurrentObjectivesCard
+              loading={loading}
+              darkMode={darkMode}
+              objectives={objectives}
+            />
+          </div>
+        </div>
+
+        {/* Right column: upcoming + system config */}
+        <div className="flex flex-col gap-3.5">
+          <UpcomingCard darkMode={darkMode} tasks={objectives} loading={loading} />
+          <SystemConfigCard healthUp={healthUp} />
+        </div>
       </div>
     </div>
   );

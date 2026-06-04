@@ -15,13 +15,13 @@ function Topbar({ user, role, onViewProfile, onLogout }: TopbarProps) {
 
   return (
     <header
-      className="flex items-center px-5 h-11 gap-5 shrink-0 border-b transition-colors duration-200"
+      className="flex items-center px-7 h-14 gap-5 shrink-0 border-b transition-colors duration-200"
       style={{
         backgroundColor: darkMode ? "#0f172a" : "#ffffff",
         borderColor: darkMode ? "#1e293b" : "rgba(0,0,0,0.1)",
       }}
     >
-      <span className="italic font-semibold text-[14px]" style={{ color: darkMode ? "#f28b7a" : "#C74634" }}>
+      <span className="italic font-semibold text-[16px]" style={{ color: darkMode ? "#f28b7a" : "#C74634" }}>
         {ROLE_LABEL[role] ?? role}
       </span>
       <div className="flex-1" />

@@ -205,16 +205,16 @@ export function AnalyticsPage() {
   const teamCompletion  = kpi?.userTasksPerSprint?.length ? toTeamCompletion(kpi.userTasksPerSprint) : undefined;
 
   return (
-    <div className={`min-h-screen p-6 ${darkMode ? "bg-slate-950" : "bg-background"}`}>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">
+    <div className={`min-h-screen p-3 sm:p-6 ${darkMode ? "bg-slate-950" : "bg-background"}`}>
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
           Analytics Dashboard
         </h1>
         {projects.length > 0 && (
           <select
             value={selectedProjectId ?? ""}
             onChange={(e) => setSelectedProjectId(Number(e.target.value))}
-            className={`rounded-md border px-3 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 ${darkMode ? "border-slate-700 bg-slate-800 text-slate-100 focus:ring-slate-500" : "border-[#C2D4D4] bg-white text-slate-900 focus:ring-[#2a4a5a]"}`}
+            className={`w-full sm:w-auto rounded-md border px-3 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 ${darkMode ? "border-slate-700 bg-slate-800 text-slate-100 focus:ring-slate-500" : "border-[#C2D4D4] bg-white text-slate-900 focus:ring-[#2a4a5a]"}`}
           >
             {projects.map((p) => (
               <option key={p.id} value={p.id}>{p.name}</option>
@@ -224,16 +224,16 @@ export function AnalyticsPage() {
       </div>
 
       <div className="flex flex-col gap-4">
-        {/* KPI cards + burndown */}
+        {/* KPI cards + burndown: KPI cards stack above on mobile, side-by-side on md+ */}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-[220px_1fr]">
-          <div className="flex flex-col gap-4">
+          <div className="grid grid-cols-2 gap-4 md:flex md:flex-col">
             <SprintVelocityCard velocity={velocity} velocityChange={change} loading={loading} index={0} />
             <CompletionRateCard completionRate={completionRate} loading={loading} index={1} />
           </div>
           <SprintCompletionRate data={burndown} index={2} />
         </div>
 
-        {/* Individual Performance: hours + tasks per user with built-in filter */}
+        {/* Individual Performance */}
         <IndividualPerformanceCard
           hoursRaw={kpi?.hoursPerUserBySprint}
           tasksRaw={kpi?.userTasksPerSprint}
