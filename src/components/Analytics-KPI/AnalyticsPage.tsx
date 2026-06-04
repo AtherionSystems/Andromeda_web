@@ -3,8 +3,7 @@ import { useTheme } from "@/contexts/useTheme";
 import { SprintVelocityCard, CompletionRateCard } from "./SprintVelocity";
 import { SprintCompletionRate } from "./SprintCompletion";
 import { TeamVelocity } from "./TeamVelocity";
-import { RealTimeHoursPerSprint } from "./RealTimeHoursSprint";
-import HoursPerSprint from "./HoursPerUser";
+import { IndividualPerformanceCard } from "./IndividualPerformanceCard";
 import { TaskDistributionByState } from "./TaskDistributionbyState";
 import { TeamTaskCompletion } from "./TeamTaskCompletion";
 import { getProjects } from "@/api/projects";
@@ -15,7 +14,6 @@ import type {
   ApiBurndownBySprintItem,
   ApiTeamVelocityItem,
   ApiUserTasksPerSprintItem,
-  ApiHoursPerUserItem,
   ApiTaskDistributionItem,
   DashboardBurndownPoint,
   DashboardTaskDistributionItem,
@@ -132,61 +130,6 @@ function toTeamVelocityChart(
   }));
 }
 
-/**
- * RealTimeHoursPerSprint: pivot por sprint, columna por usuario.
- */
-function pivotUserTasksPerSprint(raw: ApiUserTasksPerSprintItem[]): {
-  chartData: Record<string, number | string>[];
-  users: string[];
-} {
-  const sprintOrder: string[] = [];
-  raw.forEach((r) => {
-    if (!sprintOrder.includes(r.sprintName)) sprintOrder.push(r.sprintName);
-  });
-  const userSet = new Set(raw.map((r) => r.userName));
-  const users = Array.from(userSet);
-  const chartData = sprintOrder.map((sprint) => {
-    const entry: Record<string, number | string> = {
-      sprintNumber: shortSprintName(sprint),
-    };
-    raw
-      .filter((r) => r.sprintName === sprint)
-      .forEach((r) => {
-        entry[r.userName] = r.tasksCompleted;
-      });
-    return entry;
-  });
-
-  return { chartData, users };
-}
-
-/**
-  HoursPerSprint: pivot por sprint con horas reales trabajadas por usuario.
- */
-function pivotHoursPerUser(raw: ApiHoursPerUserItem[]): {
-  chartData: Record<string, number | string>[];
-  users: string[];
-} {
-  const sprintOrder: string[] = [];
-  raw.forEach((r) => {
-    if (!sprintOrder.includes(r.sprintName)) sprintOrder.push(r.sprintName);
-  });
-  const userSet = new Set(raw.map((r) => r.userName));
-  const users = Array.from(userSet);
-  const chartData = sprintOrder.map((sprint) => {
-    const entry: Record<string, number | string> = {
-      sprintNumber: shortSprintName(sprint),
-    };
-    raw
-      .filter((r) => r.sprintName === sprint)
-      .forEach((r) => {
-        entry[r.userName] = Number(r.actualHours ?? r.hours ?? 0);
-      });
-    return entry;
-  });
-
-  return { chartData, users };
-}
 
 /**
  * TeamTaskCompletion: suma tasks completadas por usuario.
@@ -216,9 +159,7 @@ function toTeamCompletion(
 
 export function AnalyticsPage() {
   const [projects, setProjects] = useState<ApiProject[]>([]);
-  const [selectedProjectId, setSelectedProjectId] = useState<number | null>(
-    null,
-  );
+  const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const [kpi, setKpi] = useState<ApiDashboardKPI | null>(null);
   const [loading, setLoading] = useState(false);
   const { darkMode } = useTheme();
@@ -240,7 +181,6 @@ export function AnalyticsPage() {
     async function loadKpi() {
       setLoading(true);
       setKpi(null);
-
       try {
         const data = await getDashboardKPI(projectId);
         if (isActive) setKpi(data);
@@ -252,43 +192,17 @@ export function AnalyticsPage() {
     }
 
     void loadKpi();
-
-    return () => {
-      isActive = false;
-    };
+    return () => { isActive = false; };
   }, [selectedProjectId]);
 
-  // Datos transformados (undefined mientras carga, componentes usan fallback)
-  const taskDistribution = kpi
-    ? toTaskDistribution(kpi.taskDistribution)
-    : undefined;
-  const completionRate = kpi
-    ? calcCompletionRate(kpi.taskDistribution)
-    : undefined;
+  const taskDistribution = kpi ? toTaskDistribution(kpi.taskDistribution) : undefined;
+  const completionRate   = kpi ? calcCompletionRate(kpi.taskDistribution) : undefined;
   const { velocity, change } = kpi
     ? calcSprintVelocity(kpi.teamVelocity)
     : { velocity: undefined, change: undefined };
-  const rawBurndown = kpi?.burndownBySprint;
-  const burndown = rawBurndown?.length ? toBurndown(rawBurndown) : undefined;
-  const teamVelocityData = kpi?.teamVelocity.length
-    ? toTeamVelocityChart(kpi.teamVelocity)
-    : undefined;
-
-  // Tasks per user per sprint (RealTimeHoursPerSprint)
-  const { chartData: tasksData, users: tasksUsers } = kpi?.userTasksPerSprint
-    ?.length
-    ? pivotUserTasksPerSprint(kpi.userTasksPerSprint)
-    : { chartData: undefined, users: undefined };
-
-  // Actual hours per user per sprint (for HoursPerSprint)
-  const { chartData: hoursData, users: hoursUsers } = kpi?.hoursPerUserBySprint
-    ?.length
-    ? pivotHoursPerUser(kpi.hoursPerUserBySprint)
-    : { chartData: undefined, users: undefined };
-
-  const teamCompletion = kpi?.userTasksPerSprint?.length
-    ? toTeamCompletion(kpi.userTasksPerSprint)
-    : undefined;
+  const burndown        = kpi?.burndownBySprint?.length ? toBurndown(kpi.burndownBySprint) : undefined;
+  const teamVelocityData = kpi?.teamVelocity.length ? toTeamVelocityChart(kpi.teamVelocity) : undefined;
+  const teamCompletion  = kpi?.userTasksPerSprint?.length ? toTeamCompletion(kpi.userTasksPerSprint) : undefined;
 
   return (
     <div className={`min-h-screen p-6 ${darkMode ? "bg-slate-950" : "bg-background"}`}>
@@ -303,9 +217,7 @@ export function AnalyticsPage() {
             className={`rounded-md border px-3 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 ${darkMode ? "border-slate-700 bg-slate-800 text-slate-100 focus:ring-slate-500" : "border-[#C2D4D4] bg-white text-slate-900 focus:ring-[#2a4a5a]"}`}
           >
             {projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
+              <option key={p.id} value={p.id}>{p.name}</option>
             ))}
           </select>
         )}
@@ -315,28 +227,20 @@ export function AnalyticsPage() {
         {/* KPI cards + burndown */}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-[220px_1fr]">
           <div className="flex flex-col gap-4">
-            <SprintVelocityCard
-              velocity={velocity}
-              velocityChange={change}
-              loading={loading}
-              index={0}
-            />
-            <CompletionRateCard
-              completionRate={completionRate}
-              loading={loading}
-              index={1}
-            />
+            <SprintVelocityCard velocity={velocity} velocityChange={change} loading={loading} index={0} />
+            <CompletionRateCard completionRate={completionRate} loading={loading} index={1} />
           </div>
           <SprintCompletionRate data={burndown} index={2} />
         </div>
 
-        {/* div 2 con bar charts solicitadas por el socio*/}
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <HoursPerSprint data={hoursData} users={hoursUsers} index={3} />
-          <RealTimeHoursPerSprint data={tasksData} users={tasksUsers} index={4} />
-        </div>
+        {/* Individual Performance: hours + tasks per user with built-in filter */}
+        <IndividualPerformanceCard
+          hoursRaw={kpi?.hoursPerUserBySprint}
+          tasksRaw={kpi?.userTasksPerSprint}
+          loading={loading}
+        />
 
-        {/* pie chart y bar graph */}
+        {/* Team velocity + task distribution */}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <TeamVelocity data={teamVelocityData} index={5} />
           <TaskDistributionByState data={taskDistribution} index={6} />

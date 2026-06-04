@@ -1,4 +1,4 @@
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, Cell, XAxis, YAxis } from "recharts";
 import { useTheme } from "@/contexts/useTheme";
 import {
   Card,
@@ -15,13 +15,11 @@ import {
 import type { ChartConfig } from "@/components/ui/chart";
 
 const USER_COLORS = [
-  "#C2D4D4",
-  "#69777B",
-  "#2a4a5a",
-  "#8FBFD0",
-  "#c74634",
-  "#5C926D",
-  "#DEB068",
+  "#C2D4D4", "#69777B", "#2a4a5a", "#8FBFD0", "#c74634", "#5C926D", "#DEB068",
+];
+
+const SPRINT_COLORS = [
+  "#c74634", "#2a4a5a", "#5C926D", "#8FBFD0", "#4a3f7a", "#DEB068", "#69777B",
 ];
 
 const fallbackData = [
@@ -35,32 +33,30 @@ const fallbackUsers = ["Dev1", "Dev2"];
 interface RealTimeHoursPerSprintProps {
   data?: Record<string, number | string>[];
   users?: string[];
+  index?: number;
 }
-export function RealTimeHoursPerSprint({
-  data,
-  users,
-  index,
-}: RealTimeHoursPerSprintProps & { index?: number }) {
+
+export function RealTimeHoursPerSprint({ data, users, index }: RealTimeHoursPerSprintProps) {
   const chartData = data ?? fallbackData;
   const chartUsers = users ?? fallbackUsers;
   const { darkMode } = useTheme();
+  const singleUser = chartUsers.length === 1;
 
   const chartConfig: ChartConfig = Object.fromEntries(
     chartUsers.map((name, i) => [
       name,
-      { label: name, color: USER_COLORS[i % USER_COLORS.length] },
+      { label: name, color: singleUser ? SPRINT_COLORS[0] : USER_COLORS[i % USER_COLORS.length] },
     ]),
   );
 
   return (
-    <Card style={{ animationDelay: `${(index ?? 0) * 70}ms` }} className={`card-entrance flex flex-col gap-0 overflow-hidden rounded-lg border shadow-sm ${darkMode ? 'border-slate-700 bg-slate-800 text-slate-100' : 'border-[#C2D4D4] bg-white text-slate-900'}`}>
+    <Card style={{ animationDelay: `${(index ?? 0) * 70}ms` }} className={`card-entrance flex flex-col gap-0 overflow-hidden rounded-lg border shadow-sm ${darkMode ? "border-slate-700 bg-slate-800 text-slate-100" : "border-[#C2D4D4] bg-white text-slate-900"}`}>
       <CardHeader>
         <CardTitle className="text-base font-semibold text-foreground">
           Tasks Completed by Developer per Sprint
         </CardTitle>
         <CardDescription className="text-muted-foreground">
-          Tasks completed per developer each sprint, use it to monitor workload
-          and balance effort.
+          Tasks completed per developer each sprint, use it to monitor workload and balance effort.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -102,7 +98,12 @@ export function RealTimeHoursPerSprint({
                 dataKey={name}
                 fill={USER_COLORS[i % USER_COLORS.length]}
                 radius={4}
-              />
+              >
+                {singleUser &&
+                  chartData.map((_, di) => (
+                    <Cell key={di} fill={SPRINT_COLORS[di % SPRINT_COLORS.length]} />
+                  ))}
+              </Bar>
             ))}
           </BarChart>
         </ChartContainer>
