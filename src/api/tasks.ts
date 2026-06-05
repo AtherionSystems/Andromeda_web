@@ -1,8 +1,11 @@
 import { apiFetch } from "./client";
 import type { ApiTask, ApiTaskAssignment } from "../types/api";
 
-export const getProjectTasks = (projectId: number): Promise<ApiTask[]> =>
-  apiFetch(`/api/projects/${projectId}/tasks`);
+export const getProjectTasks = (
+  projectId: number,
+  signal?: AbortSignal,
+): Promise<ApiTask[]> =>
+  apiFetch(`/api/projects/${projectId}/tasks`, { signal });
 
 export const getSprintTasks = (
   projectId: number,

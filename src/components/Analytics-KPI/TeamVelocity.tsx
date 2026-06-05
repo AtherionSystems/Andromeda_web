@@ -14,11 +14,12 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 
-const fallbackData = [
-  { sprintNumber: "Sprint 1", pointsCompleted: 186, pointsPlanned: 220 },
-  { sprintNumber: "Sprint 2", pointsCompleted: 305, pointsPlanned: 320 },
-  { sprintNumber: "Sprint 3", pointsCompleted: 237, pointsPlanned: 260 },
-  { sprintNumber: "Sprint 4", pointsCompleted: 73, pointsPlanned: 100 },
+// Shown when the project has no real data: flat zero bars.
+const emptyData = [
+  { sprintNumber: "Sprint 1", pointsCompleted: 0, pointsPlanned: 0 },
+  { sprintNumber: "Sprint 2", pointsCompleted: 0, pointsPlanned: 0 },
+  { sprintNumber: "Sprint 3", pointsCompleted: 0, pointsPlanned: 0 },
+  { sprintNumber: "Sprint 4", pointsCompleted: 0, pointsPlanned: 0 },
 ];
 
 const chartConfig = {
@@ -32,7 +33,7 @@ interface TeamVelocityProps {
 }
 
 export function TeamVelocity({ data, index }: TeamVelocityProps) {
-  const chartData = data ?? fallbackData;
+  const chartData = data ?? emptyData;
   const { darkMode } = useTheme();
   return (
     <Card style={{ animationDelay: `${(index ?? 0) * 70}ms` }} className={`card-entrance flex flex-col gap-0 overflow-hidden rounded-lg border shadow-sm ${darkMode ? 'border-slate-700 bg-slate-800 text-slate-100' : 'border-[#C2D4D4] bg-white text-slate-900'}`}>

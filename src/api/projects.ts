@@ -1,8 +1,8 @@
 import { apiFetch } from "./client";
 import type { ApiProject, ApiSprint } from "../types/api";
 
-export const getProjects = (): Promise<ApiProject[]> =>
-  apiFetch("/api/projects");
+export const getProjects = (signal?: AbortSignal): Promise<ApiProject[]> =>
+  apiFetch("/api/projects", { signal });
 
 export const getProject = (id: number): Promise<ApiProject> =>
   apiFetch(`/api/projects/${id}`);

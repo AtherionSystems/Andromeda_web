@@ -5,7 +5,7 @@ import { loadTokens, getValidAccessToken, clearTokens, login as ociLogin } from 
 // If the value is set but doesn't look like an absolute URL, ignore it so the
 // Vite proxy keeps working correctly in dev.
 const _rawBase = import.meta.env.VITE_API_BASE_URL as string | undefined;
-const BASE_URL = _rawBase?.startsWith('http') ? _rawBase.replace(/\/$/, '') : '';
+export const BASE_URL = _rawBase?.startsWith('http') ? _rawBase.replace(/\/$/, '') : '';
 
 const STORAGE_KEY = 'andromeda_user';
 

@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useEffect } from "react";
+﻿import { useRef, useState, useCallback, useEffect, useMemo } from "react";
 import { useTheme } from "../../contexts/useTheme";
 import { useClickOutside } from "../../hooks/useClickOutside";
 import { createProject } from "../../api/projects";
@@ -13,8 +13,14 @@ interface Props {
   onCreated: () => void;
 }
 
-const today = new Date();
-today.setHours(0, 0, 0, 0);
+
+//fecha local a UTC sin cambiar el dÃ­a, para evitar que cambie al convertir a otras zonas horarias.
+function toDeliveryDateString(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}T00:00:00Z`;
+}
 
 function NewProjectModal({ isOpen, onClose, onCreated }: Props) {
   const { darkMode } = useTheme();
@@ -36,18 +42,58 @@ function NewProjectModal({ isOpen, onClose, onCreated }: Props) {
   useClickOutside(modalRef, isOpen, onClose);
   useClickOutside(dropdownRef, showDropdown, closeDropdown);
 
+  const nameInputRef = useRef<HTMLInputElement>(null);
+
+  // Keep a stable reference to the latest onClose for the Escape handler,
+  // so the modal effect can depend only on `isOpen`.
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  // Computed per render so the calendar's min day is always current (cheap,
+  // and the modal only renders while open).
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Modal behavior: Escape to close, body scroll-lock, and focus management
+  // (move focus into the dialog on open, restore it to the opener on close).
   useEffect(() => {
     if (!isOpen) return;
-    getUsers().then(setAllUsers).catch(() => {});
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onCloseRef.current();
+    };
+    document.addEventListener("keydown", onKey);
+    const raf = requestAnimationFrame(() => nameInputRef.current?.focus());
+
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+      cancelAnimationFrame(raf);
+      previouslyFocused?.focus?.();
+    };
   }, [isOpen]);
 
-  const filteredUsers = allUsers.filter(
-    (u) =>
-      !selectedUsers.find((s) => s.id === u.id) &&
-      (u.name.toLowerCase().includes(search.toLowerCase()) ||
-        u.email.toLowerCase().includes(search.toLowerCase()) ||
-        u.username.toLowerCase().includes(search.toLowerCase())),
-  );
+  useEffect(() => {
+    if (!isOpen) return;
+    getUsers().then(setAllUsers).catch((err) => console.error("Failed to load users:", err));
+  }, [isOpen]);
+
+  const filteredUsers = useMemo(() => {
+    const selectedIds = new Set(selectedUsers.map((u) => u.id));
+    const q = search.toLowerCase();
+    return allUsers.filter(
+      (u) =>
+        !selectedIds.has(u.id) &&
+        (u.name.toLowerCase().includes(q) ||
+          u.email.toLowerCase().includes(q) ||
+          u.username.toLowerCase().includes(q)),
+    );
+  }, [allUsers, selectedUsers, search]);
 
   function selectUser(user: ApiUser) {
     setSelectedUsers((prev) => [...prev, user]);
@@ -78,7 +124,7 @@ function NewProjectModal({ isOpen, onClose, onCreated }: Props) {
       return;
     }
 
-    const endDateStr = endDate.toISOString().split(".")[0] + "Z";
+    const endDateStr = toDeliveryDateString(endDate);
 
     setSubmitting(true);
     setError(null);
@@ -88,7 +134,7 @@ function NewProjectModal({ isOpen, onClose, onCreated }: Props) {
         description: description.trim() || null,
         status: "active",
         startDate: new Date().toISOString().split(".")[0] + "Z",
-        endDate: endDateStr ?? null,
+        endDate: endDateStr,
       });
 
       await Promise.allSettled(
@@ -127,26 +173,32 @@ function NewProjectModal({ isOpen, onClose, onCreated }: Props) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-[1px] px-4">
       <div
         ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="new-project-title"
         className={`relative w-full max-w-[820px] rounded-lg shadow-2xl transition-colors ${
           darkMode ? "bg-slate-900 text-slate-100" : "bg-white text-slate-800"
         }`}
       >
-        {/* Close */}
+        {/* cerrar */}
         <button
+          type="button"
           onClick={onClose}
+          aria-label="Close"
           className={`absolute top-4 right-5 text-xl leading-none transition-colors z-10 ${
             darkMode
               ? "text-slate-500 hover:text-slate-200"
               : "text-slate-400 hover:text-slate-700"
           }`}
         >
-          ✕
+          âœ•
         </button>
 
         <div className="flex">
-          {/* ── Left column: form ── */}
+          {/* columna izq del form â”€â”€ */}
           <div className="flex-1 p-8 min-w-0">
             <h2
+              id="new-project-title"
               className={`text-2xl italic font-light mb-7 ${
                 darkMode ? "text-slate-100" : "text-slate-800"
               }`}
@@ -155,10 +207,11 @@ function NewProjectModal({ isOpen, onClose, onCreated }: Props) {
             </h2>
 
             <form onSubmit={handleSubmit}>
-              {/* Project Name */}
+              {/*nombre del proyecto */}
               <div className="mb-4">
                 <label className={labelClass}>Project Name</label>
                 <input
+                  ref={nameInputRef}
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
@@ -167,7 +220,7 @@ function NewProjectModal({ isOpen, onClose, onCreated }: Props) {
                 />
               </div>
 
-              {/* Project Description */}
+              {/* desc del proyecto*/}
               <div className="mb-4">
                 <label className={labelClass}>Project Description</label>
                 <textarea
@@ -205,7 +258,7 @@ function NewProjectModal({ isOpen, onClose, onCreated }: Props) {
                           onClick={() => removeUser(user.id)}
                           className="ml-0.5 opacity-60 hover:opacity-100 text-sm leading-none"
                         >
-                          ×
+                          Ã—
                         </button>
                       </span>
                     ))}
@@ -274,14 +327,14 @@ function NewProjectModal({ isOpen, onClose, onCreated }: Props) {
             </form>
           </div>
 
-          {/* ── Divider ── */}
+          {/*divider*/}
           <div
             className={`w-px self-stretch ${
               darkMode ? "bg-slate-700" : "bg-slate-100"
             }`}
           />
 
-          {/* ── Right column: calendar ── */}
+          {/* columna de calendario*/}
           <div className="flex flex-col p-6 justify-start">
             <p className={`text-[10px] tracking-[1.2px] uppercase font-semibold mb-3 ${
               darkMode ? "text-slate-400" : "text-slate-500"

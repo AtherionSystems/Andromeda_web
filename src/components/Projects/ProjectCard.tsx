@@ -4,6 +4,7 @@ import { useTheme } from "../../contexts/useTheme";
 import type { ApiProject } from "../../types/api";
 import type { Member } from "../../types/project";
 import MemberAvatars from "./MemberAvatars";
+import { useClickOutside } from "../../hooks/useClickOutside";
 
 const COVER_PALETTES = [
   { bg: "#1d4a5a", layers: ["#2d6a7a", "#c8a882", "#8a4a3a"] },
@@ -49,35 +50,26 @@ interface ProjectCardProps {
 }
 
 function ProjectCard({ project, members, index, onClick, onDelete }: ProjectCardProps) {
-  const [hovered, setHovered] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [dropdownPos, setDropdownPos] = useState({ top: 0, right: 0 });
   const { darkMode } = useTheme();
   const buttonRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Close when clicking outside either the trigger or the portaled dropdown.
+  useClickOutside([buttonRef, dropdownRef], menuOpen, () => setMenuOpen(false));
+
+  // Keep the portaled dropdown aligned with the trigger while scrolling.
   useEffect(() => {
     if (!menuOpen) return;
-    function handleClickOutside(e: MouseEvent) {
-      const target = e.target as Node;
-      const insideButton = buttonRef.current?.closest("[data-menu]")?.contains(target);
-      const insideDropdown = dropdownRef.current?.contains(target);
-      if (!insideButton && !insideDropdown) {
-        setMenuOpen(false);
-      }
-    }
     function handleScroll() {
       if (buttonRef.current) {
         const rect = buttonRef.current.getBoundingClientRect();
         setDropdownPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
       }
     }
-    document.addEventListener("mousedown", handleClickOutside);
     window.addEventListener("scroll", handleScroll, true);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      window.removeEventListener("scroll", handleScroll, true);
-    };
+    return () => window.removeEventListener("scroll", handleScroll, true);
   }, [menuOpen]);
 
   function handleMenuToggle(e: React.MouseEvent) {
@@ -92,29 +84,23 @@ function ProjectCard({ project, members, index, onClick, onDelete }: ProjectCard
   return (
     <article
       onClick={() => onClick?.(project)}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
       role="button"
       tabIndex={0}
       aria-label={`Open project: ${project.name}`}
       onKeyDown={(e) => e.key === "Enter" && onClick?.(project)}
       className={`card-entrance rounded-lg overflow-hidden cursor-pointer transition-shadow duration-150 border
-        ${darkMode ? "bg-slate-800 border-slate-700" : "bg-white border-black/[0.08]"}
-        ${
-          hovered
-            ? "shadow-[0_4px_16px_rgba(0,0,0,0.12)]"
-            : "shadow-[0_1px_4px_rgba(0,0,0,0.06)]"
-        }`}
+        shadow-[0_1px_4px_rgba(0,0,0,0.06)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.12)]
+        ${darkMode ? "bg-slate-800 border-slate-700" : "bg-white border-black/[0.08]"}`}
       style={{ animationDelay: `${index * 70}ms` }}
     >
-      {/* Cover */}
+      {/* portada */}
       <div className="relative h-[140px]">
         <div className="absolute inset-0 overflow-hidden">
           <CoverPlaceholder index={index} />
         </div>
 
-        {/* Three-dots button */}
-        <div data-menu className="absolute top-2 right-2 z-10">
+        {/* botón para eliminar */}
+        <div className="absolute top-2 right-2 z-10">
           <button
             ref={buttonRef}
             onClick={handleMenuToggle}
@@ -148,7 +134,7 @@ function ProjectCard({ project, members, index, onClick, onDelete }: ProjectCard
         <MemberAvatars members={members} />
       </div>
 
-      {/* Dropdown portal — escapes overflow-hidden */}
+      {/* portal dropdown*/}
       {menuOpen &&
         createPortal(
           <div

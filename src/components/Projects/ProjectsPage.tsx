@@ -6,7 +6,7 @@ import type { ApiProject, ApiProjectMember } from "../../types/api";
 import type { Member } from "../../types/project";
 import ProjectCard from "./ProjectCard";
 import NewProjectModal from "./NewProjectModal";
-import SearchInput from "../TopBar/SearchInput";
+import SearchInput from "./SearchInput";
 
 interface ProjectsPageProps {
   description?: string;
@@ -91,10 +91,10 @@ function ProjectsPage({ description }: ProjectsPageProps) {
   });
 
   return (
-    <div className="flex-1">
+    <div className="flex-1 px-6 pt-3 pb-4">
       {/* Header */}
       <div
-        className={`flex gap-3 mb-5 ${
+        className={`flex gap-3 mb-8 ${
           breakpoint === "mobile"
             ? "flex-col"
             : "flex-row items-start justify-between"

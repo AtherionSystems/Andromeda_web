@@ -22,13 +22,14 @@ const SPRINT_COLORS = [
   "#c74634", "#2a4a5a", "#5C926D", "#8FBFD0", "#4a3f7a", "#DEB068", "#69777B",
 ];
 
-const fallbackData = [
-  { sprintNumber: "Sprint 1", Dev1: 186, Dev2: 80 },
-  { sprintNumber: "Sprint 2", Dev1: 305, Dev2: 200 },
-  { sprintNumber: "Sprint 3", Dev1: 237, Dev2: 120 },
-  { sprintNumber: "Sprint 4", Dev1: 73, Dev2: 190 },
+// Shown when the project has no real data: flat zero bars.
+const emptyData = [
+  { sprintNumber: "Sprint 1", Dev1: 0, Dev2: 0 },
+  { sprintNumber: "Sprint 2", Dev1: 0, Dev2: 0 },
+  { sprintNumber: "Sprint 3", Dev1: 0, Dev2: 0 },
+  { sprintNumber: "Sprint 4", Dev1: 0, Dev2: 0 },
 ];
-const fallbackUsers = ["Dev1", "Dev2"];
+const emptyUsers = ["Dev1", "Dev2"];
 
 interface RealTimeHoursPerSprintProps {
   data?: Record<string, number | string>[];
@@ -37,8 +38,8 @@ interface RealTimeHoursPerSprintProps {
 }
 
 export function RealTimeHoursPerSprint({ data, users, index }: RealTimeHoursPerSprintProps) {
-  const chartData = data ?? fallbackData;
-  const chartUsers = users ?? fallbackUsers;
+  const chartData = data ?? emptyData;
+  const chartUsers = users ?? emptyUsers;
   const { darkMode } = useTheme();
   const singleUser = chartUsers.length === 1;
 
