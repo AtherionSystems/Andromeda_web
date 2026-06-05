@@ -44,16 +44,7 @@ export function AvatarMenu({ user, role, onViewProfile, onLogout }: AvatarMenuPr
 
                 {/* Actions */}
                 <div className="py-1.5">
-                <button
-                    onClick={() => { setOpen(false); onViewProfile(); }}
-            className={`w-full flex items-center gap-2.5 px-4 py-2 text-[13px] transition-colors text-left border-none bg-transparent cursor-pointer ${darkMode ? "text-slate-200 hover:bg-slate-700" : "text-gray-700 hover:bg-gray-50"}`}
-                >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className={`shrink-0 ${darkMode ? "text-slate-300" : "text-gray-400"}`}>
-                    <circle cx="8" cy="5" r="3" />
-                    <path d="M2 14c0-3 2.7-5 6-5s6 2 6 5" />
-                    </svg>
-                    View profile
-                </button>
+                
 
                 <button
                     onClick={toggleDarkMode}

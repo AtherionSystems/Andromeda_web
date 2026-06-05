@@ -118,20 +118,6 @@ function Sidebar({ role, onLogout, onNavigate, activeRoute: externalRoute }: Sid
           />
         ))}
       </nav>
-
-      {/* Sign out */}
-      <div className="border-t px-3 py-3 transition-colors duration-200" style={{ borderColor: darkMode ? "#1e293b" : "rgba(0,0,0,0.1)" }}>
-        <button
-          onClick={onLogout}
-          className="w-full flex items-center gap-2.5 px-3 py-2 rounded text-[11px] hover:text-[#c74634] transition-colors cursor-pointer border-none bg-transparent text-left"
-          style={{ color: darkMode ? "#94a3b8" : "#6a8a9a" }}
-        >
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" width="13" height="13">
-            <path d="M6 2H3a1 1 0 00-1 1v10a1 1 0 001 1h3M11 11l3-3-3-3M14 8H6" />
-          </svg>
-          Sign out
-        </button>
-      </div>
     </aside>
   );
 }

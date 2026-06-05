@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useTheme } from "../../contexts/useTheme";
 import type { ApiProject } from "../../types/api";
 import type { Member } from "../../types/project";
@@ -44,11 +45,49 @@ interface ProjectCardProps {
   members: Member[];
   index: number;
   onClick?: (project: ApiProject) => void;
+  onDelete?: (project: ApiProject) => void;
 }
 
-function ProjectCard({ project, members, index, onClick }: ProjectCardProps) {
+function ProjectCard({ project, members, index, onClick, onDelete }: ProjectCardProps) {
   const [hovered, setHovered] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, right: 0 });
   const { darkMode } = useTheme();
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    function handleClickOutside(e: MouseEvent) {
+      const target = e.target as Node;
+      const insideButton = buttonRef.current?.closest("[data-menu]")?.contains(target);
+      const insideDropdown = dropdownRef.current?.contains(target);
+      if (!insideButton && !insideDropdown) {
+        setMenuOpen(false);
+      }
+    }
+    function handleScroll() {
+      if (buttonRef.current) {
+        const rect = buttonRef.current.getBoundingClientRect();
+        setDropdownPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    window.addEventListener("scroll", handleScroll, true);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      window.removeEventListener("scroll", handleScroll, true);
+    };
+  }, [menuOpen]);
+
+  function handleMenuToggle(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!menuOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setDropdownPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+    }
+    setMenuOpen((o) => !o);
+  }
 
   return (
     <article
@@ -69,8 +108,26 @@ function ProjectCard({ project, members, index, onClick }: ProjectCardProps) {
       style={{ animationDelay: `${index * 70}ms` }}
     >
       {/* Cover */}
-      <div className="h-[140px] overflow-hidden">
-        <CoverPlaceholder index={index} />
+      <div className="relative h-[140px]">
+        <div className="absolute inset-0 overflow-hidden">
+          <CoverPlaceholder index={index} />
+        </div>
+
+        {/* Three-dots button */}
+        <div data-menu className="absolute top-2 right-2 z-10">
+          <button
+            ref={buttonRef}
+            onClick={handleMenuToggle}
+            aria-label="Project options"
+            className="w-7 h-7 flex items-center justify-center rounded-full bg-black/25 hover:bg-black/45 text-white transition-colors"
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+              <circle cx="6" cy="1.5" r="1.2" />
+              <circle cx="6" cy="6"   r="1.2" />
+              <circle cx="6" cy="10.5" r="1.2" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* Content */}
@@ -90,6 +147,28 @@ function ProjectCard({ project, members, index, onClick }: ProjectCardProps) {
         </div>
         <MemberAvatars members={members} />
       </div>
+
+      {/* Dropdown portal — escapes overflow-hidden */}
+      {menuOpen &&
+        createPortal(
+          <div
+            ref={dropdownRef}
+            style={{ position: "fixed", top: dropdownPos.top, right: dropdownPos.right, zIndex: 9999 }}
+            className={`w-44 rounded-md shadow-lg border py-1
+              ${darkMode ? "bg-slate-800 border-slate-600" : "bg-white border-black/10"}`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => { setMenuOpen(false); onDelete?.(project); }}
+              className={`w-full flex items-center gap-2 px-3 py-2 text-[13px] text-red-500 transition-colors
+                ${darkMode ? "hover:bg-red-500/10" : "hover:bg-red-50"}`}
+            >
+              <img src="/Media/Icons/deleteIcon.svg" alt="" className="w-4 h-4 shrink-0" />
+              Delete project
+            </button>
+          </div>,
+          document.body
+        )}
     </article>
   );
 }

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useWindowSize } from "../../hooks/useWindowSize";
-import { getProjects } from "../../api/projects";
+import { getProjects, deleteProject } from "../../api/projects";
 import { getProjectMembers } from "../../api/members";
 import type { ApiProject, ApiProjectMember } from "../../types/api";
 import type { Member } from "../../types/project";
@@ -43,6 +43,15 @@ function ProjectsPage({ description }: ProjectsPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+
+  async function handleDelete(project: ApiProject) {
+    try {
+      await deleteProject(project.id);
+      setProjects((prev) => prev.filter((p) => p.id !== project.id));
+    } catch {
+      setError(`Could not delete "${project.name}". Please try again.`);
+    }
+  }
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -157,6 +166,7 @@ function ProjectsPage({ description }: ProjectsPageProps) {
               project={project}
               members={memberMap[project.id] ?? []}
               index={i}
+              onDelete={handleDelete}
             />
           ))}
           {filtered.length === 0 && !loading && (
