@@ -35,6 +35,8 @@ const AVATAR_COLORS = [
   "#6a2a4a",
 ];
 
+const TASKS_PER_PAGE = 5;
+
 function memberInitials(username: string): string {
   const parts = username.trim().split(/[\s._-]+/);
   if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
@@ -58,19 +60,40 @@ function BacklogPage() {
   const [taskAssignments, setTaskAssignments] = useState<
     Record<number, Member[]>
   >({});
+  const [columnPages, setColumnPages] = useState<Record<string, number>>({
+    todo: 0,
+    in_progress: 0,
+    review: 0,
+    done: 0,
+  });
+
+  // baseTasksRef holds all enriched tasks across projects so we can restore
+  // the full list when the user resets the sprint filter without a new API call.
+  // cache.ts handles HTTP-level deduplication; this ref handles UI-level state.
   const baseTasksRef = useRef<ApiTask[]>([]);
+  const loadedAssignmentsRef = useRef<Set<number>>(new Set());
+  const hasFetched = useRef(false);
+
   const theme = useContext(ThemeContext);
   const darkMode = theme?.darkMode ?? false;
 
+  const handlePageChange = (column: string, page: number) => {
+    setColumnPages((prev) => ({ ...prev, [column]: page }));
+  };
+
+  // ── Initial load ────────────────────────────────────────────────────────────
   useEffect(() => {
+    if (hasFetched.current) return;
+    hasFetched.current = true;
+
     const fetchTasks = async () => {
       try {
         setError(null);
+        const projectList = await getProjects();
+        setProjects(projectList);
 
-        const projects = await getProjects();
-        setProjects(projects);
         const taskArrays = await Promise.all(
-          projects.map(async (project) => {
+          projectList.map(async (project) => {
             const projectTasks = await getProjectTasks(project.id);
             return projectTasks.map((task) => ({
               ...task,
@@ -83,35 +106,8 @@ function BacklogPage() {
         const allTasks = taskArrays.flat();
         baseTasksRef.current = allTasks;
         setTasks(allTasks);
-
-        const assignmentMap: Record<number, Member[]> = {};
-
-        const taskAssignmentsPairs = await Promise.all(
-          allTasks.map(async (task) => {
-            if (task.projectId == null)
-              return [task.id, [] as Member[]] as const;
-            const assignments = await getTaskAssignments(
-              task.projectId,
-              task.id,
-            );
-            const members: Member[] = assignments
-              .filter((assignment) => assignment.assignedUserName != null)
-              .map((assignment) => ({
-                initials: memberInitials(assignment.assignedUserName!),
-                color: AVATAR_COLORS[assignment.id % AVATAR_COLORS.length],
-                name: assignment.assignedUserName!,
-              }));
-            return [task.id, members] as const;
-          }),
-        );
-
-        for (const [taskId, members] of taskAssignmentsPairs) {
-          assignmentMap[taskId] = members;
-        }
-
-        setTaskAssignments(assignmentMap);
-      } catch (error) {
-        console.error("Error fetching tasks:", error);
+      } catch (err) {
+        console.error("Error fetching tasks:", err);
         setError("Unable to load backlog tasks right now.");
       } finally {
         setLoading(false);
@@ -121,7 +117,56 @@ function BacklogPage() {
     fetchTasks();
   }, []);
 
-  // Fetch de Sprints
+  // ── Assignments: fetch only for tasks visible on current page ───────────────
+  useEffect(() => {
+    const visibleTaskIds = (
+      ["todo", "in_progress", "review", "done"] as const
+    ).flatMap((status) => {
+      const columnTasks = tasks.filter((t) => t.status === status);
+      const page = columnPages[status] ?? 0;
+      return columnTasks
+        .slice(page * TASKS_PER_PAGE, page * TASKS_PER_PAGE + TASKS_PER_PAGE)
+        .map((t) => t.id);
+    });
+
+    const toFetch = tasks.filter(
+      (t) =>
+        visibleTaskIds.includes(t.id) &&
+        !loadedAssignmentsRef.current.has(t.id),
+    );
+
+    if (toFetch.length === 0) return;
+
+    const fetchVisibleAssignments = async () => {
+      const pairs = await Promise.all(
+        toFetch.map(async (task) => {
+          if (task.projectId == null) return [task.id, [] as Member[]] as const;
+          try {
+            const assignments = await getTaskAssignments(
+              task.projectId,
+              task.id,
+            );
+            const members: Member[] = assignments
+              .filter((a) => a.assignedUserName != null)
+              .map((a) => ({
+                initials: memberInitials(a.assignedUserName!),
+                color: AVATAR_COLORS[a.id % AVATAR_COLORS.length],
+                name: a.assignedUserName!,
+              }));
+            loadedAssignmentsRef.current.add(task.id);
+            return [task.id, members] as const;
+          } catch {
+            return [task.id, [] as Member[]] as const;
+          }
+        }),
+      );
+      setTaskAssignments((prev) => ({ ...prev, ...Object.fromEntries(pairs) }));
+    };
+
+    fetchVisibleAssignments();
+  }, [tasks, columnPages]);
+
+  // ── Sprint list: fetch when project changes ─────────────────────────────────
   useEffect(() => {
     if (selectedProjectId === "all") {
       setSprints([]);
@@ -130,37 +175,45 @@ function BacklogPage() {
       return;
     }
 
+    const ac = new AbortController();
+
     const fetchSprints = async () => {
       setLoadingSprintList(true);
       setSelectedSprintId("all");
       try {
         const projectSprints = await getProjectSprints(selectedProjectId);
-        setSprints(projectSprints);
+        if (!ac.signal.aborted) setSprints(projectSprints);
       } catch (err) {
-        console.error("Error fetching sprints:", err);
-        setSprints([]);
+        if (!ac.signal.aborted) {
+          console.error("Error fetching sprints:", err);
+          setSprints([]);
+        }
       } finally {
-        setLoadingSprintList(false);
+        if (!ac.signal.aborted) setLoadingSprintList(false);
       }
     };
 
     fetchSprints();
+    return () => ac.abort();
   }, [selectedProjectId]);
 
-  // Fetch a Sprint Tasks
+  // ── Sprint tasks: fetch when sprint filter changes ──────────────────────────
   useEffect(() => {
     if (selectedProjectId === "all") return;
 
-    // regresa tasks originales completas desde el cache (sin API call)
+    // Restore from baseTasksRef — no API call needed (cache.ts handles HTTP dedup)
     if (selectedSprintId === "all") {
       setTasks((prev) => [
         ...prev.filter((t) => t.projectId !== selectedProjectId),
-        ...baseTasksRef.current.filter((t) => t.projectId === selectedProjectId),
+        ...baseTasksRef.current.filter(
+          (t) => t.projectId === selectedProjectId,
+        ),
       ]);
       return;
     }
 
-    //Fetch a los sprint tasks especificos
+    const ac = new AbortController();
+
     const fetchSprintTasks = async () => {
       try {
         const sprintTasks = await getSprintTasks(
@@ -168,32 +221,37 @@ function BacklogPage() {
           selectedSprintId as number,
         );
 
+        if (ac.signal.aborted) return;
+
         const projectName = projects.find(
           (p) => p.id === selectedProjectId,
         )?.name;
-        const enrichedTasks: ApiTask[] = (sprintTasks as SprintTaskEntry[]).flatMap(
-          (entry) =>
-            (entry.tasks ?? []).map((task) => ({
-              ...task,
-              projectId: selectedProjectId as number,
-              projectName,
-              sprintId: entry.sprintId,
-              sprintName: entry.sprintName,
-            })),
+        const enrichedTasks: ApiTask[] = (
+          sprintTasks as SprintTaskEntry[]
+        ).flatMap((entry) =>
+          (entry.tasks ?? []).map((task) => ({
+            ...task,
+            projectId: selectedProjectId as number,
+            projectName,
+            sprintId: entry.sprintId,
+            sprintName: entry.sprintName,
+          })),
         );
 
-        // Reemplaza tasks del proyecto actual, conserva las de otros proyectos
         setTasks((prev) => [
           ...prev.filter((t) => t.projectId !== selectedProjectId),
           ...enrichedTasks,
         ]);
 
-        // Only update assignments for tasks that actually have assignee data in the sprint response
+        // Sprint response may already embed assignee data — use it directly
         const assignmentMap: Record<number, Member[]> = {};
         for (const task of enrichedTasks) {
           const assignees = (task as RawTaskWithAssignees).assignees ?? [];
           const members = assignees
-            .filter((a): a is RawAssignee & { userName: string } => a.userName != null)
+            .filter(
+              (a): a is RawAssignee & { userName: string } =>
+                a.userName != null,
+            )
             .map((a) => ({
               initials: memberInitials(a.userName),
               color: AVATAR_COLORS[a.userId % AVATAR_COLORS.length],
@@ -201,33 +259,31 @@ function BacklogPage() {
             }));
           if (members.length > 0) {
             assignmentMap[task.id] = members;
+            loadedAssignmentsRef.current.add(task.id);
           }
         }
-
         setTaskAssignments((prev) => ({ ...prev, ...assignmentMap }));
       } catch (err) {
-        console.error("Error fetching sprint tasks:", err);
+        if (!ac.signal.aborted)
+          console.error("Error fetching sprint tasks:", err);
       }
     };
 
     fetchSprintTasks();
+    return () => ac.abort();
   }, [selectedSprintId, selectedProjectId, projects]);
 
+  // ── Keyboard / theme side-effects ───────────────────────────────────────────
   useEffect(() => {
     if (!selectedTask) return;
-
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setSelectedTask(null);
-      }
+      if (event.key === "Escape") setSelectedTask(null);
     };
-
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [selectedTask]);
 
   useEffect(() => {
-    // Close any open task detail when theme changes so the modal updates cleanly
     setSelectedTask(null);
   }, [darkMode]);
 
@@ -266,12 +322,10 @@ function BacklogPage() {
 
   const visibleTasks =
     selectedSprintId === "all" ? projectScopedTasks : projectScopedTasks;
-
   const visibleTaskCount = visibleTasks.length;
   const selectedMembers = selectedTask
     ? (taskAssignments[selectedTask.id] ?? [])
     : [];
-
   const selectedSprintName =
     selectedSprintId === "all"
       ? "All Sprints"
@@ -373,6 +427,7 @@ function BacklogPage() {
           tasks={visibleTasks.filter((t) => t.status === "todo")}
           onTaskClick={setSelectedTask}
           taskAssignments={taskAssignments}
+          onPageChange={(page) => handlePageChange("todo", page)}
         />
         <BacklogColumn
           title="In Progress"
@@ -382,6 +437,7 @@ function BacklogPage() {
           tasks={visibleTasks.filter((t) => t.status === "in_progress")}
           onTaskClick={setSelectedTask}
           taskAssignments={taskAssignments}
+          onPageChange={(page) => handlePageChange("in_progress", page)}
         />
         <BacklogColumn
           title="Review"
@@ -391,6 +447,7 @@ function BacklogPage() {
           tasks={visibleTasks.filter((t) => t.status === "review")}
           onTaskClick={setSelectedTask}
           taskAssignments={taskAssignments}
+          onPageChange={(page) => handlePageChange("review", page)}
         />
         <BacklogColumn
           title="Done"
@@ -400,103 +457,208 @@ function BacklogPage() {
           tasks={visibleTasks.filter((t) => t.status === "done")}
           onTaskClick={setSelectedTask}
           taskAssignments={taskAssignments}
+          onPageChange={(page) => handlePageChange("done", page)}
         />
       </div>
 
-      {selectedTask && (() => {
-        const STATUS_META: Record<string, { label: string; subtitle: string; color: string; icon: string }> = {
-          todo:        { label: "TO DO",       subtitle: "Not Started",       color: "#94a3b8", icon: "○" },
-          in_progress: { label: "IN PROGRESS", subtitle: "Active Development",color: "#f97316", icon: "↻" },
-          review:      { label: "IN REVIEW",   subtitle: "Under Review",      color: "#3b82f6", icon: "◎" },
-          done:        { label: "DONE",         subtitle: "Completed",         color: "#22c55e", icon: "✓" },
-        };
-        const PRIORITY_META: Record<string, { label: string; subtitle: string; color: string }> = {
-          critical: { label: "CRITICAL", subtitle: "High Urgency",   color: "#C74634" },
-          high:     { label: "HIGH",     subtitle: "High Priority",  color: "#FFB13F" },
-          medium:   { label: "MEDIUM",   subtitle: "Moderate",       color: "#00688C" },
-          low:      { label: "LOW",      subtitle: "Low Priority",   color: "#8FBFD0" },
-        };
-        const statusMeta = STATUS_META[selectedTask.status] ?? STATUS_META.todo;
-        const priorityMeta = PRIORITY_META[selectedTask.priority] ?? { label: selectedTask.priority.toUpperCase(), subtitle: "", color: "#94a3b8" };
+      {selectedTask &&
+        (() => {
+          const STATUS_META: Record<
+            string,
+            { label: string; subtitle: string; color: string; icon: string }
+          > = {
+            todo: {
+              label: "TO DO",
+              subtitle: "Not Started",
+              color: "#94a3b8",
+              icon: "○",
+            },
+            in_progress: {
+              label: "IN PROGRESS",
+              subtitle: "Active Development",
+              color: "#f97316",
+              icon: "↻",
+            },
+            review: {
+              label: "IN REVIEW",
+              subtitle: "Under Review",
+              color: "#3b82f6",
+              icon: "◎",
+            },
+            done: {
+              label: "DONE",
+              subtitle: "Completed",
+              color: "#22c55e",
+              icon: "✓",
+            },
+          };
+          const PRIORITY_META: Record<
+            string,
+            { label: string; subtitle: string; color: string }
+          > = {
+            critical: {
+              label: "CRITICAL",
+              subtitle: "High Urgency",
+              color: "#C74634",
+            },
+            high: {
+              label: "HIGH",
+              subtitle: "High Priority",
+              color: "#FFB13F",
+            },
+            medium: { label: "MEDIUM", subtitle: "Moderate", color: "#00688C" },
+            low: { label: "LOW", subtitle: "Low Priority", color: "#8FBFD0" },
+          };
+          const statusMeta =
+            STATUS_META[selectedTask.status] ?? STATUS_META.todo;
+          const priorityMeta = PRIORITY_META[selectedTask.priority] ?? {
+            label: selectedTask.priority.toUpperCase(),
+            subtitle: "",
+            color: "#94a3b8",
+          };
 
-        return (
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-[1px] p-4"
-            onClick={() => setSelectedTask(null)}
-          >
+          return (
             <div
-              role="dialog"
-              aria-modal="true"
-              className={`relative w-full max-w-[700px] rounded-lg shadow-2xl flex ${darkMode ? "bg-slate-900 text-slate-100" : "bg-white text-slate-800"}`}
-              onClick={(e) => e.stopPropagation()}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-[1px] p-4"
+              onClick={() => setSelectedTask(null)}
             >
-              {/* Close */}
-              <button
-                onClick={() => setSelectedTask(null)}
-                className={`absolute top-4 right-5 text-xl leading-none z-10 transition-colors ${darkMode ? "text-slate-500 hover:text-slate-200" : "text-slate-400 hover:text-slate-700"}`}
+              <div
+                role="dialog"
+                aria-modal="true"
+                className={`relative w-full max-w-[700px] rounded-lg shadow-2xl flex ${darkMode ? "bg-slate-900 text-slate-100" : "bg-white text-slate-800"}`}
+                onClick={(e) => e.stopPropagation()}
               >
-                ✕
-              </button>
+                {/* Close */}
+                <button
+                  onClick={() => setSelectedTask(null)}
+                  className={`absolute top-4 right-5 text-xl leading-none z-10 transition-colors ${darkMode ? "text-slate-500 hover:text-slate-200" : "text-slate-400 hover:text-slate-700"}`}
+                >
+                  ✕
+                </button>
 
-              {/* Left column */}
-              <div className="flex-1 p-8 min-w-0">
-                <h2 className={`text-2xl italic font-light mb-1 pr-8 ${darkMode ? "text-slate-100" : "text-slate-800"}`}>
-                  {selectedTask.title}
-                </h2>
-                <p className={`text-[10px] tracking-[1.2px] uppercase font-semibold mb-6 ${darkMode ? "text-slate-500" : "text-slate-400"}`}>
-                  {selectedTask.projectName || `Project #${selectedTask.projectId ?? "N/A"}`}
-                </p>
+                {/* Left column */}
+                <div className="flex-1 p-8 min-w-0">
+                  <h2
+                    className={`text-2xl italic font-light mb-1 pr-8 ${darkMode ? "text-slate-100" : "text-slate-800"}`}
+                  >
+                    {selectedTask.title}
+                  </h2>
+                  <p
+                    className={`text-[10px] tracking-[1.2px] uppercase font-semibold mb-6 ${darkMode ? "text-slate-500" : "text-slate-400"}`}
+                  >
+                    {selectedTask.projectName ||
+                      `Project #${selectedTask.projectId ?? "N/A"}`}
+                  </p>
 
-                <p className={`text-[10px] tracking-[1.2px] uppercase font-semibold mb-1.5 ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
-                  Task Description
-                </p>
-                <div className={`rounded border px-3 py-2.5 text-sm min-h-[80px] ${darkMode ? "bg-slate-800 border-slate-700 text-slate-300" : "bg-[#f5f5f5] border-transparent text-slate-600"}`}>
-                  {selectedTask.description || <span className={darkMode ? "text-slate-500" : "text-slate-400"}>No description available.</span>}
+                  <p
+                    className={`text-[10px] tracking-[1.2px] uppercase font-semibold mb-1.5 ${darkMode ? "text-slate-400" : "text-slate-500"}`}
+                  >
+                    Task Description
+                  </p>
+                  <div
+                    className={`rounded border px-3 py-2.5 text-sm min-h-[80px] ${darkMode ? "bg-slate-800 border-slate-700 text-slate-300" : "bg-[#f5f5f5] border-transparent text-slate-600"}`}
+                  >
+                    {selectedTask.description || (
+                      <span
+                        className={
+                          darkMode ? "text-slate-500" : "text-slate-400"
+                        }
+                      >
+                        No description available.
+                      </span>
+                    )}
+                  </div>
+
+                  <p
+                    className={`text-[10px] tracking-[1.2px] uppercase font-semibold mt-5 mb-1.5 ${darkMode ? "text-slate-400" : "text-slate-500"}`}
+                  >
+                    Assignees
+                  </p>
+                  {selectedMembers.length === 0 ? (
+                    <p
+                      className={`text-xs ${darkMode ? "text-slate-500" : "text-slate-400"}`}
+                    >
+                      No assignees
+                    </p>
+                  ) : (
+                    <MemberAvatars
+                      members={selectedMembers}
+                      max={selectedMembers.length}
+                    />
+                  )}
                 </div>
 
-                <p className={`text-[10px] tracking-[1.2px] uppercase font-semibold mt-5 mb-1.5 ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
-                  Assignees
-                </p>
-                {selectedMembers.length === 0 ? (
-                  <p className={`text-xs ${darkMode ? "text-slate-500" : "text-slate-400"}`}>No assignees</p>
-                ) : (
-                  <MemberAvatars members={selectedMembers} max={selectedMembers.length} />
-                )}
-              </div>
+                {/* Divider */}
+                <div
+                  className={`w-px self-stretch ${darkMode ? "bg-slate-700" : "bg-slate-100"}`}
+                />
 
-              {/* Divider */}
-              <div className={`w-px self-stretch ${darkMode ? "bg-slate-700" : "bg-slate-100"}`} />
+                {/* Right column */}
+                <div className="flex flex-col gap-3 p-6 justify-center min-w-[200px]">
+                  {/* Status card */}
+                  <div
+                    className={`flex items-center gap-4 rounded-lg p-4 ${darkMode ? "bg-slate-800" : "bg-slate-50"}`}
+                  >
+                    <div
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-xl text-white"
+                      style={{ backgroundColor: statusMeta.color }}
+                    >
+                      {statusMeta.icon}
+                    </div>
+                    <div>
+                      <p
+                        className={`text-[9px] font-bold tracking-[1.4px] uppercase mb-0.5 ${darkMode ? "text-slate-400" : "text-slate-400"}`}
+                      >
+                        Current Status
+                      </p>
+                      <p
+                        className="text-sm font-bold tracking-wide"
+                        style={{ color: statusMeta.color }}
+                      >
+                        {statusMeta.label}
+                      </p>
+                      <p
+                        className={`text-[10px] mt-0.5 ${darkMode ? "text-slate-400" : "text-slate-400"}`}
+                      >
+                        {statusMeta.subtitle}
+                      </p>
+                    </div>
+                  </div>
 
-              {/* Right column */}
-              <div className="flex flex-col gap-3 p-6 justify-center min-w-[200px]">
-                {/* Status card */}
-                <div className={`flex items-center gap-4 rounded-lg p-4 ${darkMode ? "bg-slate-800" : "bg-slate-50"}`}>
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-xl text-white" style={{ backgroundColor: statusMeta.color }}>
-                    {statusMeta.icon}
-                  </div>
-                  <div>
-                    <p className={`text-[9px] font-bold tracking-[1.4px] uppercase mb-0.5 ${darkMode ? "text-slate-400" : "text-slate-400"}`}>Current Status</p>
-                    <p className="text-sm font-bold tracking-wide" style={{ color: statusMeta.color }}>{statusMeta.label}</p>
-                    <p className={`text-[10px] mt-0.5 ${darkMode ? "text-slate-400" : "text-slate-400"}`}>{statusMeta.subtitle}</p>
-                  </div>
-                </div>
-
-                {/* Priority card */}
-                <div className={`flex items-center gap-4 rounded-lg p-4 ${darkMode ? "bg-slate-800" : "bg-slate-50"}`}>
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-xl font-bold text-white" style={{ backgroundColor: priorityMeta.color }}>
-                    !
-                  </div>
-                  <div>
-                    <p className={`text-[9px] font-bold tracking-[1.4px] uppercase mb-0.5 ${darkMode ? "text-slate-400" : "text-slate-400"}`}>Priority Level</p>
-                    <p className="text-sm font-bold tracking-wide" style={{ color: priorityMeta.color }}>{priorityMeta.label}</p>
-                    <p className={`text-[10px] mt-0.5 ${darkMode ? "text-slate-400" : "text-slate-400"}`}>{priorityMeta.subtitle}</p>
+                  {/* Priority card */}
+                  <div
+                    className={`flex items-center gap-4 rounded-lg p-4 ${darkMode ? "bg-slate-800" : "bg-slate-50"}`}
+                  >
+                    <div
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-xl font-bold text-white"
+                      style={{ backgroundColor: priorityMeta.color }}
+                    >
+                      !
+                    </div>
+                    <div>
+                      <p
+                        className={`text-[9px] font-bold tracking-[1.4px] uppercase mb-0.5 ${darkMode ? "text-slate-400" : "text-slate-400"}`}
+                      >
+                        Priority Level
+                      </p>
+                      <p
+                        className="text-sm font-bold tracking-wide"
+                        style={{ color: priorityMeta.color }}
+                      >
+                        {priorityMeta.label}
+                      </p>
+                      <p
+                        className={`text-[10px] mt-0.5 ${darkMode ? "text-slate-400" : "text-slate-400"}`}
+                      >
+                        {priorityMeta.subtitle}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-        );
-      })()}
+          );
+        })()}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useWindowSize } from "../../hooks/useWindowSize";
 import { getProjects, deleteProject } from "../../api/projects";
 import { getProjectMembers } from "../../api/members";
@@ -43,6 +43,7 @@ function ProjectsPage({ description }: ProjectsPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const hasFetched = useRef(false);
 
   async function handleDelete(project: ApiProject) {
     try {
@@ -70,15 +71,15 @@ function ProjectsPage({ description }: ProjectsPageProps) {
       });
       setMemberMap(map);
     } catch {
-      setError(
-        "Could not load projects. Make sure the backend is running.",
-      );
+      setError("Could not load projects. Make sure the backend is running.");
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
+    if (hasFetched.current) return;
+    hasFetched.current = true;
     load();
   }, [load]);
 
@@ -110,7 +111,11 @@ function ProjectsPage({ description }: ProjectsPageProps) {
           </p>
         </div>
         <div className="flex flex-col items-end gap-2 mt-1">
-          <SearchInput value={searchQuery} onChange={setSearchQuery} inputClassName="w-[260px] text-[13px]" />
+          <SearchInput
+            value={searchQuery}
+            onChange={setSearchQuery}
+            inputClassName="w-[260px] text-[13px]"
+          />
           <div className="flex gap-2">
             <button
               style={{ background: "#c74634" }}
@@ -179,7 +184,10 @@ function ProjectsPage({ description }: ProjectsPageProps) {
       <NewProjectModal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
-        onCreated={load}
+        onCreated={() => {
+          hasFetched.current = false;
+          load();
+        }}
       />
     </div>
   );
