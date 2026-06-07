@@ -5,38 +5,14 @@
 //   - Consistent with InputField.tsx and Button.tsx patterns
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import type { ReactNode } from "react";
 import { useTheme } from "../../contexts/useTheme";
+import type {
+  BotMessage as Message,
+  TelegramBotWidgetProps,
+} from "../../types/telegramBot";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
-interface Message {
-  id: string;
-  role: "user" | "bot";
-  text: string;
-  timestamp: Date;
-  status?: "sending" | "sent" | "error";
-}
-
-interface TelegramBotWidgetProps {
-  /** Icon element rendered inside the square floating button */
-  buttonIcon?: ReactNode;
-  /** Accessible label for the floating button */
-  buttonLabel?: string;
-  /** Bot display name in the modal header */
-  botName?: string;
-  /** Subtitle below the bot name */
-  botSubtitle?: string;
-  /** Optional avatar URL; falls back to letter avatar */
-  botAvatarUrl?: string;
-  /** Telegram bot username (without @) for the deep-link */
-  telegramUsername: string;
-  /**
-   * Called on each send. Must return the bot's reply string.
-   * Defaults to a built-in demo handler if omitted.
-   */
-  onSendMessage?: (message: string) => Promise<string>;
-}
+// Moved to src/types/telegramBot.ts — imported above.
 
 // ─── Demo handler (replace with useAndromedaBot in production) ────────────────
 
@@ -629,7 +605,7 @@ export default function TelegramBotWidget({
                 color: darkMode ? "#334155" : "#cbd5e1",
               }}
             >
-              Powered by Andromeda AI · Groq / Qwen3-32b
+              Powered by Andromeda AI · Gemini
             </p>
           </div>
         </div>
