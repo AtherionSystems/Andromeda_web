@@ -10,6 +10,7 @@ import SearchInput from "./SearchInput";
 
 interface ProjectsPageProps {
   description?: string;
+  readOnly?: boolean;
 }
 
 const AVATAR_COLORS = [
@@ -35,7 +36,7 @@ function memberToAvatar(pm: ApiProjectMember): Member {
   return { initials, color, name: pm.username };
 }
 
-function ProjectsPage({ description }: ProjectsPageProps) {
+function ProjectsPage({ description, readOnly = false }: ProjectsPageProps) {
   const { breakpoint } = useWindowSize();
   const [projects, setProjects] = useState<ApiProject[]>([]);
   const [memberMap, setMemberMap] = useState<Record<number, Member[]>>({});
@@ -116,21 +117,23 @@ function ProjectsPage({ description }: ProjectsPageProps) {
             onChange={setSearchQuery}
             inputClassName="w-[260px] text-[13px]"
           />
-          <div className="flex gap-2">
-            <button
-              style={{ background: "#c74634" }}
-              className="w-8 h-8 border-none rounded bg-oracle-red text-white cursor-pointer text-sm flex items-center justify-center"
-            >
-              ✎
-            </button>
-            <button
-              style={{ background: "#c74634" }}
-              className="flex items-center gap-1.5 px-3.5 h-8 bg-oracle-red text-white border-none rounded text-[12px] font-medium cursor-pointer"
-              onClick={() => setModalOpen(true)}
-            >
-              + NEW PROJECT
-            </button>
-          </div>
+          {!readOnly && (
+            <div className="flex gap-2">
+              <button
+                style={{ background: "#c74634" }}
+                className="w-8 h-8 border-none rounded bg-oracle-red text-white cursor-pointer text-sm flex items-center justify-center"
+              >
+                ✎
+              </button>
+              <button
+                style={{ background: "#c74634" }}
+                className="flex items-center gap-1.5 px-3.5 h-8 bg-oracle-red text-white border-none rounded text-[12px] font-medium cursor-pointer"
+                onClick={() => setModalOpen(true)}
+              >
+                + NEW PROJECT
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -171,7 +174,7 @@ function ProjectsPage({ description }: ProjectsPageProps) {
               project={project}
               members={memberMap[project.id] ?? []}
               index={i}
-              onDelete={handleDelete}
+              onDelete={readOnly ? undefined : handleDelete}
             />
           ))}
           {filtered.length === 0 && !loading && (

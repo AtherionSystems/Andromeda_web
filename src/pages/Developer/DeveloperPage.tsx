@@ -30,11 +30,12 @@ function DeveloperPage() {
     >
       {() => {
         if (activeRoute === "/") {
-          return <DeveloperDashboard user={user} />;
+          return <DeveloperDashboard />;
         }
         if (activeRoute === "/projects") {
           return (
             <ProjectsPage
+              readOnly
               description="Review your current project portfolio, teams and key performance indicators for all active initiatives in your department. Provide deep visibility into technical tasks to optimize software delivery cycles and team velocity."
             />
           );

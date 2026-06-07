@@ -41,6 +41,12 @@ function ProtectedRoute({ children, allowedRole }: ProtectedRouteProps) {
   return <>{children}</>;
 }
 
+function AuthRoute({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/login" replace />;
+  return <>{children}</>;
+}
+
 function AppRoutes() {
   const { user } = useAuth();
   const defaultDash = user ? roleDashboard(user.userType) : "/login";
@@ -67,9 +73,9 @@ function AppRoutes() {
       <Route
         path="/developer"
         element={
-          <ProtectedRoute allowedRole="developer">
+          <AuthRoute>
             <DeveloperPage />
-          </ProtectedRoute>
+          </AuthRoute>
         }
       />
       <Route path="/logged-out" element={<LoggedOut />} />

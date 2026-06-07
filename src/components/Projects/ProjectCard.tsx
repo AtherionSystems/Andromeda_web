@@ -99,21 +99,23 @@ function ProjectCard({ project, members, index, onClick, onDelete }: ProjectCard
           <CoverPlaceholder index={index} />
         </div>
 
-        {/* botón para eliminar */}
-        <div className="absolute top-2 right-2 z-10">
-          <button
-            ref={buttonRef}
-            onClick={handleMenuToggle}
-            aria-label="Project options"
-            className="w-7 h-7 flex items-center justify-center rounded-full bg-black/25 hover:bg-black/45 text-white transition-colors"
-          >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
-              <circle cx="6" cy="1.5" r="1.2" />
-              <circle cx="6" cy="6"   r="1.2" />
-              <circle cx="6" cy="10.5" r="1.2" />
-            </svg>
-          </button>
-        </div>
+        {/* botón para eliminar — solo visible si hay permisos */}
+        {onDelete && (
+          <div className="absolute top-2 right-2 z-10">
+            <button
+              ref={buttonRef}
+              onClick={handleMenuToggle}
+              aria-label="Project options"
+              className="w-7 h-7 flex items-center justify-center rounded-full bg-black/25 hover:bg-black/45 text-white transition-colors"
+            >
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+                <circle cx="6" cy="1.5" r="1.2" />
+                <circle cx="6" cy="6"   r="1.2" />
+                <circle cx="6" cy="10.5" r="1.2" />
+              </svg>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Content */}
