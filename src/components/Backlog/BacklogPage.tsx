@@ -7,6 +7,7 @@ import {
   getProjectTasks,
   getTaskAssignments,
   getSprintTasks,
+  updateTask,
 } from "../../api/tasks";
 import MemberAvatars from "../Projects/MemberAvatars";
 import { ThemeContext } from "../../contexts/themeContextValue";
@@ -43,7 +44,7 @@ function memberInitials(username: string): string {
   return username.slice(0, 2).toUpperCase();
 }
 
-function BacklogPage() {
+function BacklogPage({ canUpdateStatus = false, initialProjectId }: { canUpdateStatus?: boolean; initialProjectId?: number }) {
   const [projects, setProjects] = useState<ApiProject[]>([]);
   const [tasks, setTasks] = useState<ApiTask[]>([]);
   const [sprints, setSprints] = useState<ApiSprint[]>([]);
@@ -52,7 +53,7 @@ function BacklogPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<ApiTask | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<number | "all">(
-    "all",
+    initialProjectId ?? "all",
   );
   const [selectedSprintId, setSelectedSprintId] = useState<number | "all">(
     "all",
@@ -80,6 +81,29 @@ function BacklogPage() {
   const handlePageChange = (column: string, page: number) => {
     setColumnPages((prev) => ({ ...prev, [column]: page }));
   };
+
+  async function handleStatusToggle(task: ApiTask) {
+    if (task.projectId == null) return;
+    const newStatus = task.status === "done" ? "in_progress" : "done";
+    // Optimistic update
+    const update = (prev: ApiTask[]) =>
+      prev.map((t) => (t.id === task.id ? { ...t, status: newStatus } : t));
+    setTasks(update);
+    baseTasksRef.current = baseTasksRef.current.map((t) =>
+      t.id === task.id ? { ...t, status: newStatus } : t,
+    );
+    try {
+      await updateTask(task.projectId, task.id, { status: newStatus });
+    } catch {
+      // Rollback on failure
+      const rollback = (prev: ApiTask[]) =>
+        prev.map((t) => (t.id === task.id ? { ...t, status: task.status } : t));
+      setTasks(rollback);
+      baseTasksRef.current = baseTasksRef.current.map((t) =>
+        t.id === task.id ? { ...t, status: task.status } : t,
+      );
+    }
+  }
 
   // ── Initial load ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -426,6 +450,7 @@ function BacklogPage() {
           }
           tasks={visibleTasks.filter((t) => t.status === "todo")}
           onTaskClick={setSelectedTask}
+          onStatusToggle={canUpdateStatus ? handleStatusToggle : undefined}
           taskAssignments={taskAssignments}
           onPageChange={(page) => handlePageChange("todo", page)}
         />
@@ -436,6 +461,7 @@ function BacklogPage() {
           }
           tasks={visibleTasks.filter((t) => t.status === "in_progress")}
           onTaskClick={setSelectedTask}
+          onStatusToggle={canUpdateStatus ? handleStatusToggle : undefined}
           taskAssignments={taskAssignments}
           onPageChange={(page) => handlePageChange("in_progress", page)}
         />
@@ -446,6 +472,7 @@ function BacklogPage() {
           }
           tasks={visibleTasks.filter((t) => t.status === "review")}
           onTaskClick={setSelectedTask}
+          onStatusToggle={canUpdateStatus ? handleStatusToggle : undefined}
           taskAssignments={taskAssignments}
           onPageChange={(page) => handlePageChange("review", page)}
         />
@@ -456,6 +483,7 @@ function BacklogPage() {
           }
           tasks={visibleTasks.filter((t) => t.status === "done")}
           onTaskClick={setSelectedTask}
+          onStatusToggle={canUpdateStatus ? handleStatusToggle : undefined}
           taskAssignments={taskAssignments}
           onPageChange={(page) => handlePageChange("done", page)}
         />
