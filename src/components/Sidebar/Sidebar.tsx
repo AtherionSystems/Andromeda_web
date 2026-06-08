@@ -71,7 +71,7 @@ interface SidebarProps {
   activeRoute?: string;
 }
 
-function Sidebar({ role, onLogout: _onLogout, onNavigate, activeRoute: externalRoute }: SidebarProps) {
+function Sidebar({ role, onNavigate, activeRoute: externalRoute }: SidebarProps) {
   const navItems = role === "developer" ? DEV_NAV : PO_NAV;
   const defaultRoute = role === "developer" ? "/" : "/projects";
   const [internalRoute, setInternalRoute] = useState(defaultRoute);
