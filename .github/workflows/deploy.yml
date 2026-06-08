@@ -32,6 +32,8 @@ jobs:
 
       - name: Build
         env:
+          VITE_OCI_AUTH_URL: ${{ secrets.VITE_OCI_AUTH_URL }}
+          VITE_OCI_TOKEN_URL: ${{ secrets.VITE_OCI_TOKEN_URL }}
           VITE_OCI_CLIENT_ID: ${{ secrets.VITE_OCI_CLIENT_ID }}
           VITE_OCI_CLIENT_SECRET: ${{ secrets.VITE_OCI_CLIENT_SECRET }}
           VITE_OCI_REDIRECT_URI: ${{ secrets.VITE_OCI_REDIRECT_URI }}
