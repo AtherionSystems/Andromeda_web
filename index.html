@@ -23,10 +23,10 @@
   </script>
   <script>
     (function() {
-      var q = window.location.search.slice(1);
-      if (q.indexOf('p=') === 0) {
-        var path = decodeURIComponent(q.slice(2));
-        window.history.replaceState(null, null, '/' + path);
+      var redirect = sessionStorage.getItem('spa_redirect');
+      if (redirect) {
+        sessionStorage.removeItem('spa_redirect');
+        window.history.replaceState(null, null, '/Andromeda_web' + redirect);
       }
     })();
   </script>
