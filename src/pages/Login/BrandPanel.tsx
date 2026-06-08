@@ -13,7 +13,7 @@ function BrandPanel() {
         <div className="flex flex-col gap-2.5">
           <div>
             <img
-              src="/Media/Images/OracleColour_Transparent.png"
+              src="/Andromeda_web/Media/Images/OracleColour_Transparent.png"
               alt="Oracle Logo"
               className="h-auto w-56"
             />

@@ -83,7 +83,7 @@ export function AvatarMenu({ user, role, onLogout }: AvatarMenuProps) {
               className={itemClass(darkMode)}
             >
               <img
-                src={darkMode ? "/Media/Icons/visibilityWhite.svg" : "/Media/Icons/visibility.svg"}
+                src={darkMode ? "/Andromeda_web/Media/Icons/visibilityWhite.svg" : "/Andromeda_web/Media/Icons/visibility.svg"}
                 alt=""
                 aria-hidden="true"
                 className={`h-4 w-4 shrink-0 object-contain ${darkMode ? "opacity-100" : "opacity-70"}`}

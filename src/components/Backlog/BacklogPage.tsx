@@ -312,7 +312,7 @@ function BacklogPage({ canUpdateStatus = false, initialProjectId }: { canUpdateS
       <div className="flex min-h-[60vh] items-center justify-center px-6">
         <div className="flex flex-col items-center gap-4">
           <img
-            src="/Media/Animations/RedGearGIF.gif"
+            src="/Andromeda_web/Media/Animations/RedGearGIF.gif"
             alt="Loading animation"
             className="h-28 w-28 object-contain"
           />

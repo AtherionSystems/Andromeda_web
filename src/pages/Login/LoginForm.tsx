@@ -210,7 +210,7 @@ function LoginForm() {
           }}
           placeholder="Enter your password"
           error={errors.password}
-          rightIconSrc={showPassword ? "/Media/Icons/visibilityOffred.svg" : "/Media/Icons/visibilityRed.svg"}
+          rightIconSrc={showPassword ? "/Andromeda_web/Media/Icons/visibilityOffred.svg" : "/Andromeda_web/Media/Icons/visibilityRed.svg"}
           rightIconAlt={showPassword ? "Hide password" : "Show password"}
           rightIconAriaLabel={showPassword ? "Hide password" : "Show password"}
           onRightIconClick={() => setShowPassword((prev) => !prev)}
@@ -255,7 +255,7 @@ function LoginForm() {
             aria-hidden="true"
           />
           <img
-            src="/Media/Images/Andromeda_Transparent.png"
+            src="/Andromeda_web/Media/Images/Andromeda_Transparent.png"
             alt="Andromeda"
             className="relative z-10 w-[280px] max-w-[78vw] andromeda-login-logo"
           />

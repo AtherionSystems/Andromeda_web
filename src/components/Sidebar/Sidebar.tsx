@@ -89,7 +89,7 @@ function Sidebar({ role, onNavigate, activeRoute: externalRoute }: SidebarProps)
       {/* Branding */}
       <div className="px-4 pt-4 pb-3 border-b transition-colors duration-200" style={{ borderColor: darkMode ? "#1e293b" : "rgba(0,0,0,0.1)" }}>
         <img
-          src="/Media/Images/OracleColour_Transparent.png"
+          src="/Andromeda_web/Media/Images/OracleColour_Transparent.png"
           alt="Oracle Logo"
           style={{ maxWidth: "120px" }}
           className="w-full h-auto object-contain mb-2"

@@ -149,7 +149,7 @@ export default function TeamDistributionCard({ loading, darkMode, projectGroups 
           Team Distribution
         </span>
         <img
-          src="/Media/Icons/groupIcon.svg"
+          src="/Andromeda_web/Media/Icons/groupIcon.svg"
           alt="group"
           width={22}
           height={22}

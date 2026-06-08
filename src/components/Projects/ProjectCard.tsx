@@ -155,7 +155,7 @@ function ProjectCard({ project, members, index, onClick, onDelete, onViewTasks }
               className={`w-full flex items-center gap-2 px-3 py-2 text-[13px] text-red-500 transition-colors
                 ${darkMode ? "hover:bg-red-500/10" : "hover:bg-red-50"}`}
             >
-              <img src="/Media/Icons/deleteIcon.svg" alt="" className="w-4 h-4 shrink-0" />
+              <img src="/Andromeda_web/Media/Icons/deleteIcon.svg" alt="" className="w-4 h-4 shrink-0" />
               Delete project
             </button>
           </div>,
