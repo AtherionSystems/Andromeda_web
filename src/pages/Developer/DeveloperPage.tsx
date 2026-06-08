@@ -1,53 +1,65 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/auth";
-import { useTheme } from "../../contexts/useTheme";
 import AppLayout from "../../components/Layout/AppLayout";
 import ProjectsPage from "../../components/Projects/ProjectsPage";
 import BacklogPage from "../../components/Backlog/BacklogPage";
 import DeveloperDashboard from "./DeveloperDashboard";
 import { AnalyticsPage} from "@/components/Analytics-KPI/AnalyticsPage";
+import Configuration from "../Configuration";
 
 function DeveloperPage() {
   const { user, logout } = useAuth();
-  const { setDarkMode } = useTheme();
   const navigate = useNavigate();
   const [activeRoute, setActiveRoute] = useState("/");
+  const [backlogProjectId, setBacklogProjectId] = useState<number | undefined>(undefined);
 
   function handleLogout() {
-    setDarkMode(false);
     logout();
     navigate("/login", { replace: true });
   }
 
   if (!user) return null;
 
+  function handleNavigate(route: string) {
+    if (route !== "/backlog") setBacklogProjectId(undefined);
+    setActiveRoute(route);
+  }
+
   return (
     <AppLayout
       user={user}
       role="developer"
       onLogout={handleLogout}
-      onNavigate={setActiveRoute}
+      onNavigate={handleNavigate}
       activeRoute={activeRoute}
     >
-      {(searchQuery) => {
+      {() => {
         if (activeRoute === "/") {
-          return <DeveloperDashboard user={user} />;
+          return <DeveloperDashboard />;
         }
         if (activeRoute === "/projects") {
           return (
             <ProjectsPage
-              searchQuery={searchQuery}
+              readOnly
               description="Review your current project portfolio, teams and key performance indicators for all active initiatives in your department. Provide deep visibility into technical tasks to optimize software delivery cycles and team velocity."
+              onViewTasks={(projectId) => {
+                setBacklogProjectId(projectId);
+                setActiveRoute("/backlog");
+              }}
             />
           );
         }
         if (activeRoute === "/backlog") {
-          return <BacklogPage />;
+          return <BacklogPage canUpdateStatus initialProjectId={backlogProjectId} />;
         }
 
         if (activeRoute === "/analytics") {
             return <AnalyticsPage />;
+        }
+
+        if (activeRoute === "/settings") {
+          return <Configuration />;
         }
         // Placeholder for other sections not yet implemented
         return (

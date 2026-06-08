@@ -6,12 +6,14 @@ import {Card,CardContent,CardDescription,CardHeader,CardTitle,} from "@/componen
 import {ChartContainer,ChartTooltip,ChartTooltipContent,type ChartConfig,} from "@/components/ui/chart";
 import type { DashboardBurndownPoint } from "@/types/api";
 
-const fallbackData: DashboardBurndownPoint[] = [
-  { day: "Sprint 1", ideal: 100, actual: 95 },
-  { day: "Sprint 2", ideal: 83, actual: 88 },
-  { day: "Sprint 3", ideal: 67, actual: 60 },
-  { day: "Sprint 4", ideal: 50, actual: 55 },
-  { day: "Sprint 5", ideal: 33, actual: 25 },
+// Shown when there's no real data: keep the ideal reference line, but the
+// actual line stays flat at 0.
+const emptyData: DashboardBurndownPoint[] = [
+  { day: "Sprint 1", ideal: 100, actual: 0 },
+  { day: "Sprint 2", ideal: 83, actual: 0 },
+  { day: "Sprint 3", ideal: 67, actual: 0 },
+  { day: "Sprint 4", ideal: 50, actual: 0 },
+  { day: "Sprint 5", ideal: 33, actual: 0 },
 ];
 
 const chartConfig = {
@@ -28,12 +30,15 @@ const chartConfig = {
 interface SprintCompletionRateProps {
   data?: DashboardBurndownPoint[];
 }
+interface SprintCompletionRatePropsWithIndex extends SprintCompletionRateProps {
+  index?: number;
+}
 
-export function SprintCompletionRate({ data }: SprintCompletionRateProps) {
-  const chartData = data ?? fallbackData;
+export function SprintCompletionRate({ data, index }: SprintCompletionRatePropsWithIndex) {
+  const chartData = data ?? emptyData;
   const { darkMode } = useTheme();
   return (
-    <Card className={`flex flex-col gap-0 overflow-hidden rounded-lg border shadow-sm ${darkMode ? 'border-slate-700 bg-slate-800 text-slate-100' : 'border-[#C2D4D4] bg-white text-slate-900'}`}>
+    <Card style={{ animationDelay: `${(index ?? 0) * 70}ms` }} className={`card-entrance flex flex-col gap-0 overflow-hidden rounded-lg border shadow-sm ${darkMode ? 'border-slate-700 bg-slate-800 text-slate-100' : 'border-[#C2D4D4] bg-white text-slate-900'}`}>
       <CardHeader className="pb-2">
         <CardTitle className="text-base font-semibold text-foreground">
           Sprint Completion Rate
