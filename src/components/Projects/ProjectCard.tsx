@@ -47,9 +47,10 @@ interface ProjectCardProps {
   index: number;
   onClick?: (project: ApiProject) => void;
   onDelete?: (project: ApiProject) => void;
+  onViewTasks?: (project: ApiProject) => void;
 }
 
-function ProjectCard({ project, members, index, onClick, onDelete }: ProjectCardProps) {
+function ProjectCard({ project, members, index, onClick, onDelete, onViewTasks }: ProjectCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [dropdownPos, setDropdownPos] = useState({ top: 0, right: 0 });
   const { darkMode } = useTheme();
@@ -83,13 +84,16 @@ function ProjectCard({ project, members, index, onClick, onDelete }: ProjectCard
 
   return (
     <article
-      onClick={() => onClick?.(project)}
+      onClick={() => { onViewTasks?.(project); onClick?.(project); }}
       role="button"
       tabIndex={0}
       aria-label={`Open project: ${project.name}`}
-      onKeyDown={(e) => e.key === "Enter" && onClick?.(project)}
-      className={`card-entrance rounded-lg overflow-hidden cursor-pointer transition-shadow duration-150 border
-        shadow-[0_1px_4px_rgba(0,0,0,0.06)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.12)]
+      onKeyDown={(e) => e.key === "Enter" && (onViewTasks?.(project) ?? onClick?.(project))}
+      className={`card-entrance rounded-lg overflow-hidden cursor-pointer border
+        transition-all duration-200 ease-out
+        shadow-[0_1px_4px_rgba(0,0,0,0.06)]
+        hover:shadow-[0_6px_20px_rgba(0,0,0,0.13)] hover:scale-[1.018]
+        active:scale-[0.99] active:shadow-[0_1px_4px_rgba(0,0,0,0.06)]
         ${darkMode ? "bg-slate-800 border-slate-700" : "bg-white border-black/[0.08]"}`}
       style={{ animationDelay: `${index * 70}ms` }}
     >
@@ -99,35 +103,37 @@ function ProjectCard({ project, members, index, onClick, onDelete }: ProjectCard
           <CoverPlaceholder index={index} />
         </div>
 
-        {/* botón para eliminar */}
-        <div className="absolute top-2 right-2 z-10">
-          <button
-            ref={buttonRef}
-            onClick={handleMenuToggle}
-            aria-label="Project options"
-            className="w-7 h-7 flex items-center justify-center rounded-full bg-black/25 hover:bg-black/45 text-white transition-colors"
-          >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
-              <circle cx="6" cy="1.5" r="1.2" />
-              <circle cx="6" cy="6"   r="1.2" />
-              <circle cx="6" cy="10.5" r="1.2" />
-            </svg>
-          </button>
-        </div>
+        {/* botón para eliminar — solo visible si hay permisos */}
+        {onDelete && (
+          <div className="absolute top-2 right-2 z-10">
+            <button
+              ref={buttonRef}
+              onClick={handleMenuToggle}
+              aria-label="Project options"
+              className="w-7 h-7 flex items-center justify-center rounded-full bg-black/25 hover:bg-black/45 text-white transition-colors"
+            >
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+                <circle cx="6" cy="1.5" r="1.2" />
+                <circle cx="6" cy="6"   r="1.2" />
+                <circle cx="6" cy="10.5" r="1.2" />
+              </svg>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Content */}
       <div className="p-3.5 pt-3">
-        <div className="flex justify-between items-start">
-          <div className="flex-1 pr-2">
-            <h3 className={`text-[14px] font-medium mb-1 ${darkMode ? "text-slate-100" : "text-[#1a3a4a]"}`}>
+        <div className="flex justify-between items-start gap-2">
+          <div className="min-w-0 flex-1">
+            <h3 className={`text-[14px] font-medium mb-1 line-clamp-2 leading-snug ${darkMode ? "text-slate-100" : "text-[#1a3a4a]"}`}>
               {project.name}
             </h3>
-            <p className={`text-[11px] leading-snug ${darkMode ? "text-slate-300" : "text-[#6a8a9a]"}`}>
+            <p className={`text-[11px] leading-snug line-clamp-2 ${darkMode ? "text-slate-300" : "text-[#6a8a9a]"}`}>
               {project.description ?? "No description provided."}
             </p>
           </div>
-          <span className={`text-[18px] font-light shrink-0 ${darkMode ? "text-slate-400" : "text-[#9abacc]"}`}>
+          <span className={`text-[18px] font-light shrink-0 leading-none mt-0.5 ${darkMode ? "text-slate-400" : "text-[#9abacc]"}`}>
             {String(index + 1).padStart(2, "0")}
           </span>
         </div>

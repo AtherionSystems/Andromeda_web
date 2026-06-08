@@ -12,6 +12,7 @@ function DeveloperPage() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [activeRoute, setActiveRoute] = useState("/");
+  const [backlogProjectId, setBacklogProjectId] = useState<number | undefined>(undefined);
 
   function handleLogout() {
     logout();
@@ -20,27 +21,37 @@ function DeveloperPage() {
 
   if (!user) return null;
 
+  function handleNavigate(route: string) {
+    if (route !== "/backlog") setBacklogProjectId(undefined);
+    setActiveRoute(route);
+  }
+
   return (
     <AppLayout
       user={user}
       role="developer"
       onLogout={handleLogout}
-      onNavigate={setActiveRoute}
+      onNavigate={handleNavigate}
       activeRoute={activeRoute}
     >
       {() => {
         if (activeRoute === "/") {
-          return <DeveloperDashboard user={user} />;
+          return <DeveloperDashboard />;
         }
         if (activeRoute === "/projects") {
           return (
             <ProjectsPage
+              readOnly
               description="Review your current project portfolio, teams and key performance indicators for all active initiatives in your department. Provide deep visibility into technical tasks to optimize software delivery cycles and team velocity."
+              onViewTasks={(projectId) => {
+                setBacklogProjectId(projectId);
+                setActiveRoute("/backlog");
+              }}
             />
           );
         }
         if (activeRoute === "/backlog") {
-          return <BacklogPage />;
+          return <BacklogPage canUpdateStatus initialProjectId={backlogProjectId} />;
         }
 
         if (activeRoute === "/analytics") {

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useClickOutside } from "../../hooks/useClickOutside";
 import { useTheme } from "../../contexts/useTheme";
 import { getInitials, ROLE_LABEL } from "../../lib/user";
@@ -31,6 +32,7 @@ export function AvatarMenu({ user, role, onLogout }: AvatarMenuProps) {
   const [open, setOpen] = useState(false);
   const { darkMode, toggleDarkMode } = useTheme();
   const ref = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
 
   useClickOutside(ref, open, () => setOpen(false));
 
@@ -95,6 +97,22 @@ export function AvatarMenu({ user, role, onLogout }: AvatarMenuProps) {
               </span>
             </button>
           </div>
+
+          {/* Developer's View (PO only) */}
+          {role === "po" && (
+            <div className={`border-t py-1.5 ${darkMode ? "border-slate-700" : "border-black/8"}`}>
+              <button
+                role="menuitem"
+                onClick={() => { setOpen(false); navigate("/developer"); }}
+                className={itemClass(darkMode)}
+              >
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="shrink-0" aria-hidden="true">
+                  <path d="M4 6l-3 2 3 2M12 6l3 2-3 2M9 4l-2 8" />
+                </svg>
+                Developer's View
+              </button>
+            </div>
+          )}
 
           {/* Sign out */}
           <div className={`border-t py-1.5 ${darkMode ? "border-slate-700" : "border-black/8"}`}>
