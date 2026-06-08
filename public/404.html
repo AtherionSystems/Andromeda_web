@@ -3,8 +3,19 @@
 <head>
     <meta charset="utf-8">
     <script>
-        sessionStorage.setItem('spa_redirect', window.location.pathname + window.location.search + window.location.hash);
-        window.location.replace('/Andromeda_web/');
+        var path = window.location.pathname;
+        var search = window.location.search;
+        var hash = window.location.hash;
+
+        // Strip the /Andromeda_web prefix to get the relative path
+        var base = '/Andromeda_web';
+        var relative = path.startsWith(base) ? path.slice(base.length) : path;
+
+        // Store the full relative path + query + hash for the SPA to restore
+        sessionStorage.setItem('spa_redirect', relative + search + hash);
+
+        // Always redirect to the base
+        window.location.replace(base + '/');
     </script>
 </head>
 <body></body>

@@ -8,7 +8,7 @@ async function bootstrap() {
   const path = window.location.pathname;
 
   // ── Handle OAuth2 callback ──────────────────────────────────────────────────
-  if (path === '/callback') {
+  if (path === '/callback' || path === '/Andromeda_web/callback') {
     try {
       await handleCallback();
       // Clean the URL and navigate to home
