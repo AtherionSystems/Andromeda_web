@@ -153,14 +153,9 @@ function BacklogPage({ canUpdateStatus = false, initialProjectId }: { canUpdateS
         .map((t) => t.id);
     });
 
-            const assignments = await getTaskAssignments(task.projectId, task.id);
-            const members: Member[] = assignments
-              .filter((assignment) => assignment.user != null)
-              .map((assignment) => ({
-                initials: memberInitials(assignment.user.username),
-                color: AVATAR_COLORS[assignment.user.id % AVATAR_COLORS.length],
-                name: assignment.user.username,
-              }));
+    const toFetch = tasks.filter(
+      (t) => visibleTaskIds.includes(t.id) && !loadedAssignmentsRef.current.has(t.id),
+    );
 
     const fetchVisibleAssignments = async () => {
       const pairs = await Promise.all(
