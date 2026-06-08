@@ -1,21 +1,19 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/auth";
-import { useTheme } from "../../contexts/useTheme";
 import AppLayout from "../../components/Layout/AppLayout";
 import ProjectsPage from "../../components/Projects/ProjectsPage";
 import PODashboard from "./PODashboard";
 import BacklogPage from "../../components/Backlog/BacklogPage"; 
 import { AnalyticsPage } from "@/components/Analytics-KPI/AnalyticsPage";
+import Configuration from "../Configuration";
 
 function POPage() {
   const { user, logout } = useAuth();
-  const { setDarkMode } = useTheme();
   const navigate = useNavigate();
   const [activeRoute, setActiveRoute] = useState("/");
 
   function handleLogout() {
-    setDarkMode(false);
     logout();
     navigate("/login", { replace: true });
   }
@@ -30,14 +28,13 @@ function POPage() {
       onNavigate={setActiveRoute}
       activeRoute={activeRoute}
     >
-      {(searchQuery) => {
-        // 2. Lógica de enrutamiento interno basada en activeRoute
+      {() => {
         if (activeRoute === "/") {
           return <PODashboard />;
         }
-        
+
         if (activeRoute === "/projects") {
-          return <ProjectsPage searchQuery={searchQuery} />;
+          return <ProjectsPage />;
         }
 
         // 3. Renderizado del Backlog cuando la ruta coincida
@@ -47,6 +44,10 @@ function POPage() {
 
         if (activeRoute === "/analytics") {
           return <AnalyticsPage/>;
+        }
+
+        if (activeRoute === "/settings") {
+          return <Configuration />;
         }
 
         // Estado por defecto para rutas que aún no tienen componente

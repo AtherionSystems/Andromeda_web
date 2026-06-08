@@ -28,7 +28,7 @@ const MemberAvatars: React.FC<MemberAvatarsProps> = ({ members, max = 4 }) => {
                 }
               : { marginLeft: i === 0 ? 0 : -4, zIndex: visible.length - i }
           }
-            className={`w-6 h-6 rounded-full border-2 flex items-center justify-center text-[9px] font-semibold text-white cursor-default ${
+            className={`w-7 h-7 rounded-full border-2 flex items-center justify-center text-[9px] font-semibold text-white cursor-default ${
               darkMode ? "border-slate-800" : "border-white"
             } ${
             member.color && member.color.startsWith("bg-") ? member.color : ""
@@ -40,7 +40,7 @@ const MemberAvatars: React.FC<MemberAvatarsProps> = ({ members, max = 4 }) => {
       {overflow > 0 && (
         <div
           style={{ marginLeft: -4 }}
-          className={`w-6 h-6 rounded-full border-2 flex items-center justify-center text-[9px] font-semibold ${
+          className={`w-7 h-7 rounded-full border-2 flex items-center justify-center text-[9px] font-semibold ${
             darkMode ? "border-slate-800 bg-slate-700 text-slate-100" : "border-white bg-[#d0dde0] text-[#4a6a7a]"
           }`}
         >

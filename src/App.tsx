@@ -1,7 +1,9 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
+import { ThemeProvider } from "./contexts/themeContext";
 import { useAuth } from "./contexts/auth";
 import LoginPage from "./pages/Login/LoginPage";
+import ForgotPasswordPage from "./pages/Login/ForgotPasswordPage";
 import LoggedOut from "./pages/Login/LoggedOut";
 import POPage from "./pages/PO/POPage";
 import DeveloperPage from "./pages/Developer/DeveloperPage";
@@ -39,6 +41,12 @@ function ProtectedRoute({ children, allowedRole }: ProtectedRouteProps) {
   return <>{children}</>;
 }
 
+function AuthRoute({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/login" replace />;
+  return <>{children}</>;
+}
+
 function AppRoutes() {
   const { user } = useAuth();
   const defaultDash = user ? roleDashboard(user.userType) : "/login";
@@ -51,6 +59,10 @@ function AppRoutes() {
         element={user ? <Navigate to={defaultDash} replace /> : <LoginPage />}
       />
       <Route
+        path="/forgot-password"
+        element={user ? <Navigate to={defaultDash} replace /> : <ForgotPasswordPage />}
+      />
+      <Route
         path="/po"
         element={
           <ProtectedRoute allowedRole="po">
@@ -61,9 +73,9 @@ function AppRoutes() {
       <Route
         path="/developer"
         element={
-          <ProtectedRoute allowedRole="developer">
+          <AuthRoute>
             <DeveloperPage />
-          </ProtectedRoute>
+          </AuthRoute>
         }
       />
       <Route path="/logged-out" element={<LoggedOut />} />
@@ -77,9 +89,11 @@ function AppRoutes() {
 function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <AppRoutes />
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
+      </ThemeProvider>
     </BrowserRouter>
   );
 }

@@ -23,12 +23,15 @@ const chartConfig = {
 interface TaskDistributionByStateProps {
   data?: DashboardTaskDistributionItem[]
 }
+interface TaskDistributionByStatePropsWithIndex extends TaskDistributionByStateProps {
+  index?: number;
+}
 
-export function TaskDistributionByState({ data }: TaskDistributionByStateProps) {
+export function TaskDistributionByState({ data, index }: TaskDistributionByStatePropsWithIndex) {
   const chartData = data ?? fallbackData
   const { darkMode } = useTheme()
   return (
-    <Card className={`flex flex-col gap-0 overflow-hidden rounded-lg border shadow-sm ${darkMode ? 'border-slate-700 bg-slate-800 text-slate-100' : 'border-[#C2D4D4] bg-white text-slate-900'}`}>
+    <Card style={{ animationDelay: `${(index ?? 0) * 70}ms` }} className={`card-entrance flex flex-col gap-0 overflow-hidden rounded-lg border shadow-sm ${darkMode ? 'border-slate-700 bg-slate-800 text-slate-100' : 'border-[#C2D4D4] bg-white text-slate-900'}`}>
       <CardHeader className="pb-0">
         <CardTitle className="text-base font-semibold text-foreground">
           Task Distribution by State

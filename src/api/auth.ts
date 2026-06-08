@@ -6,3 +6,8 @@ export const login = (body: LoginRequest): Promise<ApiUser> =>
     method: "POST",
     body: JSON.stringify(body),
   });
+
+export const getUsers = (): Promise<ApiUser[]> => apiFetch("/api/users");
+
+export const getUserById = (id: number): Promise<ApiUser> =>
+  apiFetch(`/api/users/${id}`);

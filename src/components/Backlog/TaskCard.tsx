@@ -6,11 +6,13 @@ import MemberAvatars from "../Projects/MemberAvatars";
 
 interface TaskCardProps {
   task: ApiTask;
-  assignedMembers?: Member[]; // Recibimos los miembros asignados
+  assignedMembers?: Member[];
   onClick: (task: ApiTask) => void;
+  onStatusToggle?: (task: ApiTask) => void;
+  index?: number;
 }
 
-const TaskCard: React.FC<TaskCardProps> = ({ task, assignedMembers = [], onClick }) => {
+const TaskCard: React.FC<TaskCardProps> = ({ task, assignedMembers = [], onClick, onStatusToggle, index }) => {
   const priorityStyles: Record<string, string> = {
     critical: "#C74634",
     high: "#FFB13F",
@@ -23,9 +25,10 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, assignedMembers = [], onClick
   const { darkMode } = useTheme();
 
   return (
-    <div 
+    <div className="card-entrance mb-4" style={{ animationDelay: `${(index ?? 0) * 70}ms` }}>
+    <div
       onClick={() => onClick(task)}
-      className={`group relative mb-4 flex flex-col border-l-2 border-transparent p-5 shadow-sm transition-all hover:shadow-md cursor-pointer ${darkMode ? 'bg-slate-900 text-slate-100' : 'bg-white text-slate-900'} borderradius rounded -10px`}
+      className={`group relative flex flex-col border-l-2 border-transparent p-5 shadow-sm transition-all hover:shadow-md cursor-pointer backdrop-blur-sm ${darkMode ? 'bg-slate-900/75 text-slate-100' : 'bg-white/75 text-slate-900'} rounded`}
     >
       <div className="absolute left-0 top-0 h-full w-[3px] borderradius rounded-20px" style={{ backgroundColor: barColor }} />
 
@@ -35,11 +38,30 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, assignedMembers = [], onClick
             Project: {task.projectName || `#${task.projectId ?? "N/A"}`}
           </span>
         </div>
-        {(task.priority === "high" || task.priority === "critical") && (
-          <span className={`${task.priority === "critical" ? "text-purple-600" : "text-red-600"} font-bold text-lg leading-none`}>
-            !
-          </span>
-        )}
+        <div className="flex items-center gap-1.5">
+          {(task.priority === "high" || task.priority === "critical") && (
+            <span className={`${task.priority === "critical" ? "text-purple-600" : "text-red-600"} font-bold text-lg leading-none`}>
+              !
+            </span>
+          )}
+          {onStatusToggle && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onStatusToggle(task); }}
+              title={task.status === "done" ? "Reopen task" : "Mark as done"}
+              className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+                task.status === "done"
+                  ? "border-green-500 bg-green-500 text-white"
+                  : darkMode
+                    ? "border-slate-500 bg-transparent text-transparent hover:border-green-400"
+                    : "border-slate-300 bg-transparent text-transparent hover:border-green-500"
+              }`}
+            >
+              <svg viewBox="0 0 10 8" width="8" height="8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M1 4l2.5 2.5L9 1" />
+              </svg>
+            </button>
+          )}
+        </div>
       </div>
 
       <h4 className={`mt-1 text-[14px] font-semibold leading-snug group-hover:text-[#69777B] transition-colors ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>
@@ -75,6 +97,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, assignedMembers = [], onClick
           )}
         </div>
       </div>
+    </div>
     </div>
   );
 };
