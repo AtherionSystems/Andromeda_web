@@ -46,7 +46,7 @@ interface IndividualPerformanceCardProps {
   loading: boolean;
 }
 
-export function IndividualPerformanceCard({ hoursRaw, tasksRaw, loading }: IndividualPerformanceCardProps) {
+export function IndividualPerformanceCard({ hoursRaw, tasksRaw }: IndividualPerformanceCardProps) {
   const { darkMode } = useTheme();
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
 
