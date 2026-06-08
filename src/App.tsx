@@ -8,7 +8,6 @@ import LoggedOut from "./pages/Login/LoggedOut";
 import POPage from "./pages/PO/POPage";
 import DeveloperPage from "./pages/Developer/DeveloperPage";
 import type { ReactNode } from "react";
-import { ThemeProvider } from "./contexts/themeContext";
 
 /** Shown briefly while bootstrap() exchanges the OCI auth code for tokens. */
 function OAuthCallbackPage() {

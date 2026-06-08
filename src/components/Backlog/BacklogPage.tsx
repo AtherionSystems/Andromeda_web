@@ -1,6 +1,6 @@
 import { useState, useEffect, useContext, useRef } from "react";
 import BacklogColumn from "../../components/Backlog/BacklogColumn";
-import type { ApiProject, ApiTask, ApiSprint } from "../../types/api";
+import type { ApiProject, ApiTask, ApiSprint, TaskStatus } from "../../types/api";
 import type { Member } from "../../types/project";
 import { getProjects, getProjectSprints } from "../../api/projects";
 import {
@@ -84,7 +84,7 @@ function BacklogPage({ canUpdateStatus = false, initialProjectId }: { canUpdateS
 
   async function handleStatusToggle(task: ApiTask) {
     if (task.projectId == null) return;
-    const newStatus = task.status === "done" ? "in_progress" : "done";
+    const newStatus: TaskStatus = task.status === "done" ? "in_progress" : "done";
     // Optimistic update
     const update = (prev: ApiTask[]) =>
       prev.map((t) => (t.id === task.id ? { ...t, status: newStatus } : t));

@@ -10,7 +10,7 @@ interface TopbarProps {
   onLogout: () => void;
 }
 
-function Topbar({ user, role, onViewProfile, onLogout }: TopbarProps) {
+function Topbar({ user, role, onLogout }: TopbarProps) {
   const { darkMode } = useTheme();
 
   return (
@@ -28,7 +28,7 @@ function Topbar({ user, role, onViewProfile, onLogout }: TopbarProps) {
       <div className="flex items-center gap-3">
         {/*<HelpButton />*/}
         {/* <NotificationsButton />*/}
-        <AvatarMenu user={user} role={role} onViewProfile={onViewProfile} onLogout={onLogout} />
+        <AvatarMenu user={user} role={role} onLogout={onLogout} />
       </div>
     </header>
   );
