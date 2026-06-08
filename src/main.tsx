@@ -6,29 +6,32 @@ import { handleCallback } from './ociAuth';
 
 async function bootstrap() {
   const path = window.location.pathname;
+  const search = window.location.search;
 
   // ── Handle OAuth2 callback ──────────────────────────────────────────────────
-  if (path === '/callback' || path === '/Andromeda_web/callback') {
+  if (
+      path === '/callback' ||
+      path === '/Andromeda_web/callback' ||
+      search.includes('code=')
+  ) {
     try {
       await handleCallback();
       // Clean the URL and navigate to home
-      window.history.replaceState({}, '', '/');
+      window.history.replaceState({}, '', '/Andromeda_web/');
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error('OAuth2 callback failed:', msg);
-      // Redirect to /login (not /) so React Router doesn't swallow the params.
-      // The LoginForm reads auth_error + desc and displays them.
       window.location.href =
-        `/login?auth_error=1&desc=${encodeURIComponent(msg)}`;
+          `/Andromeda_web/login?auth_error=1&desc=${encodeURIComponent(msg)}`;
       return;
     }
   }
 
   // ── Render app ─────────────────────────────────────────────────────────────
   ReactDOM.createRoot(document.getElementById('root')!).render(
-    <React.StrictMode>
-      <App />
-    </React.StrictMode>,
+      <React.StrictMode>
+        <App />
+      </React.StrictMode>,
   );
 }
 
