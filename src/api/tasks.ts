@@ -1,23 +1,74 @@
 import { apiFetch } from "./client";
+import { cache, TTL } from "../lib/cache";
 import type { ApiTask, ApiTaskAssignment } from "../types/api";
 
-export const getProjectTasks = (projectId: number): Promise<ApiTask[]> =>
-  apiFetch(`/api/projects/${projectId}/tasks`);
+// ─── reads ────────────────────────────────────────────────────────────────────
+
+export const getProjectTasks = (
+  projectId: number,
+  signal?: AbortSignal,
+): Promise<ApiTask[]> => {
+  const KEY = `tasks:project:${projectId}`;
+  const hit = cache.get<ApiTask[]>(KEY);
+  if (hit) return Promise.resolve(hit);
+
+  return apiFetch<ApiTask[]>(`/api/projects/${projectId}/tasks`, {
+    signal,
+  }).then((data) => {
+    cache.set(KEY, data, TTL.TASKS);
+    return data;
+  });
+};
 
 export const getSprintTasks = (
   projectId: number,
   sprintId: number,
-): Promise<ApiTask[]> =>
-  apiFetch(`/api/projects/${projectId}/sprints/${sprintId}/tasks`);
+): Promise<ApiTask[]> => {
+  const KEY = `tasks:sprint:${projectId}:${sprintId}`;
+  const hit = cache.get<ApiTask[]>(KEY);
+  if (hit) return Promise.resolve(hit);
 
-export const getTask = (projectId: number, taskId: number): Promise<ApiTask> =>
-  apiFetch(`/api/projects/${projectId}/tasks/${taskId}`);
+  return apiFetch<ApiTask[]>(
+    `/api/projects/${projectId}/sprints/${sprintId}/tasks`,
+  ).then((data) => {
+    cache.set(KEY, data, TTL.TASKS);
+    return data;
+  });
+};
+
+export const getTask = (
+  projectId: number,
+  taskId: number,
+): Promise<ApiTask> => {
+  const KEY = `task:${projectId}:${taskId}`;
+  const hit = cache.get<ApiTask>(KEY);
+  if (hit) return Promise.resolve(hit);
+
+  return apiFetch<ApiTask>(`/api/projects/${projectId}/tasks/${taskId}`).then(
+    (data) => {
+      cache.set(KEY, data, TTL.TASKS);
+      return data;
+    },
+  );
+};
 
 export const getTaskAssignments = (
   projectId: number,
   taskId: number,
-): Promise<ApiTaskAssignment[]> =>
-  apiFetch(`/api/projects/${projectId}/tasks/${taskId}/assignments`);
+): Promise<ApiTaskAssignment[]> => {
+  const KEY = `assignments:${projectId}:${taskId}`;
+  const hit = cache.get<ApiTaskAssignment[]>(KEY);
+  if (hit) return Promise.resolve(hit);
+
+  return apiFetch<ApiTaskAssignment[]>(
+    `/api/projects/${projectId}/tasks/${taskId}/assignments`,
+  ).then((data) => {
+    cache.set(KEY, data, TTL.ASSIGNMENTS);
+    return data;
+  });
+};
+
+// ─── mutations ────────────────────────────────────────────────────────────────
 
 export const createTask = (
   projectId: number,
@@ -25,9 +76,13 @@ export const createTask = (
     Omit<ApiTask, "id" | "createdAt" | "projectId" | "projectName">
   >,
 ): Promise<ApiTask> =>
-  apiFetch(`/api/projects/${projectId}/tasks`, {
+  apiFetch<ApiTask>(`/api/projects/${projectId}/tasks`, {
     method: "POST",
     body: JSON.stringify(body),
+  }).then((data) => {
+    cache.invalidatePrefix(`tasks:project:${projectId}`);
+    cache.invalidatePrefix(`tasks:sprint:${projectId}:`);
+    return data;
   });
 
 export const updateTask = (
@@ -37,12 +92,22 @@ export const updateTask = (
     Omit<ApiTask, "id" | "createdAt" | "projectId" | "projectName">
   >,
 ): Promise<ApiTask> =>
-  apiFetch(`/api/projects/${projectId}/tasks/${taskId}`, {
+  apiFetch<ApiTask>(`/api/projects/${projectId}/tasks/${taskId}`, {
     method: "PATCH",
     body: JSON.stringify(body),
+  }).then((data) => {
+    cache.invalidate(`task:${projectId}:${taskId}`);
+    cache.invalidatePrefix(`tasks:project:${projectId}`);
+    cache.invalidatePrefix(`tasks:sprint:${projectId}:`);
+    return data;
   });
 
 export const deleteTask = (projectId: number, taskId: number): Promise<void> =>
-  apiFetch(`/api/projects/${projectId}/tasks/${taskId}`, {
+  apiFetch<void>(`/api/projects/${projectId}/tasks/${taskId}`, {
     method: "DELETE",
+  }).then(() => {
+    cache.invalidate(`task:${projectId}:${taskId}`);
+    cache.invalidate(`assignments:${projectId}:${taskId}`);
+    cache.invalidatePrefix(`tasks:project:${projectId}`);
+    cache.invalidatePrefix(`tasks:sprint:${projectId}:`);
   });

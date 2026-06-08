@@ -1,10 +1,17 @@
-import React from "react";
+import React, { useState } from "react";
 import { useTheme } from "../../contexts/useTheme";
+import LegalModal from "./LegalModal";
+import { COMPLIANCE_MD, PRIVACY_MD, TERMS_MD } from "../../content/legal";
 
-const LINKS = ["COMPLIANCE", "PRIVACY POLICY", "TERMS OF SERVICE"];
+const LINKS = [
+  { label: "COMPLIANCE", content: COMPLIANCE_MD },
+  { label: "PRIVACY POLICY", content: PRIVACY_MD },
+  { label: "TERMS OF SERVICE", content: TERMS_MD },
+] as const;
 
 const Footer: React.FC = () => {
   const { darkMode } = useTheme();
+  const [openDoc, setOpenDoc] = useState<(typeof LINKS)[number] | null>(null);
 
   return (
     <footer
@@ -25,7 +32,8 @@ const Footer: React.FC = () => {
       <nav style={{ display: "flex", gap: 16 }}>
         {LINKS.map((link) => (
           <button
-            key={link}
+            key={link.label}
+            onClick={() => setOpenDoc(link)}
             style={{
               fontSize: 10,
               color: darkMode ? "#94a3b8" : "#8aaabb",
@@ -37,10 +45,16 @@ const Footer: React.FC = () => {
             }}
             className="dark:!text-slate-400"
           >
-            {link}
+            {link.label}
           </button>
         ))}
       </nav>
+
+      <LegalModal
+        isOpen={openDoc !== null}
+        onClose={() => setOpenDoc(null)}
+        content={openDoc?.content ?? ""}
+      />
     </footer>
   );
 };

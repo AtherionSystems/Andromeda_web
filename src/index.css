@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
 @layer base {
   * {
     box-sizing: border-box;
@@ -147,4 +152,97 @@
 .card-entrance {
   will-change: transform, opacity;
   animation: cardEntrance 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ── Legal document markdown (LegalModal) ── */
+.legal-prose {
+  font-size: 13px;
+  line-height: 1.7;
+  color: #334155;
+}
+.legal-prose-dark {
+  color: #cbd5e1;
+}
+
+.legal-prose h1 {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 0 0 12px;
+  color: #1a3a4a;
+}
+.legal-prose-dark h1 {
+  color: #f1f5f9;
+}
+
+.legal-prose h2 {
+  font-size: 15px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 26px 0 8px;
+  color: #C74634;
+}
+
+.legal-prose p {
+  margin: 0 0 12px;
+}
+
+.legal-prose ul {
+  list-style: disc;
+  padding-left: 20px;
+  margin: 0 0 12px;
+}
+.legal-prose li {
+  margin: 0 0 6px;
+}
+
+.legal-prose strong {
+  font-weight: 600;
+  color: #1a3a4a;
+}
+.legal-prose-dark strong {
+  color: #e2e8f0;
+}
+
+.legal-prose code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.06);
+}
+.legal-prose-dark code {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.legal-prose hr {
+  border: none;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  margin: 22px 0;
+}
+.legal-prose-dark hr {
+  border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+.legal-prose a {
+  color: #C74634;
+  text-decoration: underline;
+}
+
+.legal-prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 12px;
+  font-size: 12px;
+}
+.legal-prose th,
+.legal-prose td {
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  padding: 6px 10px;
+  text-align: left;
+}
+.legal-prose-dark th,
+.legal-prose-dark td {
+  border-color: rgba(255, 255, 255, 0.12);
 }

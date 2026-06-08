@@ -1,13 +1,14 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useWindowSize } from "../../hooks/useWindowSize";
-import { getProjects } from "../../api/projects";
+import { getProjects, deleteProject } from "../../api/projects";
 import { getProjectMembers } from "../../api/members";
 import type { ApiProject, ApiProjectMember } from "../../types/api";
 import type { Member } from "../../types/project";
 import ProjectCard from "./ProjectCard";
+import NewProjectModal from "./NewProjectModal";
+import SearchInput from "./SearchInput";
 
 interface ProjectsPageProps {
-  searchQuery: string;
   description?: string;
 }
 
@@ -34,40 +35,53 @@ function memberToAvatar(pm: ApiProjectMember): Member {
   return { initials, color, name: pm.username };
 }
 
-function ProjectsPage({ searchQuery, description }: ProjectsPageProps) {
+function ProjectsPage({ description }: ProjectsPageProps) {
   const { breakpoint } = useWindowSize();
   const [projects, setProjects] = useState<ApiProject[]>([]);
   const [memberMap, setMemberMap] = useState<Record<number, Member[]>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const hasFetched = useRef(false);
+
+  async function handleDelete(project: ApiProject) {
+    try {
+      await deleteProject(project.id);
+      setProjects((prev) => prev.filter((p) => p.id !== project.id));
+    } catch {
+      setError(`Could not delete "${project.name}". Please try again.`);
+    }
+  }
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [allProjects, allMembers] = await Promise.all([
+        getProjects(),
+        getProjectMembers(),
+      ]);
+      setProjects(allProjects);
+
+      const map: Record<number, Member[]> = {};
+      allMembers.forEach((pm) => {
+        if (!map[pm.projectId]) map[pm.projectId] = [];
+        map[pm.projectId].push(memberToAvatar(pm));
+      });
+      setMemberMap(map);
+    } catch {
+      setError("Could not load projects. Make sure the backend is running.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    async function load() {
-      setLoading(true);
-      setError(null);
-      try {
-        const [allProjects, allMembers] = await Promise.all([
-          getProjects(),
-          getProjectMembers(),
-        ]);
-        setProjects(allProjects);
-
-        const map: Record<number, Member[]> = {};
-        allMembers.forEach((pm) => {
-          if (!map[pm.projectId]) map[pm.projectId] = [];
-          map[pm.projectId].push(memberToAvatar(pm));
-        });
-        setMemberMap(map);
-      } catch {
-        setError(
-          "Could not load projects. Make sure the backend is running on port 8080.",
-        );
-      } finally {
-        setLoading(false);
-      }
-    }
+    if (hasFetched.current) return;
+    hasFetched.current = true;
     load();
-  }, []);
+  }, [load]);
 
   const filtered = projects.filter((p) => {
     const q = searchQuery.toLowerCase();
@@ -78,20 +92,17 @@ function ProjectsPage({ searchQuery, description }: ProjectsPageProps) {
   });
 
   return (
-    <div className="flex-1">
+    <div className="flex-1 px-6 pt-3 pb-4">
       {/* Header */}
       <div
-        className={`flex gap-3 mb-5 ${
+        className={`flex gap-3 mb-8 ${
           breakpoint === "mobile"
             ? "flex-col"
             : "flex-row items-start justify-between"
         }`}
       >
         <div>
-          <p className="text-[10px] tracking-[1.2px] uppercase text-oracle-muted mb-1">
-            Current Active Projects
-          </p>
-          <h1 className="text-[22px] font-normal text-oracle-dark">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
             My Projects
           </h1>
           <p className="text-[12px] text-oracle-muted mt-1 max-w-[420px] leading-relaxed">
@@ -99,19 +110,27 @@ function ProjectsPage({ searchQuery, description }: ProjectsPageProps) {
               "Review and manage your current project portfolio, teams and key performance indicators for all active initiatives assigned to your department."}
           </p>
         </div>
-        <div className="flex gap-2 mt-1">
-          <button
-            style={{ background: "#c74634" }}
-            className="w-8 h-8 border-none rounded bg-oracle-red text-white cursor-pointer text-sm flex items-center justify-center"
-          >
-            ✎
-          </button>
-          <button
-            style={{ background: "#c74634" }}
-            className="flex items-center gap-1.5 px-3.5 h-8 bg-oracle-red text-white border-none rounded text-[12px] font-medium cursor-pointer"
-          >
-            + NEW PROJECT
-          </button>
+        <div className="flex flex-col items-end gap-2 mt-1">
+          <SearchInput
+            value={searchQuery}
+            onChange={setSearchQuery}
+            inputClassName="w-[260px] text-[13px]"
+          />
+          <div className="flex gap-2">
+            <button
+              style={{ background: "#c74634" }}
+              className="w-8 h-8 border-none rounded bg-oracle-red text-white cursor-pointer text-sm flex items-center justify-center"
+            >
+              ✎
+            </button>
+            <button
+              style={{ background: "#c74634" }}
+              className="flex items-center gap-1.5 px-3.5 h-8 bg-oracle-red text-white border-none rounded text-[12px] font-medium cursor-pointer"
+              onClick={() => setModalOpen(true)}
+            >
+              + NEW PROJECT
+            </button>
+          </div>
         </div>
       </div>
 
@@ -152,6 +171,7 @@ function ProjectsPage({ searchQuery, description }: ProjectsPageProps) {
               project={project}
               members={memberMap[project.id] ?? []}
               index={i}
+              onDelete={handleDelete}
             />
           ))}
           {filtered.length === 0 && !loading && (
@@ -161,6 +181,14 @@ function ProjectsPage({ searchQuery, description }: ProjectsPageProps) {
           )}
         </div>
       )}
+      <NewProjectModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onCreated={() => {
+          hasFetched.current = false;
+          load();
+        }}
+      />
     </div>
   );
 }

@@ -24,10 +24,10 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, assignedMembers = [], onClick
   const { darkMode } = useTheme();
 
   return (
-    <div 
+    <div className="card-entrance mb-4" style={{ animationDelay: `${(index ?? 0) * 70}ms` }}>
+    <div
       onClick={() => onClick(task)}
-      className={`card-entrance group relative mb-4 flex flex-col border-l-2 border-transparent p-5 shadow-sm transition-all hover:shadow-md cursor-pointer ${darkMode ? 'bg-slate-900 text-slate-100' : 'bg-white text-slate-900'} borderradius rounded -10px`}
-      style={{ animationDelay: `${(index ?? 0) * 70}ms` }}
+      className={`group relative flex flex-col border-l-2 border-transparent p-5 shadow-sm transition-all hover:shadow-md cursor-pointer backdrop-blur-sm ${darkMode ? 'bg-slate-900/75 text-slate-100' : 'bg-white/75 text-slate-900'} rounded`}
     >
       <div className="absolute left-0 top-0 h-full w-[3px] borderradius rounded-20px" style={{ backgroundColor: barColor }} />
 
@@ -77,6 +77,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, assignedMembers = [], onClick
           )}
         </div>
       </div>
+    </div>
     </div>
   );
 };
