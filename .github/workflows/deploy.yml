@@ -30,6 +30,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Debug env vars
+        run: |
+          echo "AUTH_URL set: ${{ secrets.VITE_OCI_AUTH_URL != '' }}"
+          echo "TOKEN_URL set: ${{ secrets.VITE_OCI_TOKEN_URL != '' }}"
+
       - name: Build
         env:
           VITE_OCI_AUTH_URL: ${{ secrets.VITE_OCI_AUTH_URL }}
