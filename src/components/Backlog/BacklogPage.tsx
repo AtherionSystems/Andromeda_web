@@ -154,12 +154,8 @@ function BacklogPage({ canUpdateStatus = false, initialProjectId }: { canUpdateS
     });
 
     const toFetch = tasks.filter(
-      (t) =>
-        visibleTaskIds.includes(t.id) &&
-        !loadedAssignmentsRef.current.has(t.id),
+      (t) => visibleTaskIds.includes(t.id) && !loadedAssignmentsRef.current.has(t.id),
     );
-
-    if (toFetch.length === 0) return;
 
     const fetchVisibleAssignments = async () => {
       const pairs = await Promise.all(
