@@ -1,0 +1,50 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        env:
+          VITE_OCI_CLIENT_ID: ${{ secrets.VITE_OCI_CLIENT_ID }}
+          VITE_OCI_CLIENT_SECRET: ${{ secrets.VITE_OCI_CLIENT_SECRET }}
+          VITE_OCI_REDIRECT_URI: ${{ secrets.VITE_OCI_REDIRECT_URI }}
+          VITE_OCI_LOGOUT_URL: ${{ secrets.VITE_OCI_LOGOUT_URL }}
+          VITE_OCI_SCOPE: ${{ secrets.VITE_OCI_SCOPE }}
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+        run: npm run build
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
