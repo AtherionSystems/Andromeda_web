@@ -12,7 +12,7 @@ import Skeleton from "./Skeleton";
 export interface SprintPersonalEntry {
   sprintName: string;
   completed: number;
-  velocity: number;
+  velocity?: number;
 }
 
 const chartConfig = {
@@ -31,16 +31,17 @@ interface Props {
 }
 
 export default function MyTasksPerSprintCard({ darkMode, loading, data }: Props) {
+  const hasVelocity = data.some((d) => (d.velocity ?? 0) > 0);
   const chartData = data.map((d) => ({
     sprint: shorten(d.sprintName),
     completed: d.completed,
-    velocity: d.velocity,
+    velocity: d.velocity ?? 0,
   }));
   const tickColor = darkMode ? "#94a3b8" : "#6a8a9a";
   const gridColor = darkMode ? "#1e293b" : "#f0f4f5";
 
-  const avgVelocity = data.length > 0
-    ? Math.round((data.reduce((a, b) => a + b.velocity, 0) / data.length) * 10) / 10
+  const avgVelocity = hasVelocity && data.length > 0
+    ? Math.round((data.reduce((a, b) => a + (b.velocity ?? 0), 0) / data.length) * 10) / 10
     : 0;
   const totalDone = data.reduce((a, b) => a + b.completed, 0);
 
@@ -52,10 +53,12 @@ export default function MyTasksPerSprintCard({ darkMode, loading, data }: Props)
         </p>
         {!loading && data.length > 0 && (
           <div className="flex items-center gap-3 text-right">
-            <div>
-              <p className={`text-[8px] font-bold uppercase tracking-wider ${darkMode ? "text-slate-500" : "text-slate-400"}`}>Avg velocity</p>
-              <p className="text-[13px] font-bold text-[#c74634]">{avgVelocity} pts</p>
-            </div>
+            {hasVelocity && (
+              <div>
+                <p className={`text-[8px] font-bold uppercase tracking-wider ${darkMode ? "text-slate-500" : "text-slate-400"}`}>Avg velocity</p>
+                <p className="text-[13px] font-bold text-[#c74634]">{avgVelocity} pts</p>
+              </div>
+            )}
             <div>
               <p className={`text-[8px] font-bold uppercase tracking-wider ${darkMode ? "text-slate-500" : "text-slate-400"}`}>Total done</p>
               <p className="text-[13px] font-bold text-[#4a3f7a]">{totalDone}</p>
@@ -90,13 +93,15 @@ export default function MyTasksPerSprintCard({ darkMode, loading, data }: Props)
             <ChartTooltip content={<ChartTooltipContent />} />
             <ChartLegend content={<ChartLegendContent />} />
             <Bar dataKey="completed" fill="var(--color-completed)" radius={4} />
-            <Line
-              type="monotone"
-              dataKey="velocity"
-              stroke="var(--color-velocity)"
-              strokeWidth={2}
-              dot={{ r: 3, fill: "var(--color-velocity)" }}
-            />
+            {hasVelocity && (
+              <Line
+                type="monotone"
+                dataKey="velocity"
+                stroke="var(--color-velocity)"
+                strokeWidth={2}
+                dot={{ r: 3, fill: "var(--color-velocity)" }}
+              />
+            )}
           </ComposedChart>
         </ChartContainer>
       )}

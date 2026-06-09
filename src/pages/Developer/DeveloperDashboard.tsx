@@ -2,10 +2,15 @@ import { useEffect, useState } from "react";
 import { useTheme } from "../../contexts/useTheme";
 import { useAuth } from "../../contexts/auth";
 import { getHealth } from "../../api/health";
-import { getMyDashboard, getMyTasks, getMyProjects } from "../../api/me";
+import {
+  getMyDashboard,
+  getMyTasks,
+  getMyProjects,
+  type ApiMeTask,
+} from "../../api/me";
 import { getProjectSprints } from "../../api/projects";
 import { getSprintTasks } from "../../api/tasks";
-import type { ApiTask } from "../../types/api";
+import type { ApiProject, ApiTask } from "../../types/api";
 import type { EnrichedTask } from "../../components/dashboard/types";
 import { PRIORITY_ORDER } from "../../components/dashboard/types";
 import Skeleton from "../../components/dashboard/Skeleton";
@@ -36,7 +41,19 @@ interface SprintTaskEntry {
   tasks?: ApiTask[];
 }
 
-// ── Sprint progress card ───────────────────────────────────────────────────────
+const EMPTY_COUNTS: MyTaskStatusCounts = { todo: 0, in_progress: 0, review: 0, done: 0 };
+
+// Convert taskDistribution array → object indexed by status.
+function distributionArrayToCounts(items: { status: string; total: number }[]): MyTaskStatusCounts {
+  const out: MyTaskStatusCounts = { ...EMPTY_COUNTS };
+  for (const item of items) {
+    const key = item.status as keyof MyTaskStatusCounts;
+    if (key in out) out[key] = item.total;
+  }
+  return out;
+}
+
+// ── Sprint progress card (kept) ────────────────────────────────────────────────
 
 function SprintProgressCard({
   items,
@@ -119,17 +136,44 @@ function SprintProgressCard({
   );
 }
 
+// ── Adapter: ApiMeTask → EnrichedTask for UpcomingCard ────────────────────────
+
+function meTaskToEnriched(t: ApiMeTask): EnrichedTask {
+  return {
+    id: t.id,
+    title: t.title,
+    description: t.description,
+    priority: t.priority,
+    status: t.status,
+    estimatedHours: t.estimatedHours,
+    actualHours: t.actualHours,
+    storyPoints: null,
+    acceptanceCriteria: null,
+    startDate: t.startDate,
+    dueDate: t.dueDate,
+    actualEnd: t.actualEnd,
+    createdAt: t.startDate ?? "",
+    projectId: 0,
+    projectName: t.projectName,
+  };
+}
+
 // ── Main dashboard ─────────────────────────────────────────────────────────────
 
 export default function DeveloperDashboard() {
   const { darkMode } = useTheme();
   const { user } = useAuth();
 
-  const [loading, setLoading]               = useState(true);
-  const [error, setError]                   = useState<string | null>(null);
   const [healthUp, setHealthUp]             = useState<boolean | null>(null);
+  const [projects, setProjects]             = useState<ApiProject[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
+  const [projectsLoading, setProjectsLoading] = useState(true);
+  const [dashboardLoading, setDashboardLoading] = useState(true);
+  const [tasksLoading, setTasksLoading]     = useState(true);
+  const [error, setError]                   = useState<string | null>(null);
+
   const [upcoming, setUpcoming]             = useState<EnrichedTask[]>([]);
-  const [myCounts, setMyCounts]             = useState<MyTaskStatusCounts>({ todo: 0, in_progress: 0, review: 0, done: 0 });
+  const [myCounts, setMyCounts]             = useState<MyTaskStatusCounts>(EMPTY_COUNTS);
   const [hoursPerSprint, setHoursPerSprint] = useState<SprintHourEntry[]>([]);
   const [tasksPerSprint, setTasksPerSprint] = useState<SprintPersonalEntry[]>([]);
   const [sprintProgress, setSprintProgress] = useState<SprintProgressItem[]>([]);
@@ -144,91 +188,69 @@ export default function DeveloperDashboard() {
     return () => ac.abort();
   }, []);
 
-  // ── Main load: personal dashboard ───────────────────────────────────────────
+  // ── Load my projects + my tasks (one-shot, no projectId dependency) ─────────
   useEffect(() => {
     if (!user) return;
     const ac = new AbortController();
 
     async function load(signal: AbortSignal) {
-      setLoading(true);
+      setProjectsLoading(true);
+      setTasksLoading(true);
       setError(null);
       try {
-        // Fire the three personal endpoints in parallel.
-        const [dashboardRes, tasksRes, projectsRes] = await Promise.allSettled([
-          getMyDashboard(undefined, signal),
-          getMyTasks(undefined, signal),
+        const [projectsRes, tasksRes] = await Promise.allSettled([
           getMyProjects(signal),
+          getMyTasks(undefined, signal),
         ]);
 
         if (signal.aborted) return;
 
-        // 1. Dashboard (3 charts)
-        if (dashboardRes.status === "fulfilled") {
-          const d = dashboardRes.value;
-          setMyCounts(d.taskDistribution);
-          setHoursPerSprint(
-            d.hoursPerSprint.map((h) => ({
-              sprintName: h.sprintName,
-              estimated: h.estimatedHours,
-              actual:    h.actualHours,
-            })),
-          );
-          setTasksPerSprint(
-            d.tasksPerSprint.map((t) => ({
-              sprintName: t.sprintName,
-              completed:  t.tasksCompleted,
-              velocity:   t.storyPoints,
-            })),
-          );
-        } else {
-          console.error("getMyDashboard failed:", dashboardRes.reason);
-        }
-
-        // 2. Upcoming tasks (open ones, sorted by priority)
-        if (tasksRes.status === "fulfilled") {
-          const open = tasksRes.value
-            .filter((t) => t.status !== "done")
-            .sort((a, b) => (PRIORITY_ORDER[a.priority] ?? 4) - (PRIORITY_ORDER[b.priority] ?? 4))
-            .map<EnrichedTask>((t) => ({
-              ...t,
-              projectId: t.projectId ?? 0,
-              projectName: t.projectName ?? "",
-            }));
-          setUpcoming(open);
-        } else {
-          console.error("getMyTasks failed:", tasksRes.reason);
-        }
-
-        // 3. Active sprint progress — derived from my projects only.
         if (projectsRes.status === "fulfilled") {
+          setProjects(projectsRes.value);
+          if (projectsRes.value.length > 0) {
+            setSelectedProjectId((curr) => curr ?? projectsRes.value[0].id);
+          }
           loadSprintProgress(projectsRes.value, signal).catch((err) => {
-            if (!signal.aborted) console.error("Sprint progress load failed:", err);
+            if (!signal.aborted) console.error("Sprint progress failed:", err);
           });
         } else {
           console.error("getMyProjects failed:", projectsRes.reason);
           setSprintLoading(false);
         }
+
+        if (tasksRes.status === "fulfilled") {
+          const open = tasksRes.value
+            .filter((t) => t.status !== "done")
+            .sort((a, b) => (PRIORITY_ORDER[a.priority] ?? 4) - (PRIORITY_ORDER[b.priority] ?? 4))
+            .map(meTaskToEnriched);
+          setUpcoming(open);
+        } else {
+          console.error("getMyTasks failed:", tasksRes.reason);
+        }
       } catch (err) {
         if (signal.aborted) return;
-        console.error("DeveloperDashboard load error:", err);
+        console.error("Dashboard load error:", err);
         setError("Could not load the dashboard. Make sure the backend is running.");
       } finally {
-        if (!signal.aborted) setLoading(false);
+        if (!signal.aborted) {
+          setProjectsLoading(false);
+          setTasksLoading(false);
+        }
       }
     }
 
     async function loadSprintProgress(
-      projects: { id: number; name: string }[],
+      list: ApiProject[],
       signal: AbortSignal,
     ) {
       setSprintLoading(true);
       try {
         const sprintLists = await Promise.allSettled(
-          projects.map((p) => getProjectSprints(p.id)),
+          list.map((p) => getProjectSprints(p.id)),
         );
         if (signal.aborted) return;
 
-        const activePairs = projects
+        const activePairs = list
           .map((project, i) => {
             const r = sprintLists[i];
             if (r.status !== "fulfilled") return null;
@@ -272,12 +294,74 @@ export default function DeveloperDashboard() {
     return () => ac.abort();
   }, [user]);
 
+  // ── Load /api/me/dashboard whenever selectedProjectId changes ───────────────
+  useEffect(() => {
+    if (selectedProjectId == null) return;
+    const ac = new AbortController();
+
+    async function load(projectId: number, signal: AbortSignal) {
+      setDashboardLoading(true);
+      try {
+        const d = await getMyDashboard(projectId, signal);
+        if (signal.aborted) return;
+
+        setMyCounts(distributionArrayToCounts(d.taskDistribution));
+        setHoursPerSprint(
+          (d.myHoursPerSprint ?? []).map((h) => ({
+            sprintName: h.sprintName,
+            estimated: h.estimatedHours,
+            actual: h.actualHours,
+          })),
+        );
+        setTasksPerSprint(
+          (d.myTasksPerSprint ?? []).map((t) => ({
+            sprintName: t.sprintName,
+            completed: t.tasksCompleted,
+          })),
+        );
+      } catch (err) {
+        if (signal.aborted) return;
+        console.error("getMyDashboard failed:", err);
+        setMyCounts(EMPTY_COUNTS);
+        setHoursPerSprint([]);
+        setTasksPerSprint([]);
+      } finally {
+        if (!signal.aborted) setDashboardLoading(false);
+      }
+    }
+
+    load(selectedProjectId, ac.signal);
+    return () => ac.abort();
+  }, [selectedProjectId]);
+
+  const overallLoading = projectsLoading || tasksLoading;
+
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <div className="pb-6">
-      <h1 className={`mb-5 text-2xl font-bold italic tracking-tight ${darkMode ? "text-slate-200" : "text-gray-900"}`}>
-        {loading ? <Skeleton w={320} h={28} darkMode={darkMode} /> : "Developer's View"}
-      </h1>
+      <div className="mb-5 flex items-end justify-between gap-4 flex-wrap">
+        <h1 className={`text-2xl font-bold italic tracking-tight ${darkMode ? "text-slate-200" : "text-gray-900"}`}>
+          {overallLoading ? <Skeleton w={320} h={28} darkMode={darkMode} /> : "Developer's View"}
+        </h1>
+
+        {/* Project selector — feeds /api/me/dashboard */}
+        {projects.length > 0 && (
+          <div className="flex flex-col">
+            <label className={`mb-1 text-[10px] font-bold uppercase tracking-[0.12em] ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+              Dashboard project
+            </label>
+            <select
+              value={selectedProjectId ?? ""}
+              onChange={(e) => setSelectedProjectId(Number(e.target.value))}
+              className={`rounded-lg border px-3 py-2 text-sm shadow-sm outline-none transition-colors focus:border-[#c74634] ${darkMode ? "bg-slate-800 border-slate-700 text-slate-200" : "bg-white border-slate-200 text-slate-700"}`}
+            >
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
+      </div>
 
       {error && (
         <div className="mb-4 px-4 py-3 bg-[#fef2f2] border border-[#fecaca] rounded-lg text-[#c74634] text-sm">
@@ -285,17 +369,23 @@ export default function DeveloperDashboard() {
         </div>
       )}
 
+      {!projectsLoading && projects.length === 0 && (
+        <div className={`mb-4 px-4 py-3 rounded-lg text-[12px] ${darkMode ? "bg-slate-800 border border-slate-700 text-slate-300" : "bg-[#fff8e1] border border-[#ffd97a] text-[#7a5a00]"}`}>
+          You aren't a member of any projects yet. Ask a project owner to add you.
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-3.5 items-start">
         <div className="flex flex-col gap-3.5">
-          <MyTaskDistributionCard darkMode={darkMode} loading={loading} counts={myCounts} />
-          <HoursPerSprintCard darkMode={darkMode} loading={loading} data={hoursPerSprint} />
-          <MyTasksPerSprintCard darkMode={darkMode} loading={loading} data={tasksPerSprint} />
+          <MyTaskDistributionCard darkMode={darkMode} loading={dashboardLoading} counts={myCounts} />
+          <HoursPerSprintCard    darkMode={darkMode} loading={dashboardLoading} data={hoursPerSprint} />
+          <MyTasksPerSprintCard  darkMode={darkMode} loading={dashboardLoading} data={tasksPerSprint} />
         </div>
 
         <div className="flex flex-col gap-3.5">
-          <UpcomingCard darkMode={darkMode} tasks={upcoming} loading={loading} />
+          <UpcomingCard       darkMode={darkMode} tasks={upcoming} loading={tasksLoading} />
           <SprintProgressCard items={sprintProgress} loading={sprintLoading} darkMode={darkMode} />
-          <SystemConfigCard healthUp={healthUp} />
+          <SystemConfigCard   healthUp={healthUp} />
         </div>
       </div>
     </div>
