@@ -130,10 +130,18 @@ function SprintProgressCard({
 
 // ── Main dashboard ─────────────────────────────────────────────────────────────
 
-function nameMatches(assigneeName: string | null | undefined, user: { name: string; username: string }): boolean {
-  if (!assigneeName) return false;
-  const a = assigneeName.trim().toLowerCase();
-  return a === user.name.trim().toLowerCase() || a === user.username.trim().toLowerCase();
+function isMine(
+  assignee: { userId?: number | null; userName?: string | null },
+  user: { id: number; name: string; username: string },
+): boolean {
+  // Prefer userId — names can be ambiguous (e.g. duplicates, spaces, casing).
+  if (assignee.userId != null && assignee.userId === user.id) return true;
+  if (!assignee.userName) return false;
+  const a = assignee.userName.trim().toLowerCase();
+  return (
+    a === user.name.trim().toLowerCase() ||
+    a === user.username.trim().toLowerCase()
+  );
 }
 
 export default function DeveloperDashboard() {
@@ -149,6 +157,7 @@ export default function DeveloperDashboard() {
   const [tasksPerSprint, setTasksPerSprint] = useState<SprintPersonalEntry[]>([]);
   const [sprintProgress, setSprintProgress] = useState<SprintProgressItem[]>([]);
   const [sprintLoading, setSprintLoading]   = useState(true);
+  const [diag, setDiag]                     = useState<{ projects: number; sprints: number; sprintTasks: number; mine: number } | null>(null);
 
   // ── Health probe ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -176,6 +185,7 @@ export default function DeveloperDashboard() {
           setTasksPerSprint([]);
           setObjectives([]);
           setSprintProgress([]);
+          setDiag({ projects: 0, sprints: 0, sprintTasks: 0, mine: 0 });
           return;
         }
 
@@ -230,7 +240,7 @@ export default function DeveloperDashboard() {
 
           // My tasks only.
           const mine = allTasksInSprint.filter((t) =>
-            (t.assignees ?? []).some((a) => nameMatches(a.userName, user!)),
+            (t.assignees ?? []).some((a) => isMine(a, user!)),
           );
 
           if (mine.length === 0) return;
@@ -280,6 +290,23 @@ export default function DeveloperDashboard() {
         setTasksPerSprint([...tasksMap.values()]);
         setSprintProgress([...sprintProgressMap.values()]);
 
+        // Diagnostic counters for the empty-state hint.
+        const totalSprintTasks = sprintTaskResults
+          .filter((r): r is PromiseFulfilledResult<unknown> => r.status === "fulfilled")
+          .reduce((acc, r) => {
+            const v = r.value as unknown;
+            if (Array.isArray(v) && v.length > 0 && typeof (v[0] as SprintTaskEntry).tasks !== "undefined") {
+              return acc + (v as SprintTaskEntry[]).reduce((a, e) => a + (e.tasks?.length ?? 0), 0);
+            }
+            return acc + (Array.isArray(v) ? v.length : 0);
+          }, 0);
+        setDiag({
+          projects: projects.length,
+          sprints: sprintPairs.length,
+          sprintTasks: totalSprintTasks,
+          mine: myTasks.length,
+        });
+
         setObjectives(
           myTasks
             .filter((t) => t.status !== "done")
@@ -311,6 +338,24 @@ export default function DeveloperDashboard() {
       {error && (
         <div className="mb-4 px-4 py-3 bg-[#fef2f2] border border-[#fecaca] rounded-lg text-[#c74634] text-sm">
           {error}
+        </div>
+      )}
+
+      {!loading && !error && diag && diag.mine === 0 && (
+        <div className={`mb-4 px-4 py-3 rounded-lg text-[12px] leading-relaxed ${darkMode ? "bg-slate-800 border border-slate-700 text-slate-300" : "bg-[#fff8e1] border border-[#ffd97a] text-[#7a5a00]"}`}>
+          <p className="font-semibold mb-1">No personal data to show yet.</p>
+          <p>
+            Found <b>{diag.projects}</b> project(s), <b>{diag.sprints}</b> sprint(s),
+            and <b>{diag.sprintTasks}</b> task(s) in sprints — but <b>0</b> of them
+            are assigned to <code>{user?.username}</code> (id <code>{user?.id}</code>).
+          </p>
+          <p className="mt-1">
+            {diag.projects === 0
+              ? "Start the backend (localhost:8080) and make sure it has seeded projects."
+              : diag.sprintTasks === 0
+                ? "Projects exist but no sprint tasks were returned. Add tasks to a sprint via the backend."
+                : "Tasks exist but none are assigned to you. Assign yourself in the backlog or via the backend admin to populate the charts."}
+          </p>
         </div>
       )}
 
