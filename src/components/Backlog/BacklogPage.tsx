@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext, useRef } from "react";
+import React, { useState, useEffect, useContext, useRef } from "react";
 import BacklogColumn from "../../components/Backlog/BacklogColumn";
 import type { ApiProject, ApiTask, ApiSprint, TaskStatus } from "../../types/api";
 import type { Member } from "../../types/project";
@@ -44,7 +44,7 @@ function memberInitials(username: string): string {
   return username.slice(0, 2).toUpperCase();
 }
 
-function BacklogPage({ canUpdateStatus = false, initialProjectId }: { canUpdateStatus?: boolean; initialProjectId?: number }) {
+function BacklogPage({ canUpdateStatus = false, isPOView = false, initialProjectId }: { canUpdateStatus?: boolean; isPOView?: boolean; initialProjectId?: number }) {
   const [projects, setProjects] = useState<ApiProject[]>([]);
   const [tasks, setTasks] = useState<ApiTask[]>([]);
   const [sprints, setSprints] = useState<ApiSprint[]>([]);
@@ -82,10 +82,8 @@ function BacklogPage({ canUpdateStatus = false, initialProjectId }: { canUpdateS
     setColumnPages((prev) => ({ ...prev, [column]: page }));
   };
 
-  async function handleStatusToggle(task: ApiTask) {
+  async function handleStatusChange(task: ApiTask, newStatus: TaskStatus) {
     if (task.projectId == null) return;
-    const newStatus: TaskStatus = task.status === "done" ? "in_progress" : "done";
-    // Optimistic update
     const update = (prev: ApiTask[]) =>
       prev.map((t) => (t.id === task.id ? { ...t, status: newStatus } : t));
     setTasks(update);
@@ -95,7 +93,6 @@ function BacklogPage({ canUpdateStatus = false, initialProjectId }: { canUpdateS
     try {
       await updateTask(task.projectId, task.id, { status: newStatus });
     } catch {
-      // Rollback on failure
       const rollback = (prev: ApiTask[]) =>
         prev.map((t) => (t.id === task.id ? { ...t, status: task.status } : t));
       setTasks(rollback);
@@ -104,6 +101,12 @@ function BacklogPage({ canUpdateStatus = false, initialProjectId }: { canUpdateS
       );
     }
   }
+
+  const activeRole: "developer" | "po" | undefined = isPOView
+    ? "po"
+    : canUpdateStatus
+      ? "developer"
+      : undefined;
 
   // ── Initial load ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -144,7 +147,7 @@ function BacklogPage({ canUpdateStatus = false, initialProjectId }: { canUpdateS
   // ── Assignments: fetch only for tasks visible on current page ───────────────
   useEffect(() => {
     const visibleTaskIds = (
-      ["todo", "in_progress", "review", "done"] as const
+      ["todo", "in_progress", "review", "revision", "done"] as const
     ).flatMap((status) => {
       const columnTasks = tasks.filter((t) => t.status === status);
       const page = columnPages[status] ?? 0;
@@ -441,45 +444,33 @@ function BacklogPage({ canUpdateStatus = false, initialProjectId }: { canUpdateS
       <div className="flex flex-1 min-h-0 items-stretch gap-6 overflow-hidden px-8 pb-8 pt-2">
         <BacklogColumn
           title="To Do"
-          subtitle={
-            selectedSprintName === "all" ? "All Sprints" : selectedSprintName
-          }
+          subtitle={selectedSprintName === "all" ? "All Sprints" : selectedSprintName}
           tasks={visibleTasks.filter((t) => t.status === "todo")}
           onTaskClick={setSelectedTask}
-          onStatusToggle={canUpdateStatus ? handleStatusToggle : undefined}
           taskAssignments={taskAssignments}
           onPageChange={(page) => handlePageChange("todo", page)}
         />
         <BacklogColumn
           title="In Progress"
-          subtitle={
-            selectedSprintName === "all" ? "All Sprints" : selectedSprintName
-          }
-          tasks={visibleTasks.filter((t) => t.status === "in_progress")}
+          subtitle={selectedSprintName === "all" ? "All Sprints" : selectedSprintName}
+          tasks={visibleTasks.filter((t) => t.status === "in_progress" || t.status === "revision")}
           onTaskClick={setSelectedTask}
-          onStatusToggle={canUpdateStatus ? handleStatusToggle : undefined}
           taskAssignments={taskAssignments}
           onPageChange={(page) => handlePageChange("in_progress", page)}
         />
         <BacklogColumn
           title="Review"
-          subtitle={
-            selectedSprintName === "all" ? "All Sprints" : selectedSprintName
-          }
+          subtitle={selectedSprintName === "all" ? "All Sprints" : selectedSprintName}
           tasks={visibleTasks.filter((t) => t.status === "review")}
           onTaskClick={setSelectedTask}
-          onStatusToggle={canUpdateStatus ? handleStatusToggle : undefined}
           taskAssignments={taskAssignments}
           onPageChange={(page) => handlePageChange("review", page)}
         />
         <BacklogColumn
           title="Done"
-          subtitle={
-            selectedSprintName === "all" ? "All Sprints" : selectedSprintName
-          }
+          subtitle={selectedSprintName === "all" ? "All Sprints" : selectedSprintName}
           tasks={visibleTasks.filter((t) => t.status === "done")}
           onTaskClick={setSelectedTask}
-          onStatusToggle={canUpdateStatus ? handleStatusToggle : undefined}
           taskAssignments={taskAssignments}
           onPageChange={(page) => handlePageChange("done", page)}
         />
@@ -508,6 +499,12 @@ function BacklogPage({ canUpdateStatus = false, initialProjectId }: { canUpdateS
               subtitle: "Under Review",
               color: "#3b82f6",
               icon: "◎",
+            },
+            revision: {
+              label: "REVISION",
+              subtitle: "Returned by PO",
+              color: "#f59e0b",
+              icon: "↩",
             },
             done: {
               label: "DONE",
@@ -678,6 +675,53 @@ function BacklogPage({ canUpdateStatus = false, initialProjectId }: { canUpdateS
                       </p>
                     </div>
                   </div>
+
+                  {/* Action buttons */}
+                  {(() => {
+                    const actionBtn = (
+                      label: string,
+                      newStatus: TaskStatus,
+                      style: React.CSSProperties,
+                    ) => (
+                      <button
+                        key={newStatus}
+                        onClick={() => {
+                          handleStatusChange(selectedTask, newStatus);
+                          setSelectedTask(null);
+                        }}
+                        style={style}
+                        className="w-full rounded-lg px-3 py-2 text-[11px] font-bold uppercase tracking-wide transition-opacity hover:opacity-85"
+                      >
+                        {label}
+                      </button>
+                    );
+
+                    if (activeRole === "developer") {
+                      if (selectedTask.status === "todo")
+                        return actionBtn("▶ Start Project", "in_progress", { backgroundColor: "#4a3f7a", color: "#fff" });
+                      if (selectedTask.status === "in_progress")
+                        return (
+                          <div className="flex flex-col gap-2">
+                            {actionBtn("→ Send to Review", "review", { backgroundColor: "#00688C", color: "#fff" })}
+                            {actionBtn("← Back to To Do", "todo", { backgroundColor: "#64748b", color: "#fff" })}
+                          </div>
+                        );
+                      if (selectedTask.status === "revision")
+                        return actionBtn("▶ Resume Work", "in_progress", { backgroundColor: "#4a3f7a", color: "#fff" });
+                    }
+
+                    if (activeRole === "po") {
+                      if (selectedTask.status === "review")
+                        return (
+                          <div className="flex flex-col gap-2">
+                            {actionBtn("✓ Mark as Done", "done", { backgroundColor: "#2a6a5a", color: "#fff" })}
+                            {actionBtn("↩ Return for Revision", "revision", { backgroundColor: "#FFB13F", color: "#1e293b" })}
+                          </div>
+                        );
+                    }
+
+                    return null;
+                  })()}
                 </div>
               </div>
             </div>

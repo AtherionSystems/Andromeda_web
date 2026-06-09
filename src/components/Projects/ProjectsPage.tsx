@@ -11,7 +11,6 @@ import SearchInput from "./SearchInput";
 interface ProjectsPageProps {
   description?: string;
   readOnly?: boolean;
-  onViewTasks?: (projectId: number) => void;
 }
 
 const AVATAR_COLORS = [
@@ -37,7 +36,7 @@ function memberToAvatar(pm: ApiProjectMember): Member {
   return { initials, color, name: pm.username };
 }
 
-function ProjectsPage({ description, readOnly = false, onViewTasks }: ProjectsPageProps) {
+function ProjectsPage({ description, readOnly = false }: ProjectsPageProps) {
   const { breakpoint } = useWindowSize();
   const [projects, setProjects] = useState<ApiProject[]>([]);
   const [memberMap, setMemberMap] = useState<Record<number, Member[]>>({});
@@ -176,7 +175,6 @@ function ProjectsPage({ description, readOnly = false, onViewTasks }: ProjectsPa
               members={memberMap[project.id] ?? []}
               index={i}
               onDelete={readOnly ? undefined : handleDelete}
-              onViewTasks={onViewTasks ? () => onViewTasks(project.id) : undefined}
             />
           ))}
           {filtered.length === 0 && !loading && (

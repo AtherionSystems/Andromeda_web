@@ -33,7 +33,7 @@ export interface ApiProject {
 
 // ─── Tasks ───────────────────────────────────────────────────────────────────
 
-export type TaskStatus = "todo" | "in_progress" | "review" | "done";
+export type TaskStatus = "todo" | "in_progress" | "review" | "revision" | "done";
 export type TaskPriority = "low" | "medium" | "high" | "critical";
 
 export interface ApiTask {
