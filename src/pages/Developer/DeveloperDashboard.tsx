@@ -178,6 +178,7 @@ export default function DeveloperDashboard() {
   const [tasksPerSprint, setTasksPerSprint] = useState<SprintPersonalEntry[]>([]);
   const [sprintProgress, setSprintProgress] = useState<SprintProgressItem[]>([]);
   const [sprintLoading, setSprintLoading]   = useState(true);
+  const [debug, setDebug]                   = useState<{ raw: unknown; distSum: number; hoursLen: number; tasksLen: number } | null>(null);
 
   // ── Health probe ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -305,26 +306,41 @@ export default function DeveloperDashboard() {
         const d = await getMyDashboard(projectId, signal);
         if (signal.aborted) return;
 
-        setMyCounts(distributionArrayToCounts(d.taskDistribution));
+        // Log so we can compare against the assumed shape.
+        console.log("[/api/me/dashboard] raw response:", d);
+
+        const dist = d.taskDistribution ?? [];
+        const hours = d.myHoursPerSprint ?? [];
+        const tasks = d.myTasksPerSprint ?? [];
+
+        setMyCounts(distributionArrayToCounts(dist));
         setHoursPerSprint(
-          (d.myHoursPerSprint ?? []).map((h) => ({
+          hours.map((h) => ({
             sprintName: h.sprintName,
             estimated: h.estimatedHours,
             actual: h.actualHours,
           })),
         );
         setTasksPerSprint(
-          (d.myTasksPerSprint ?? []).map((t) => ({
+          tasks.map((t) => ({
             sprintName: t.sprintName,
             completed: t.tasksCompleted,
           })),
         );
+
+        setDebug({
+          raw: d,
+          distSum: Array.isArray(dist) ? dist.reduce((acc, x) => acc + (x.total ?? 0), 0) : -1,
+          hoursLen: Array.isArray(hours) ? hours.length : -1,
+          tasksLen: Array.isArray(tasks) ? tasks.length : -1,
+        });
       } catch (err) {
         if (signal.aborted) return;
         console.error("getMyDashboard failed:", err);
         setMyCounts(EMPTY_COUNTS);
         setHoursPerSprint([]);
         setTasksPerSprint([]);
+        setDebug({ raw: { error: String(err) }, distSum: -1, hoursLen: -1, tasksLen: -1 });
       } finally {
         if (!signal.aborted) setDashboardLoading(false);
       }
@@ -373,6 +389,22 @@ export default function DeveloperDashboard() {
         <div className={`mb-4 px-4 py-3 rounded-lg text-[12px] ${darkMode ? "bg-slate-800 border border-slate-700 text-slate-300" : "bg-[#fff8e1] border border-[#ffd97a] text-[#7a5a00]"}`}>
           You aren't a member of any projects yet. Ask a project owner to add you.
         </div>
+      )}
+
+      {!dashboardLoading && debug && (debug.distSum === 0 && debug.hoursLen === 0 && debug.tasksLen === 0) && (
+        <details className={`mb-4 px-4 py-3 rounded-lg text-[12px] ${darkMode ? "bg-slate-800 border border-slate-700 text-slate-300" : "bg-[#fff8e1] border border-[#ffd97a] text-[#7a5a00]"}`}>
+          <summary className="cursor-pointer font-semibold">
+            Dashboard response was empty for project #{selectedProjectId} — click to see raw JSON
+          </summary>
+          <div className="mt-2 space-y-1">
+            <p>distribution total: <b>{debug.distSum}</b> · hours rows: <b>{debug.hoursLen}</b> · tasks rows: <b>{debug.tasksLen}</b></p>
+            <p>If all are 0, the backend has no sprint/assignment data for you in this project.</p>
+            <p>If the numbers look right but charts still empty, the field names probably differ from <code>taskDistribution / myHoursPerSprint / myTasksPerSprint</code>.</p>
+            <pre className={`mt-2 max-h-60 overflow-auto rounded p-2 text-[10px] ${darkMode ? "bg-slate-900" : "bg-white"}`}>
+              {JSON.stringify(debug.raw, null, 2)}
+            </pre>
+          </div>
+        </details>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-3.5 items-start">
