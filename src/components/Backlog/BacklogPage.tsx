@@ -82,17 +82,54 @@ function BacklogPage({ canUpdateStatus = false, isPOView = false, initialProject
     setColumnPages((prev) => ({ ...prev, [column]: page }));
   };
 
+  // Backend doesn't yet support "revision" — we map it to "in_progress" on the
+  // wire and track the revision flag locally via sessionStorage so it survives
+  // navigation within the session.
+  const REVISION_KEY = "andromeda:revision-task-ids";
+  const readRevisionSet = (): Set<number> => {
+    try {
+      const raw = sessionStorage.getItem(REVISION_KEY);
+      return raw ? new Set(JSON.parse(raw) as number[]) : new Set();
+    } catch {
+      return new Set();
+    }
+  };
+  const writeRevisionSet = (set: Set<number>) => {
+    try {
+      sessionStorage.setItem(REVISION_KEY, JSON.stringify([...set]));
+    } catch {
+      /* ignore quota / privacy errors */
+    }
+  };
+
   async function handleStatusChange(task: ApiTask, newStatus: TaskStatus) {
     if (task.projectId == null) return;
+
+    const apiStatus: TaskStatus = newStatus === "revision" ? "in_progress" : newStatus;
+
+    // Update the local revision flag set.
+    const revSet = readRevisionSet();
+    if (newStatus === "revision") revSet.add(task.id);
+    else revSet.delete(task.id);
+    writeRevisionSet(revSet);
+
     const update = (prev: ApiTask[]) =>
       prev.map((t) => (t.id === task.id ? { ...t, status: newStatus } : t));
     setTasks(update);
     baseTasksRef.current = baseTasksRef.current.map((t) =>
       t.id === task.id ? { ...t, status: newStatus } : t,
     );
+
     try {
-      await updateTask(task.projectId, task.id, { status: newStatus });
-    } catch {
+      await updateTask(task.projectId, task.id, { status: apiStatus });
+    } catch (err) {
+      console.error("Failed to update task status:", err);
+      // Rollback revision flag too.
+      const rollbackRev = readRevisionSet();
+      if (task.status === "revision") rollbackRev.add(task.id);
+      else rollbackRev.delete(task.id);
+      writeRevisionSet(rollbackRev);
+
       const rollback = (prev: ApiTask[]) =>
         prev.map((t) => (t.id === task.id ? { ...t, status: task.status } : t));
       setTasks(rollback);
@@ -131,8 +168,15 @@ function BacklogPage({ canUpdateStatus = false, isPOView = false, initialProject
         );
 
         const allTasks = taskArrays.flat();
-        baseTasksRef.current = allTasks;
-        setTasks(allTasks);
+        // Apply session-stored revision flags so they survive remount.
+        const revSet = readRevisionSet();
+        const tagged = allTasks.map((t) =>
+          revSet.has(t.id) && t.status === "in_progress"
+            ? { ...t, status: "revision" as TaskStatus }
+            : t,
+        );
+        baseTasksRef.current = tagged;
+        setTasks(tagged);
       } catch (err) {
         console.error("Error fetching tasks:", err);
         setError("Unable to load backlog tasks right now.");
