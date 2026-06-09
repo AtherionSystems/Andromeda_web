@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
 import { useTheme } from "../../contexts/useTheme";
 import { useAuth } from "../../contexts/auth";
-import { getProjects, getProjectSprints } from "../../api/projects";
-import { getSprintTasks } from "../../api/tasks";
 import { getHealth } from "../../api/health";
+import { getMyDashboard, getMyTasks, getMyProjects } from "../../api/me";
+import { getProjectSprints } from "../../api/projects";
+import { getSprintTasks } from "../../api/tasks";
 import type { ApiTask } from "../../types/api";
 import type { EnrichedTask } from "../../components/dashboard/types";
 import { PRIORITY_ORDER } from "../../components/dashboard/types";
 import Skeleton from "../../components/dashboard/Skeleton";
-import CurrentObjectivesCard from "../../components/dashboard/CurrentObjectivesCard";
 import UpcomingCard from "../../components/dashboard/UpcomingCard";
 import SystemConfigCard from "../../components/dashboard/SystemConfigCard";
 import MyTaskDistributionCard, {
@@ -30,22 +30,13 @@ interface SprintProgressItem {
   total: number;
 }
 
-interface RawAssignee {
-  userName: string | null;
-  userId: number;
-}
-
-interface RawSprintTask extends ApiTask {
-  assignees?: RawAssignee[];
-}
-
 interface SprintTaskEntry {
   sprintId: number;
   sprintName: string;
-  tasks?: RawSprintTask[];
+  tasks?: ApiTask[];
 }
 
-// ── Sprint progress card (kept) ────────────────────────────────────────────────
+// ── Sprint progress card ───────────────────────────────────────────────────────
 
 function SprintProgressCard({
   items,
@@ -130,20 +121,6 @@ function SprintProgressCard({
 
 // ── Main dashboard ─────────────────────────────────────────────────────────────
 
-function isMine(
-  assignee: { userId?: number | null; userName?: string | null },
-  user: { id: number; name: string; username: string },
-): boolean {
-  // Prefer userId — names can be ambiguous (e.g. duplicates, spaces, casing).
-  if (assignee.userId != null && assignee.userId === user.id) return true;
-  if (!assignee.userName) return false;
-  const a = assignee.userName.trim().toLowerCase();
-  return (
-    a === user.name.trim().toLowerCase() ||
-    a === user.username.trim().toLowerCase()
-  );
-}
-
 export default function DeveloperDashboard() {
   const { darkMode } = useTheme();
   const { user } = useAuth();
@@ -151,13 +128,12 @@ export default function DeveloperDashboard() {
   const [loading, setLoading]               = useState(true);
   const [error, setError]                   = useState<string | null>(null);
   const [healthUp, setHealthUp]             = useState<boolean | null>(null);
-  const [objectives, setObjectives]         = useState<EnrichedTask[]>([]);
+  const [upcoming, setUpcoming]             = useState<EnrichedTask[]>([]);
   const [myCounts, setMyCounts]             = useState<MyTaskStatusCounts>({ todo: 0, in_progress: 0, review: 0, done: 0 });
   const [hoursPerSprint, setHoursPerSprint] = useState<SprintHourEntry[]>([]);
   const [tasksPerSprint, setTasksPerSprint] = useState<SprintPersonalEntry[]>([]);
   const [sprintProgress, setSprintProgress] = useState<SprintProgressItem[]>([]);
   const [sprintLoading, setSprintLoading]   = useState(true);
-  const [diag, setDiag]                     = useState<{ projects: number; sprints: number; sprintTasks: number; mine: number } | null>(null);
 
   // ── Health probe ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -168,7 +144,7 @@ export default function DeveloperDashboard() {
     return () => ac.abort();
   }, []);
 
-  // ── Main load ──────────────────────────────────────────────────────────────
+  // ── Main load: personal dashboard ───────────────────────────────────────────
   useEffect(() => {
     if (!user) return;
     const ac = new AbortController();
@@ -177,150 +153,118 @@ export default function DeveloperDashboard() {
       setLoading(true);
       setError(null);
       try {
-        const projectsRaw = await getProjects(signal);
-        const projects = Array.isArray(projectsRaw) ? projectsRaw : [];
-        if (projects.length === 0) {
-          setMyCounts({ todo: 0, in_progress: 0, review: 0, done: 0 });
-          setHoursPerSprint([]);
-          setTasksPerSprint([]);
-          setObjectives([]);
-          setSprintProgress([]);
-          setDiag({ projects: 0, sprints: 0, sprintTasks: 0, mine: 0 });
-          return;
+        // Fire the three personal endpoints in parallel.
+        const [dashboardRes, tasksRes, projectsRes] = await Promise.allSettled([
+          getMyDashboard(undefined, signal),
+          getMyTasks(undefined, signal),
+          getMyProjects(signal),
+        ]);
+
+        if (signal.aborted) return;
+
+        // 1. Dashboard (3 charts)
+        if (dashboardRes.status === "fulfilled") {
+          const d = dashboardRes.value;
+          setMyCounts(d.taskDistribution);
+          setHoursPerSprint(
+            d.hoursPerSprint.map((h) => ({
+              sprintName: h.sprintName,
+              estimated: h.estimatedHours,
+              actual:    h.actualHours,
+            })),
+          );
+          setTasksPerSprint(
+            d.tasksPerSprint.map((t) => ({
+              sprintName: t.sprintName,
+              completed:  t.tasksCompleted,
+              velocity:   t.storyPoints,
+            })),
+          );
+        } else {
+          console.error("getMyDashboard failed:", dashboardRes.reason);
         }
 
-        // Get all sprints per project.
-        const sprintResults = await Promise.allSettled(
-          projects.map((p) => getProjectSprints(p.id)),
-        );
-        if (signal.aborted) return;
-
-        // Build a flat list of (project, sprint) pairs.
-        const sprintPairs = projects.flatMap((project, i) => {
-          const res = sprintResults[i];
-          if (res.status !== "fulfilled") return [];
-          return res.value.map((sprint) => ({ project, sprint }));
-        });
-
-        // Fetch sprint tasks for each pair (includes assignees).
-        const sprintTaskResults = await Promise.allSettled(
-          sprintPairs.map(({ project, sprint }) =>
-            getSprintTasks(project.id, sprint.id),
-          ),
-        );
-        if (signal.aborted) return;
-
-        // Aggregate per sprint.
-        const hoursMap = new Map<string, SprintHourEntry>();
-        const tasksMap = new Map<string, SprintPersonalEntry>();
-        const myTasksAcrossAll: EnrichedTask[] = [];
-        const sprintProgressMap = new Map<string, SprintProgressItem>();
-
-        sprintPairs.forEach(({ project, sprint }, i) => {
-          const res = sprintTaskResults[i];
-          if (res.status !== "fulfilled") return;
-
-          const raw = res.value as unknown as SprintTaskEntry[];
-          const entries: SprintTaskEntry[] = Array.isArray(raw) && raw[0]?.tasks !== undefined
-            ? raw
-            : [{ sprintId: sprint.id, sprintName: sprint.name, tasks: res.value as RawSprintTask[] }];
-
-          const allTasksInSprint: RawSprintTask[] = entries.flatMap((e) => e.tasks ?? []);
-
-          // Active-sprint progress (overall, not just my tasks).
-          if (sprint.status === "active" && allTasksInSprint.length > 0) {
-            const key = `${project.name}::${sprint.name}`;
-            sprintProgressMap.set(key, {
-              projectName: project.name,
-              sprintName: sprint.name,
-              total: allTasksInSprint.length,
-              done: allTasksInSprint.filter((t) => t.status === "done").length,
-            });
-          }
-
-          // My tasks only.
-          const mine = allTasksInSprint.filter((t) =>
-            (t.assignees ?? []).some((a) => isMine(a, user!)),
-          );
-
-          if (mine.length === 0) return;
-
-          const estimated = mine.reduce((acc, t) => acc + (t.estimatedHours ?? 0), 0);
-          const actual    = mine.reduce((acc, t) => acc + (t.actualHours ?? 0), 0);
-          const completed = mine.filter((t) => t.status === "done").length;
-          const velocity  = mine
-            .filter((t) => t.status === "done")
-            .reduce((acc, t) => acc + (t.storyPoints ?? 0), 0);
-
-          const existingHours = hoursMap.get(sprint.name);
-          hoursMap.set(sprint.name, {
-            sprintName: sprint.name,
-            estimated: (existingHours?.estimated ?? 0) + estimated,
-            actual:    (existingHours?.actual ?? 0) + actual,
-          });
-
-          const existingTasks = tasksMap.get(sprint.name);
-          tasksMap.set(sprint.name, {
-            sprintName: sprint.name,
-            completed: (existingTasks?.completed ?? 0) + completed,
-            velocity:  (existingTasks?.velocity ?? 0) + velocity,
-          });
-
-          for (const t of mine) {
-            myTasksAcrossAll.push({ ...t, projectId: project.id, projectName: project.name });
-          }
-        });
-
-        // Dedupe my tasks by id (a task may appear in multiple sprint entries).
-        const seen = new Set<number>();
-        const myTasks: EnrichedTask[] = myTasksAcrossAll.filter((t) => {
-          if (seen.has(t.id)) return false;
-          seen.add(t.id);
-          return true;
-        });
-
-        setMyCounts({
-          todo:        myTasks.filter((t) => t.status === "todo").length,
-          in_progress: myTasks.filter((t) => t.status === "in_progress").length,
-          review:      myTasks.filter((t) => t.status === "review").length,
-          done:        myTasks.filter((t) => t.status === "done").length,
-        });
-
-        setHoursPerSprint([...hoursMap.values()]);
-        setTasksPerSprint([...tasksMap.values()]);
-        setSprintProgress([...sprintProgressMap.values()]);
-
-        // Diagnostic counters for the empty-state hint.
-        const totalSprintTasks = sprintTaskResults
-          .filter((r): r is PromiseFulfilledResult<unknown> => r.status === "fulfilled")
-          .reduce((acc, r) => {
-            const v = r.value as unknown;
-            if (Array.isArray(v) && v.length > 0 && typeof (v[0] as SprintTaskEntry).tasks !== "undefined") {
-              return acc + (v as SprintTaskEntry[]).reduce((a, e) => a + (e.tasks?.length ?? 0), 0);
-            }
-            return acc + (Array.isArray(v) ? v.length : 0);
-          }, 0);
-        setDiag({
-          projects: projects.length,
-          sprints: sprintPairs.length,
-          sprintTasks: totalSprintTasks,
-          mine: myTasks.length,
-        });
-
-        setObjectives(
-          myTasks
+        // 2. Upcoming tasks (open ones, sorted by priority)
+        if (tasksRes.status === "fulfilled") {
+          const open = tasksRes.value
             .filter((t) => t.status !== "done")
-            .sort((a, b) => (PRIORITY_ORDER[a.priority] ?? 4) - (PRIORITY_ORDER[b.priority] ?? 4)),
-        );
+            .sort((a, b) => (PRIORITY_ORDER[a.priority] ?? 4) - (PRIORITY_ORDER[b.priority] ?? 4))
+            .map<EnrichedTask>((t) => ({
+              ...t,
+              projectId: t.projectId ?? 0,
+              projectName: t.projectName ?? "",
+            }));
+          setUpcoming(open);
+        } else {
+          console.error("getMyTasks failed:", tasksRes.reason);
+        }
+
+        // 3. Active sprint progress — derived from my projects only.
+        if (projectsRes.status === "fulfilled") {
+          loadSprintProgress(projectsRes.value, signal).catch((err) => {
+            if (!signal.aborted) console.error("Sprint progress load failed:", err);
+          });
+        } else {
+          console.error("getMyProjects failed:", projectsRes.reason);
+          setSprintLoading(false);
+        }
       } catch (err) {
         if (signal.aborted) return;
         console.error("DeveloperDashboard load error:", err);
         setError("Could not load the dashboard. Make sure the backend is running.");
       } finally {
-        if (!signal.aborted) {
-          setLoading(false);
-          setSprintLoading(false);
-        }
+        if (!signal.aborted) setLoading(false);
+      }
+    }
+
+    async function loadSprintProgress(
+      projects: { id: number; name: string }[],
+      signal: AbortSignal,
+    ) {
+      setSprintLoading(true);
+      try {
+        const sprintLists = await Promise.allSettled(
+          projects.map((p) => getProjectSprints(p.id)),
+        );
+        if (signal.aborted) return;
+
+        const activePairs = projects
+          .map((project, i) => {
+            const r = sprintLists[i];
+            if (r.status !== "fulfilled") return null;
+            const active = r.value.find((s) => s.status === "active");
+            return active ? { project, sprint: active } : null;
+          })
+          .filter((x): x is NonNullable<typeof x> => x !== null);
+
+        const sprintTaskResults = await Promise.allSettled(
+          activePairs.map(({ project, sprint }) =>
+            getSprintTasks(project.id, sprint.id),
+          ),
+        );
+        if (signal.aborted) return;
+
+        const items: SprintProgressItem[] = activePairs
+          .map(({ project, sprint }, i) => {
+            const r = sprintTaskResults[i];
+            if (r.status !== "fulfilled") return null;
+            const raw = r.value as unknown as SprintTaskEntry[];
+            const tasks: ApiTask[] =
+              Array.isArray(raw) && raw[0]?.tasks !== undefined
+                ? raw.flatMap((e) => e.tasks ?? [])
+                : (r.value as ApiTask[]);
+            return {
+              projectName: project.name,
+              sprintName: sprint.name,
+              total: tasks.length,
+              done:  tasks.filter((t) => t.status === "done").length,
+            };
+          })
+          .filter((x): x is SprintProgressItem => x !== null && x.total > 0);
+
+        setSprintProgress(items);
+      } finally {
+        if (!signal.aborted) setSprintLoading(false);
       }
     }
 
@@ -341,34 +285,15 @@ export default function DeveloperDashboard() {
         </div>
       )}
 
-      {!loading && !error && diag && diag.mine === 0 && (
-        <div className={`mb-4 px-4 py-3 rounded-lg text-[12px] leading-relaxed ${darkMode ? "bg-slate-800 border border-slate-700 text-slate-300" : "bg-[#fff8e1] border border-[#ffd97a] text-[#7a5a00]"}`}>
-          <p className="font-semibold mb-1">No personal data to show yet.</p>
-          <p>
-            Found <b>{diag.projects}</b> project(s), <b>{diag.sprints}</b> sprint(s),
-            and <b>{diag.sprintTasks}</b> task(s) in sprints — but <b>0</b> of them
-            are assigned to <code>{user?.username}</code> (id <code>{user?.id}</code>).
-          </p>
-          <p className="mt-1">
-            {diag.projects === 0
-              ? "Start the backend (localhost:8080) and make sure it has seeded projects."
-              : diag.sprintTasks === 0
-                ? "Projects exist but no sprint tasks were returned. Add tasks to a sprint via the backend."
-                : "Tasks exist but none are assigned to you. Assign yourself in the backlog or via the backend admin to populate the charts."}
-          </p>
-        </div>
-      )}
-
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-3.5 items-start">
         <div className="flex flex-col gap-3.5">
           <MyTaskDistributionCard darkMode={darkMode} loading={loading} counts={myCounts} />
           <HoursPerSprintCard darkMode={darkMode} loading={loading} data={hoursPerSprint} />
           <MyTasksPerSprintCard darkMode={darkMode} loading={loading} data={tasksPerSprint} />
-          <CurrentObjectivesCard loading={loading} darkMode={darkMode} objectives={objectives} />
         </div>
 
         <div className="flex flex-col gap-3.5">
-          <UpcomingCard darkMode={darkMode} tasks={objectives} loading={loading} />
+          <UpcomingCard darkMode={darkMode} tasks={upcoming} loading={loading} />
           <SprintProgressCard items={sprintProgress} loading={sprintLoading} darkMode={darkMode} />
           <SystemConfigCard healthUp={healthUp} />
         </div>
