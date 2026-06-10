@@ -24,12 +24,14 @@ export default defineConfig({
     // so /callback is handled correctly without extra config.
     proxy: {
       '/api': {
-        target: 'http://localhost:8080',
+        target: 'https://140.84.181.53.nip.io',
         changeOrigin: true,
+        secure: true,
       },
       '/health': {
-        target: 'http://localhost:8080',
+        target: 'https://140.84.181.53.nip.io',
         changeOrigin: true,
+        secure: true,
       },
     },
   },
