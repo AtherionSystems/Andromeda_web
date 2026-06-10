@@ -1,9 +1,8 @@
+import { useState } from "react";
 import { useTheme } from "../../../contexts/useTheme";
+import type { ApiSprint } from "../../../types/api";
 
-// Static April 2024 mock to match the design.
-function buildAprilGrid() {
-  const year = 2024;
-  const month = 3; // April (0-indexed)
+function buildGrid(year: number, month: number) {
   const firstWeekday = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const prevDays = new Date(year, month, 0).getDate();
@@ -20,33 +19,95 @@ function buildAprilGrid() {
   return weeks;
 }
 
-const APRIL_WEEKS = buildAprilGrid();
-const SELECTED_DAY = 7;
-const DOT_DAYS = new Set([3, 12]);
+const MONTH_NAMES = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
 
-function CalendarWidget() {
+interface CalendarWidgetProps {
+  /** Sprint list from the parent — used to show dots on days with sprint activity */
+  sprints?: ApiSprint[];
+}
+
+function CalendarWidget({ sprints = [] }: CalendarWidgetProps) {
   const { darkMode } = useTheme();
+
+  const today = new Date();
+  const [year, setYear] = useState(today.getFullYear());
+  const [month, setMonth] = useState(today.getMonth());
+
+  const weeks = buildGrid(year, month);
+
+  // Build a set of days-of-month that have a sprint starting or ending this month
+  const sprintDays = new Set<number>();
+  sprints.forEach((s) => {
+    for (const iso of [s.startDate, s.dueDate, s.actualEnd]) {
+      if (!iso) continue;
+      const d = new Date(iso);
+      if (d.getFullYear() === year && d.getMonth() === month)
+        sprintDays.add(d.getDate());
+    }
+  });
+
+  const prevMonth = () => {
+    if (month === 0) {
+      setYear((y) => y - 1);
+      setMonth(11);
+    } else setMonth((m) => m - 1);
+  };
+  const nextMonth = () => {
+    if (month === 11) {
+      setYear((y) => y + 1);
+      setMonth(0);
+    } else setMonth((m) => m + 1);
+  };
+
+  const isToday = (day: number) =>
+    day === today.getDate() &&
+    month === today.getMonth() &&
+    year === today.getFullYear();
 
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
-        <p className={`text-sm font-semibold ${darkMode ? "text-slate-100" : "text-slate-800"}`}>
-          April 2024
+        <p
+          className={`text-sm font-semibold ${darkMode ? "text-slate-100" : "text-slate-800"}`}
+        >
+          {MONTH_NAMES[month]} {year}
         </p>
         <div className="flex gap-1">
-          {["‹", "›"].map((c) => (
-            <button
-              key={c}
-              type="button"
-              className={`flex h-6 w-6 items-center justify-center rounded text-sm ${
-                darkMode
-                  ? "text-slate-400 hover:bg-slate-800"
-                  : "text-slate-500 hover:bg-slate-100"
-              }`}
-            >
-              {c}
-            </button>
-          ))}
+          <button
+            type="button"
+            onClick={prevMonth}
+            className={`flex h-6 w-6 items-center justify-center rounded text-sm ${
+              darkMode
+                ? "text-slate-400 hover:bg-slate-800"
+                : "text-slate-500 hover:bg-slate-100"
+            }`}
+          >
+            ‹
+          </button>
+          <button
+            type="button"
+            onClick={nextMonth}
+            className={`flex h-6 w-6 items-center justify-center rounded text-sm ${
+              darkMode
+                ? "text-slate-400 hover:bg-slate-800"
+                : "text-slate-500 hover:bg-slate-100"
+            }`}
+          >
+            ›
+          </button>
         </div>
       </div>
 
@@ -60,14 +121,14 @@ function CalendarWidget() {
           </span>
         ))}
 
-        {APRIL_WEEKS.flat().map((cell, i) => {
-          const isSelected = cell.current && cell.day === SELECTED_DAY;
-          const hasDot = cell.current && DOT_DAYS.has(cell.day);
+        {weeks.flat().map((cell, i) => {
+          const today_ = cell.current && isToday(cell.day);
+          const hasDot = cell.current && sprintDays.has(cell.day);
           return (
             <div key={i} className="flex flex-col items-center">
               <span
                 className={`flex h-7 w-7 items-center justify-center rounded text-[12px] ${
-                  isSelected
+                  today_
                     ? "bg-[#c74634] font-semibold text-white"
                     : !cell.current
                       ? darkMode

@@ -55,6 +55,9 @@ export interface ApiTask {
   projectName?: string;
   sprintId?: number;
   sprintName?: string;
+  // capabilities
+  capabilityId?: number | null;
+  featureId?: number | null;
 }
 
 export interface ApiTaskAssignment {
