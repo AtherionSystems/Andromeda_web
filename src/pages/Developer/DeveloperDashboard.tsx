@@ -44,11 +44,26 @@ interface SprintTaskEntry {
 const EMPTY_COUNTS: MyTaskStatusCounts = { todo: 0, in_progress: 0, review: 0, done: 0 };
 
 // Convert taskDistribution array → object indexed by status.
+// Normalizes the status so it tolerates different casings/separators
+// (e.g. "TODO", "IN_PROGRESS", "in-progress", "InProgress").
+function normalizeStatus(raw: string): keyof MyTaskStatusCounts | null {
+  const s = raw
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_") // dashes/spaces → underscore
+    .replace(/([a-z])([A-Z])/g, "$1_$2"); // camelCase → snake_case (already lowercased but kept for safety)
+  if (s === "todo")        return "todo";
+  if (s === "in_progress") return "in_progress";
+  if (s === "review")      return "review";
+  if (s === "done")        return "done";
+  return null;
+}
+
 function distributionArrayToCounts(items: { status: string; total: number }[]): MyTaskStatusCounts {
   const out: MyTaskStatusCounts = { ...EMPTY_COUNTS };
   for (const item of items) {
-    const key = item.status as keyof MyTaskStatusCounts;
-    if (key in out) out[key] = item.total;
+    const key = normalizeStatus(item.status ?? "");
+    if (key) out[key] = item.total ?? 0;
   }
   return out;
 }
@@ -308,12 +323,15 @@ export default function DeveloperDashboard() {
 
         // Log so we can compare against the assumed shape.
         console.log("[/api/me/dashboard] raw response:", d);
+        console.log("[/api/me/dashboard] taskDistribution raw:", d.taskDistribution);
 
         const dist = d.taskDistribution ?? [];
         const hours = d.myHoursPerSprint ?? [];
         const tasks = d.myTasksPerSprint ?? [];
 
-        setMyCounts(distributionArrayToCounts(dist));
+        const counts = distributionArrayToCounts(dist);
+        console.log("[/api/me/dashboard] normalized counts:", counts);
+        setMyCounts(counts);
         setHoursPerSprint(
           hours.map((h) => ({
             sprintName: h.sprintName,
@@ -391,15 +409,19 @@ export default function DeveloperDashboard() {
         </div>
       )}
 
-      {!dashboardLoading && debug && (debug.distSum === 0 && debug.hoursLen === 0 && debug.tasksLen === 0) && (
+      {!dashboardLoading && debug && debug.distSum === 0 && (
         <details className={`mb-4 px-4 py-3 rounded-lg text-[12px] ${darkMode ? "bg-slate-800 border border-slate-700 text-slate-300" : "bg-[#fff8e1] border border-[#ffd97a] text-[#7a5a00]"}`}>
           <summary className="cursor-pointer font-semibold">
-            Dashboard response was empty for project #{selectedProjectId} — click to see raw JSON
+            Task distribution is empty for project #{selectedProjectId} — click to inspect raw JSON
           </summary>
           <div className="mt-2 space-y-1">
             <p>distribution total: <b>{debug.distSum}</b> · hours rows: <b>{debug.hoursLen}</b> · tasks rows: <b>{debug.tasksLen}</b></p>
-            <p>If all are 0, the backend has no sprint/assignment data for you in this project.</p>
-            <p>If the numbers look right but charts still empty, the field names probably differ from <code>taskDistribution / myHoursPerSprint / myTasksPerSprint</code>.</p>
+            <p>
+              If hours/tasks rows have data but distribution total is 0, the <code>status</code> values
+              probably differ from <code>todo / in_progress / review / done</code> (e.g. they may be
+              uppercase or camelCase). The console log shows the exact <code>taskDistribution</code> array
+              the backend returned.
+            </p>
             <pre className={`mt-2 max-h-60 overflow-auto rounded p-2 text-[10px] ${darkMode ? "bg-slate-900" : "bg-white"}`}>
               {JSON.stringify(debug.raw, null, 2)}
             </pre>
