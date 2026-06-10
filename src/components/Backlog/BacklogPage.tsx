@@ -3,12 +3,14 @@ import BacklogColumn from "../../components/Backlog/BacklogColumn";
 import type { ApiProject, ApiTask, ApiSprint, TaskStatus } from "../../types/api";
 import type { Member } from "../../types/project";
 import { getProjects, getProjectSprints } from "../../api/projects";
+import { getMyProjects, getMyTasks, type ApiMeTask } from "../../api/me";
 import {
   getProjectTasks,
   getTaskAssignments,
   getSprintTasks,
   updateTask,
 } from "../../api/tasks";
+import { useAuth } from "../../contexts/auth";
 import MemberAvatars from "../Projects/MemberAvatars";
 import { ThemeContext } from "../../contexts/themeContextValue";
 
@@ -44,7 +46,39 @@ function memberInitials(username: string): string {
   return username.slice(0, 2).toUpperCase();
 }
 
-function BacklogPage({ canUpdateStatus = false, isPOView = false, initialProjectId }: { canUpdateStatus?: boolean; isPOView?: boolean; initialProjectId?: number }) {
+function meTaskToApiTask(m: ApiMeTask, projectId: number): ApiTask {
+  return {
+    id: m.id,
+    title: m.title,
+    description: m.description,
+    priority: m.priority,
+    status: m.status,
+    estimatedHours: m.estimatedHours,
+    actualHours: m.actualHours,
+    storyPoints: null,
+    acceptanceCriteria: null,
+    startDate: m.startDate,
+    dueDate: m.dueDate,
+    actualEnd: m.actualEnd,
+    createdAt: "",
+    projectId,
+    projectName: m.projectName,
+  };
+}
+
+function BacklogPage({
+  canUpdateStatus = false,
+  isPOView = false,
+  initialProjectId,
+  scope = "all",
+}: {
+  canUpdateStatus?: boolean;
+  isPOView?: boolean;
+  initialProjectId?: number;
+  /** "me" → only my projects + my tasks. Defaults to "all" (team-wide). */
+  scope?: "me" | "all";
+}) {
+  const { user } = useAuth();
   const [projects, setProjects] = useState<ApiProject[]>([]);
   const [tasks, setTasks] = useState<ApiTask[]>([]);
   const [sprints, setSprints] = useState<ApiSprint[]>([]);
@@ -150,24 +184,71 @@ function BacklogPage({ canUpdateStatus = false, isPOView = false, initialProject
     if (hasFetched.current) return;
     hasFetched.current = true;
 
+    const fetchAllScope = async () => {
+      const projectList = await getProjects();
+      setProjects(projectList);
+
+      const taskArrays = await Promise.all(
+        projectList.map(async (project) => {
+          const projectTasks = await getProjectTasks(project.id);
+          return projectTasks.map((task) => ({
+            ...task,
+            projectId: project.id,
+            projectName: project.name,
+          }));
+        }),
+      );
+
+      return taskArrays.flat();
+    };
+
+    const fetchMeScope = async () => {
+      const [projectList, meTasks] = await Promise.all([
+        getMyProjects(),
+        getMyTasks(),
+      ]);
+      setProjects(projectList);
+
+      // Map projectName → projectId so we can hydrate ApiMeTask without a projectId.
+      const nameToId = new Map<string, number>();
+      for (const p of projectList) nameToId.set(p.name, p.id);
+
+      const enriched: ApiTask[] = meTasks
+        .map((m) => {
+          const projectId = nameToId.get(m.projectName) ?? -1;
+          return meTaskToApiTask(m, projectId);
+        })
+        .filter((t) => t.projectId !== -1);
+
+      // Pre-populate assignments with the current user so the card shows the avatar
+      // without a per-task assignments fetch.
+      if (user) {
+        const parts = user.username.trim().split(/[\s._-]+/);
+        const initials =
+          parts.length >= 2
+            ? (parts[0][0] + parts[1][0]).toUpperCase()
+            : user.username.slice(0, 2).toUpperCase();
+        const selfAvatar: Member = {
+          initials,
+          color: AVATAR_COLORS[user.id % AVATAR_COLORS.length],
+          name: user.name,
+        };
+        const map: Record<number, Member[]> = {};
+        for (const t of enriched) {
+          map[t.id] = [selfAvatar];
+          loadedAssignmentsRef.current.add(t.id);
+        }
+        setTaskAssignments(map);
+      }
+
+      return enriched;
+    };
+
     const fetchTasks = async () => {
       try {
         setError(null);
-        const projectList = await getProjects();
-        setProjects(projectList);
+        const allTasks = scope === "me" ? await fetchMeScope() : await fetchAllScope();
 
-        const taskArrays = await Promise.all(
-          projectList.map(async (project) => {
-            const projectTasks = await getProjectTasks(project.id);
-            return projectTasks.map((task) => ({
-              ...task,
-              projectId: project.id,
-              projectName: project.name,
-            }));
-          }),
-        );
-
-        const allTasks = taskArrays.flat();
         // Apply session-stored revision flags so they survive remount.
         const revSet = readRevisionSet();
         const tagged = allTasks.map((t) =>
@@ -186,7 +267,7 @@ function BacklogPage({ canUpdateStatus = false, isPOView = false, initialProject
     };
 
     fetchTasks();
-  }, []);
+  }, [scope, user]);
 
   // ── Assignments: fetch only for tasks visible on current page ───────────────
   useEffect(() => {
@@ -235,6 +316,9 @@ function BacklogPage({ canUpdateStatus = false, isPOView = false, initialProject
 
   // ── Sprint list: fetch when project changes ─────────────────────────────────
   useEffect(() => {
+    // In "me" scope we don't expose a sprint filter, so skip the sprint API call.
+    if (scope === "me") return;
+
     if (selectedProjectId === "all") {
       setSprints([]);
       setSelectedSprintId("all");
@@ -262,10 +346,11 @@ function BacklogPage({ canUpdateStatus = false, isPOView = false, initialProject
 
     fetchSprints();
     return () => ac.abort();
-  }, [selectedProjectId]);
+  }, [selectedProjectId, scope]);
 
   // ── Sprint tasks: fetch when sprint filter changes ──────────────────────────
   useEffect(() => {
+    if (scope === "me") return;
     if (selectedProjectId === "all") return;
 
     // Restore from baseTasksRef — no API call needed (cache.ts handles HTTP dedup)
@@ -338,7 +423,7 @@ function BacklogPage({ canUpdateStatus = false, isPOView = false, initialProject
 
     fetchSprintTasks();
     return () => ac.abort();
-  }, [selectedSprintId, selectedProjectId, projects]);
+  }, [selectedSprintId, selectedProjectId, projects, scope]);
 
   // ── Keyboard / theme side-effects ───────────────────────────────────────────
   useEffect(() => {
@@ -449,37 +534,39 @@ function BacklogPage({ canUpdateStatus = false, isPOView = false, initialProject
                 </select>
               </div>
 
-              <div className="flex-1">
-                <label
-                  className={`mb-2 block text-left text-[11px] font-semibold uppercase tracking-wide ${darkMode ? "text-slate-300" : "text-slate-500"}`}
-                >
-                  Filter by sprint
-                </label>
-                <select
-                  value={selectedSprintId}
-                  onChange={(e) => {
-                    const value =
-                      e.target.value === "all" ? "all" : Number(e.target.value);
-                    setSelectedSprintId(value);
-                    setSelectedTask(null);
-                  }}
-                  disabled={selectedProjectId === "all" || loadingSprintList}
-                  className={`w-full rounded-lg border px-3 py-2 text-sm shadow-sm outline-none transition-colors focus:border-[#c74634] disabled:opacity-50 disabled:cursor-not-allowed ${darkMode ? "bg-slate-800 border-slate-700 text-slate-200" : "bg-white border-slate-200 text-slate-700"}`}
-                >
-                  {loadingSprintList ? (
-                    <option>Loading sprints...</option>
-                  ) : (
-                    <>
-                      <option value="all">All Sprints</option>
-                      {sprints.map((sprint) => (
-                        <option key={sprint.id} value={sprint.id}>
-                          {sprint.name}
-                        </option>
-                      ))}
-                    </>
-                  )}
-                </select>
-              </div>
+              {scope !== "me" && (
+                <div className="flex-1">
+                  <label
+                    className={`mb-2 block text-left text-[11px] font-semibold uppercase tracking-wide ${darkMode ? "text-slate-300" : "text-slate-500"}`}
+                  >
+                    Filter by sprint
+                  </label>
+                  <select
+                    value={selectedSprintId}
+                    onChange={(e) => {
+                      const value =
+                        e.target.value === "all" ? "all" : Number(e.target.value);
+                      setSelectedSprintId(value);
+                      setSelectedTask(null);
+                    }}
+                    disabled={selectedProjectId === "all" || loadingSprintList}
+                    className={`w-full rounded-lg border px-3 py-2 text-sm shadow-sm outline-none transition-colors focus:border-[#c74634] disabled:opacity-50 disabled:cursor-not-allowed ${darkMode ? "bg-slate-800 border-slate-700 text-slate-200" : "bg-white border-slate-200 text-slate-700"}`}
+                  >
+                    {loadingSprintList ? (
+                      <option>Loading sprints...</option>
+                    ) : (
+                      <>
+                        <option value="all">All Sprints</option>
+                        {sprints.map((sprint) => (
+                          <option key={sprint.id} value={sprint.id}>
+                            {sprint.name}
+                          </option>
+                        ))}
+                      </>
+                    )}
+                  </select>
+                </div>
+              )}
             </div>
           </div>
         </div>

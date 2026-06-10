@@ -35,12 +35,13 @@ function DeveloperPage() {
           return (
             <ProjectsPage
               readOnly
-              description="Review your current project portfolio, teams and key performance indicators for all active initiatives in your department. Provide deep visibility into technical tasks to optimize software delivery cycles and team velocity."
+              scope="me"
+              description="Your active projects — only initiatives where you are a member. Drill in to track your tasks and personal velocity."
             />
           );
         }
         if (activeRoute === "/backlog") {
-          return <BacklogPage canUpdateStatus />;
+          return <BacklogPage canUpdateStatus scope="me" />;
         }
 
         if (activeRoute === "/analytics") {
