@@ -5,9 +5,11 @@ import type { ApiProject } from "../../types/api";
 interface EmptyProjectScreenProps {
   project: ApiProject;
   onClose: () => void;
+  onAddCapabilities?: () => void;
+  onAddSprints?: () => void;
 }
 
-function EmptyProjectScreen({ project, onClose }: EmptyProjectScreenProps) {
+function EmptyProjectScreen({ project, onClose, onAddCapabilities, onAddSprints }: EmptyProjectScreenProps) {
   const { darkMode } = useTheme();
 
   useEffect(() => {
@@ -48,6 +50,7 @@ function EmptyProjectScreen({ project, onClose }: EmptyProjectScreenProps) {
       <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
         <button
           type="button"
+          onClick={onAddCapabilities}
           style={{ background: "#bcd9eb", color: "#1a3a4a" }}
           className="inline-flex items-center gap-2 px-5 py-2.5 rounded text-sm font-medium cursor-pointer transition-opacity hover:opacity-90"
         >
@@ -55,6 +58,7 @@ function EmptyProjectScreen({ project, onClose }: EmptyProjectScreenProps) {
         </button>
         <button
           type="button"
+          onClick={onAddSprints}
           style={{ background: "#c74634" }}
           className="inline-flex items-center gap-2 px-5 py-2.5 rounded text-white text-sm font-medium cursor-pointer transition-opacity hover:opacity-90"
         >

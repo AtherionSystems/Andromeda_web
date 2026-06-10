@@ -1,8 +1,14 @@
 import { useEffect, useState } from "react";
 import { useTheme } from "../../contexts/useTheme";
-import type { ApiTask, TaskStatus, TaskPriority } from "../../types/api";
+import type {
+  ApiTask,
+  TaskStatus,
+  TaskPriority,
+  ApiProjectMember,
+} from "../../types/api";
 import type { Member } from "../../types/project";
-import { updateTask } from "../../api/tasks";
+import { updateTask, assignTask, unassignTask, getTaskAssignments } from "../../api/tasks";
+import { getProjectMembers } from "../../api/members";
 import MemberAvatars from "../Projects/MemberAvatars";
 
 const STATUS_META: Record<
@@ -46,6 +52,8 @@ interface BacklogDetailsProps {
   canEdit?: boolean;
   // Called after a successful save so the board can refresh.
   onSaved?: (task: ApiTask) => void;
+  // Called after assignees change so the board can refresh.
+  onAssigneesChanged?: () => void;
 }
 
 function BacklogDetails({
@@ -54,6 +62,7 @@ function BacklogDetails({
   onClose,
   canEdit = false,
   onSaved,
+  onAssigneesChanged,
 }: BacklogDetailsProps) {
   const { darkMode } = useTheme();
 
@@ -65,6 +74,12 @@ function BacklogDetails({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Assignee editing (project members can be assigned to the task).
+  const [projectMembers, setProjectMembers] = useState<ApiProjectMember[]>([]);
+  const [showAssignPicker, setShowAssignPicker] = useState(false);
+  const [assignBusy, setAssignBusy] = useState(false);
+  const [assignError, setAssignError] = useState<string | null>(null);
+
   // Reset the form when switching to a different task.
   useEffect(() => {
     setEditing(false);
@@ -73,7 +88,79 @@ function BacklogDetails({
     setStatus(task.status);
     setPriority(task.priority);
     setError(null);
+    setShowAssignPicker(false);
+    setAssignError(null);
   }, [task.id]);
+
+  // Load the project's members — only they can be assigned to the task.
+  useEffect(() => {
+    if (!canEdit || task.projectId == null) return;
+    getProjectMembers({ projectId: task.projectId })
+      .then(setProjectMembers)
+      .catch(() => setProjectMembers([]));
+  }, [canEdit, task.projectId, task.id]);
+
+  // Whether the given user is currently assigned to the task (fresh read).
+  async function assignmentExists(userId: number): Promise<boolean> {
+    if (task.projectId == null) return false;
+    try {
+      const fresh = await getTaskAssignments(task.projectId, task.id);
+      return fresh.some((a) => a.userId === userId);
+    } catch {
+      return false;
+    }
+  }
+
+  async function handleAssign(userId: number) {
+    if (task.projectId == null) return;
+    setAssignBusy(true);
+    setAssignError(null);
+    try {
+      await assignTask(task.projectId, task.id, userId);
+      setShowAssignPicker(false);
+      onAssigneesChanged?.();
+    } catch (err) {
+      // The backend can 500 on the response while still saving — only surface
+      // the error if the assignment really didn't persist.
+      if (await assignmentExists(userId)) {
+        setShowAssignPicker(false);
+        onAssigneesChanged?.();
+      } else {
+        console.error("Failed to assign user:", err);
+        setAssignError(
+          err instanceof Error ? err.message : "Could not assign this user.",
+        );
+      }
+    } finally {
+      setAssignBusy(false);
+    }
+  }
+
+  async function handleUnassign(member: Member) {
+    const pm = projectMembers.find((p) => p.username === member.name);
+    if (pm == null || task.projectId == null) {
+      setAssignError("Could not resolve this user to unassign.");
+      return;
+    }
+    setAssignBusy(true);
+    setAssignError(null);
+    try {
+      await unassignTask(task.projectId, task.id, pm.userId);
+      onAssigneesChanged?.();
+    } catch (err) {
+      // Same resilience: if it actually got removed, treat as success.
+      if (!(await assignmentExists(pm.userId))) {
+        onAssigneesChanged?.();
+      } else {
+        console.error("Failed to unassign user:", err);
+        setAssignError(
+          err instanceof Error ? err.message : "Could not remove this user.",
+        );
+      }
+    } finally {
+      setAssignBusy(false);
+    }
+  }
 
   function startEdit() {
     setTitle(task.title);
@@ -136,6 +223,12 @@ function BacklogDetails({
     color: "#94a3b8",
   };
 
+  // Project members not yet assigned to this task — the "+ Add" options.
+  const assignedNames = new Set(members.map((m) => m.name));
+  const availableMembers = projectMembers.filter(
+    (pm) => !assignedNames.has(pm.username),
+  );
+
   const fieldClass = `w-full rounded border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#c74634]/30 focus:border-[#c74634] transition-colors ${darkMode ? "bg-slate-800 border-slate-700 text-slate-100 placeholder:text-slate-500" : "bg-white border-slate-300 text-slate-800 placeholder:text-slate-400"}`;
 
   return (
@@ -193,7 +286,7 @@ function BacklogDetails({
             />
           ) : (
             <h2
-              className={`text-2xl italic font-light mb-1 pr-16 ${darkMode ? "text-slate-100" : "text-slate-800"}`}
+              className={`text-2xl bold mb-1 pr-16 ${darkMode ? "text-slate-100" : "text-slate-800"}`}
             >
               {task.title}
             </h2>
@@ -234,7 +327,88 @@ function BacklogDetails({
           >
             Assignees
           </p>
-          {members.length === 0 ? (
+          {editing ? (
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                {members.map((m) => (
+                  <span
+                    key={m.name}
+                    className={`inline-flex items-center gap-1.5 rounded-full py-0.5 pl-0.5 pr-2 ${darkMode ? "bg-slate-800" : "bg-slate-100"}`}
+                  >
+                    <span
+                      className="flex h-5 w-5 items-center justify-center rounded-full text-[8px] font-semibold text-white"
+                      style={{ backgroundColor: m.color }}
+                    >
+                      {m.initials}
+                    </span>
+                    <span className={`text-[11px] ${darkMode ? "text-slate-200" : "text-slate-600"}`}>
+                      {m.name}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleUnassign(m)}
+                      disabled={assignBusy}
+                      aria-label={`Remove ${m.name}`}
+                      className="ml-0.5 text-sm leading-none opacity-60 transition-opacity hover:opacity-100 disabled:opacity-30"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+                {members.length === 0 && (
+                  <span className={`text-xs ${darkMode ? "text-slate-500" : "text-slate-400"}`}>
+                    No assignees
+                  </span>
+                )}
+              </div>
+
+              <div className="relative mt-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowAssignPicker((o) => !o)}
+                    disabled={assignBusy || availableMembers.length === 0}
+                    style={{ background: "#c74634" }}
+                    className="inline-flex items-center gap-1.5 rounded-md px-4 py-2 text-[13px] font-semibold text-white shadow-sm transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                      <circle cx="9" cy="7" r="4" />
+                      <path d="M19 8v6M22 11h-6" />
+                    </svg>
+                    Add assignee
+                  </button>
+                  {showAssignPicker && availableMembers.length > 0 && (
+                    <ul
+                      className={`absolute z-10 mt-1 max-h-40 w-52 overflow-y-auto rounded-md border shadow-lg ${darkMode ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200"}`}
+                    >
+                      {availableMembers.map((pm) => (
+                        <li key={pm.userId}>
+                          <button
+                            type="button"
+                            onClick={() => handleAssign(pm.userId)}
+                            disabled={assignBusy}
+                            className={`w-full px-3 py-2 text-left text-[12px] transition-colors ${darkMode ? "text-slate-200 hover:bg-slate-700" : "text-slate-700 hover:bg-slate-50"}`}
+                          >
+                            {pm.username}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              {assignError && <p className="mt-2 text-xs text-red-500">{assignError}</p>}
+            </div>
+          ) : members.length === 0 ? (
             <p className={`text-xs ${darkMode ? "text-slate-500" : "text-slate-400"}`}>
               No assignees
             </p>

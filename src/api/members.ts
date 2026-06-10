@@ -54,18 +54,10 @@ export const addMember = (body: {
     return data;
   });
 
-export const removeMember = (
-  id: number,
-  meta?: { projectId?: number; userId?: number },
-): Promise<void> =>
+export const removeMember = (id: number): Promise<void> =>
   apiFetch<void>(`/api/project-members/${id}`, { method: "DELETE" }).then(
     () => {
-      if (meta?.projectId != null)
-        cache.invalidatePrefix(`members:p:${meta.projectId}`);
-      if (meta?.userId != null)
-        cache.invalidatePrefix(`members:u:${meta.userId}`);
-      if (meta?.projectId == null && meta?.userId == null)
-        cache.invalidatePrefix("members:");
+      cache.invalidatePrefix("members:");
       cache.invalidate("members:all");
     },
   );

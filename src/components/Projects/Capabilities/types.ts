@@ -1,8 +1,13 @@
-// Domain types for the capability hierarchy.
-// When wiring the backend, map your API DTOs onto these shapes (or extend them).
+// Single source of truth for capability statuses — UIs derive their options
+// from this array, and the type is derived from it too.
+// Values are lowercase to match the backend; display them capitalized.
+export const CAPABILITY_STATUSES = ["active", "completed", "cancelled"] as const;
+export type CapabilityStatus = (typeof CAPABILITY_STATUSES)[number];
 
-export type CapabilityStatus = "ON TRACK" | "PLANNING" | "AT RISK";
-export type FeatureStatus = "IN PROGRESS" | "REVIEW" | "BACKLOG" | "DONE";
+// Features use the same status set as capabilities.
+export const FEATURE_STATUSES = ["active", "completed", "cancelled"] as const;
+export type FeatureStatus = (typeof FEATURE_STATUSES)[number];
+
 export type Priority = "HIGH" | "MEDIUM" | "LOW";
 
 export interface Assignee {
@@ -12,14 +17,23 @@ export interface Assignee {
 
 export interface Story {
   id: string;
-  text: string;
-  assignee: Assignee;
+  title: string;
+  description?: string | null;
+  acceptanceCriteria?: string | null;
+  priority?: string;
+  status?: string;
+  storyPoints?: number | null;
+  createdById?: number;
+  ownerId?: number | null;
+  // Optional avatar for display (not provided by the backend by default).
+  assignee?: Assignee;
 }
 
 export interface Feature {
   id: string;
   name: string;
-  priority: Priority;
+  description?: string | null;
+  priority?: Priority;
   status: FeatureStatus;
   stories: Story[];
 }
@@ -27,6 +41,7 @@ export interface Feature {
 export interface Capability {
   id: string;
   name: string;
+  description?: string | null;
   status: CapabilityStatus;
   features: Feature[];
 }

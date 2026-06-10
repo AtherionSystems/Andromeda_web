@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTheme } from "../../../contexts/useTheme";
 import type { Feature } from "./types";
 import { Chevron } from "./shared";
@@ -9,11 +9,24 @@ interface Props {
   feature: Feature;
   // Called when the user clicks "+ ADD STORY" — wire to your insert flow.
   onAddStory?: (featureId: string) => void;
+  // Called the first time the feature is expanded, to lazy-load its stories.
+  onExpand?: () => void;
+  // Whether this feature's stories are currently being fetched.
+  loadingStories?: boolean;
 }
 
-function FeatureCard({ feature, onAddStory }: Props) {
+function FeatureCard({ feature, onAddStory, onExpand, loadingStories }: Props) {
   const { darkMode } = useTheme();
-  const [open, setOpen] = useState(feature.status === "IN PROGRESS");
+  const [open, setOpen] = useState(feature.status === "active");
+
+  // Trigger the lazy story load whenever the feature becomes open (the parent
+  // dedupes, so calling it repeatedly is safe). Ref keeps the latest callback
+  // without re-running on every render.
+  const onExpandRef = useRef(onExpand);
+  onExpandRef.current = onExpand;
+  useEffect(() => {
+    if (open) onExpandRef.current?.();
+  }, [open]);
 
   return (
     <div
@@ -30,18 +43,23 @@ function FeatureCard({ feature, onAddStory }: Props) {
           <Chevron open={open} />
         </span>
         <div className="min-w-0 flex-1">
+          <p className={`text-[10px] font-semibold uppercase tracking-[1.2px] ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+            Feature
+          </p>
           <p className={`truncate text-[13px] font-semibold ${darkMode ? "text-slate-100" : "text-slate-800"}`}>
             {feature.name}
           </p>
-          <p className={`text-[11px] ${darkMode ? "text-slate-400" : "text-slate-400"}`}>
-            Prio:{" "}
-            <span style={{ color: PRIORITY_COLOR[feature.priority] }} className="font-semibold">
-              {feature.priority}
-            </span>
-          </p>
+          {feature.priority && (
+            <p className={`text-[11px] ${darkMode ? "text-slate-400" : "text-slate-400"}`}>
+              Prio:{" "}
+              <span style={{ color: PRIORITY_COLOR[feature.priority] }} className="font-semibold">
+                {feature.priority}
+              </span>
+            </p>
+          )}
         </div>
         <span
-          className={`shrink-0 rounded-full px-2.5 py-0.5 text-[9px] font-semibold tracking-wide ${FEAT_STATUS_STYLES[feature.status]}`}
+          className={`shrink-0 rounded-full px-2.5 py-0.5 text-[9px] font-semibold tracking-wide capitalize ${FEAT_STATUS_STYLES[feature.status]}`}
         >
           {feature.status}
         </span>
@@ -49,18 +67,29 @@ function FeatureCard({ feature, onAddStory }: Props) {
 
       {open && (
         <div className="space-y-2 px-3 pb-3 pl-9">
-          {feature.stories.map((story) => (
-            <StoryRow key={story.id} story={story} />
-          ))}
-          <button
-            type="button"
-            onClick={() => onAddStory?.(feature.id)}
-            className={`flex items-center gap-1 text-[11px] font-semibold tracking-wide ${
-              darkMode ? "text-slate-400 hover:text-slate-200" : "text-slate-400 hover:text-slate-600"
-            }`}
-          >
-            + ADD STORY
-          </button>
+          {loadingStories && feature.stories.length === 0 ? (
+            <p className={`text-[11px] ${darkMode ? "text-slate-500" : "text-slate-400"}`}>
+              Loading stories…
+            </p>
+          ) : (
+            <>
+              <p className={`text-[10px] font-semibold uppercase tracking-[1.2px] ${darkMode ? "text-slate-500" : "text-slate-400"}`}>
+                User Stories
+              </p>
+              {feature.stories.map((story) => (
+                <StoryRow key={story.id} story={story} />
+              ))}
+              <button
+                type="button"
+                onClick={() => onAddStory?.(feature.id)}
+                className={`flex items-center gap-1 text-[11px] font-semibold tracking-wide ${
+                  darkMode ? "text-slate-400 hover:text-slate-200" : "text-slate-400 hover:text-slate-600"
+                }`}
+              >
+                + ADD STORY
+              </button>
+            </>
+          )}
         </div>
       )}
     </div>

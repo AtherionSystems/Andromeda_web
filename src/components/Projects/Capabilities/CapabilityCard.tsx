@@ -10,9 +10,20 @@ interface Props {
   // Wire these to your insert flows.
   onAddFeature?: (capabilityId: string) => void;
   onAddStory?: (capabilityId: string, featureId: string) => void;
+  // Called the first time a feature is expanded, to lazy-load its stories.
+  onExpandFeature?: (capabilityId: string, featureId: string) => void;
+  // Feature ids whose stories are currently loading.
+  loadingStoryIds?: Set<string>;
 }
 
-function CapabilityCard({ capability, defaultOpen, onAddFeature, onAddStory }: Props) {
+function CapabilityCard({
+  capability,
+  defaultOpen,
+  onAddFeature,
+  onAddStory,
+  onExpandFeature,
+  loadingStoryIds,
+}: Props) {
   const { darkMode } = useTheme();
   const [open, setOpen] = useState(Boolean(defaultOpen));
   const featureCount = capability.features.length;
@@ -30,6 +41,9 @@ function CapabilityCard({ capability, defaultOpen, onAddFeature, onAddStory }: P
         className="flex w-full items-center gap-3 px-4 py-3.5 text-left"
       >
         <div className="min-w-0 flex-1">
+          <p className={`text-[10px] font-semibold uppercase tracking-[1.2px] ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+            Capability
+          </p>
           <p className={`truncate text-[14px] font-semibold ${darkMode ? "text-slate-100" : "text-slate-800"}`}>
             {capability.name}
           </p>
@@ -49,6 +63,8 @@ function CapabilityCard({ capability, defaultOpen, onAddFeature, onAddStory }: P
               key={feature.id}
               feature={feature}
               onAddStory={onAddStory ? (featureId) => onAddStory(capability.id, featureId) : undefined}
+              onExpand={onExpandFeature ? () => onExpandFeature(capability.id, feature.id) : undefined}
+              loadingStories={loadingStoryIds?.has(feature.id)}
             />
           ))}
           <button

@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useWindowSize } from "../../hooks/useWindowSize";
-import { getProjects, deleteProject } from "../../api/projects";
+import { getProjects, deleteProject, getProjectSprints } from "../../api/projects";
 import { getProjectMembers } from "../../api/members";
 import { getProjectTasks } from "../../api/tasks";
+import { getCapabilities } from "../../api/capabilities";
 import type { ApiProject, ApiProjectMember } from "../../types/api";
 import type { Member } from "../../types/project";
 import ProjectCard from "./ProjectCard";
 import NewProjectModal from "./EntryPointProjects/NewProjectModal";
 import SearchInput from "./SearchInput";
 import EmptyProjectScreen from "./EmptyProjectScreen";
+import EditProjectModal from "./EditProjectModal";
 import ProjectArchitectureScreen from "./CapabilityPage";
 import SprintsPage from "./Sprint/SprintsPage";
 import ProjectEntryModal from "./EntryPointProjects/ProjectEntryModal";
@@ -54,21 +56,32 @@ function ProjectsPage({ description, readOnly = false }: ProjectsPageProps) {
   const [architectureProject, setArchitectureProject] = useState<ApiProject | null>(null);
   const [sprintsProject, setSprintsProject] = useState<ApiProject | null>(null);
   const [entryProject, setEntryProject] = useState<ApiProject | null>(null);
+  const [editProject, setEditProject] = useState<ApiProject | null>(null);
   const hasFetched = useRef(false);
 
-  // Open a project: if it has no members and no tasks, show the empty-state
-  // screen; otherwise show the chooser (Capabilities / Sprints).
+  // Open a project: only show the empty-state screen when it is truly empty —
+  // no members, no tasks, no capabilities AND no sprints. The moment it has
+  // anything (even just a sprint, or just a capability), show the chooser
+  // (Capabilities / Sprints) so the user can land on either view.
   async function handleOpen(project: ApiProject) {
     const members = memberMap[project.id] ?? [];
     if (members.length === 0) {
       try {
-        const tasks = await getProjectTasks(project.id);
-        if (tasks.length === 0) {
+        const [tasks, capabilities, sprints] = await Promise.all([
+          getProjectTasks(project.id),
+          getCapabilities(project.id),
+          getProjectSprints(project.id),
+        ]);
+        if (
+          tasks.length === 0 &&
+          capabilities.length === 0 &&
+          sprints.length === 0
+        ) {
           setEmptyProject(project);
           return;
         }
       } catch {
-        // If tasks can't be confirmed, still show the chooser.
+        // If we can't confirm, still show the chooser.
       }
     }
     setEntryProject(project);
@@ -148,6 +161,14 @@ function ProjectsPage({ description, readOnly = false }: ProjectsPageProps) {
         <EmptyProjectScreen
           project={emptyProject}
           onClose={() => setEmptyProject(null)}
+          onAddCapabilities={() => {
+            setArchitectureProject(emptyProject);
+            setEmptyProject(null);
+          }}
+          onAddSprints={() => {
+            setSprintsProject(emptyProject);
+            setEmptyProject(null);
+          }}
         />
       </div>
     );
@@ -230,6 +251,7 @@ function ProjectsPage({ description, readOnly = false }: ProjectsPageProps) {
               members={memberMap[project.id] ?? []}
               index={i}
               onDelete={readOnly ? undefined : handleDelete}
+              onEdit={readOnly ? undefined : () => setEditProject(project)}
               onViewTasks={() => handleOpen(project)}
             />
           ))}
@@ -259,6 +281,20 @@ function ProjectsPage({ description, readOnly = false }: ProjectsPageProps) {
           onSelectSprints={() => {
             setSprintsProject(entryProject);
             setEntryProject(null);
+          }}
+        />
+      )}
+      {editProject && (
+        <EditProjectModal
+          project={editProject}
+          members={memberMap[editProject.id] ?? []}
+          index={Math.max(0, filtered.findIndex((p) => p.id === editProject.id))}
+          onClose={() => setEditProject(null)}
+          onSaved={(updated) => {
+            setProjects((prev) =>
+              prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)),
+            );
+            setEditProject(null);
           }}
         />
       )}
