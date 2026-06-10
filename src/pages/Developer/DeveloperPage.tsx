@@ -5,7 +5,7 @@ import AppLayout from "../../components/Layout/AppLayout";
 import ProjectsPage from "../../components/Projects/ProjectsPage";
 import BacklogPage from "../../components/Backlog/BacklogPage";
 import DeveloperDashboard from "./DeveloperDashboard";
-import { AnalyticsPage} from "@/components/Analytics-KPI/AnalyticsPage";
+import { DeveloperAnalyticsPage } from "@/components/Analytics-KPI/DeveloperAnalyticsPage";
 import Configuration from "../Configuration";
 
 function DeveloperPage() {
@@ -45,7 +45,7 @@ function DeveloperPage() {
         }
 
         if (activeRoute === "/analytics") {
-            return <AnalyticsPage />;
+            return <DeveloperAnalyticsPage />;
         }
 
         if (activeRoute === "/settings") {
