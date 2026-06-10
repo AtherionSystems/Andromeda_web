@@ -1,6 +1,11 @@
 import { useState, useEffect, useContext, useRef } from "react";
 import BacklogColumn from "../../components/Backlog/BacklogColumn";
-import type { ApiProject, ApiTask, ApiSprint, TaskStatus } from "../../types/api";
+import type {
+  ApiProject,
+  ApiTask,
+  ApiSprint,
+  TaskStatus,
+} from "../../types/api";
 import type { Member } from "../../types/project";
 import { getProjects, getProjectSprints } from "../../api/projects";
 import {
@@ -44,7 +49,15 @@ function memberInitials(username: string): string {
   return username.slice(0, 2).toUpperCase();
 }
 
-function BacklogPage({ canUpdateStatus = false, canEdit = false, initialProjectId }: { canUpdateStatus?: boolean; canEdit?: boolean; initialProjectId?: number }) {
+function BacklogPage({
+  canUpdateStatus = false,
+  canEdit = false,
+  initialProjectId,
+}: {
+  canUpdateStatus?: boolean;
+  canEdit?: boolean;
+  initialProjectId?: number;
+}) {
   const [projects, setProjects] = useState<ApiProject[]>([]);
   const [tasks, setTasks] = useState<ApiTask[]>([]);
   const [sprints, setSprints] = useState<ApiSprint[]>([]);
@@ -93,7 +106,8 @@ function BacklogPage({ canUpdateStatus = false, canEdit = false, initialProjectI
 
   async function handleStatusToggle(task: ApiTask) {
     if (task.projectId == null) return;
-    const newStatus: TaskStatus = task.status === "done" ? "in_progress" : "done";
+    const newStatus: TaskStatus =
+      task.status === "done" ? "in_progress" : "done";
     // Optimistic update
     const update = (prev: ApiTask[]) =>
       prev.map((t) => (t.id === task.id ? { ...t, status: newStatus } : t));
@@ -163,7 +177,9 @@ function BacklogPage({ canUpdateStatus = false, canEdit = false, initialProjectI
     });
 
     const toFetch = tasks.filter(
-      (t) => visibleTaskIds.includes(t.id) && !loadedAssignmentsRef.current.has(t.id),
+      (t) =>
+        visibleTaskIds.includes(t.id) &&
+        !loadedAssignmentsRef.current.has(t.id),
     );
 
     const fetchVisibleAssignments = async () => {
@@ -176,11 +192,11 @@ function BacklogPage({ canUpdateStatus = false, canEdit = false, initialProjectI
               task.id,
             );
             const members: Member[] = assignments
-              .filter((a) => a.assignedUserName != null)
+              .filter((a) => a.userName != null)
               .map((a) => ({
-                initials: memberInitials(a.assignedUserName!),
-                color: AVATAR_COLORS[a.id % AVATAR_COLORS.length],
-                name: a.assignedUserName!,
+                initials: memberInitials(a.userName!),
+                color: AVATAR_COLORS[a.userId % AVATAR_COLORS.length],
+                name: a.userName!,
               }));
             loadedAssignmentsRef.current.add(task.id);
             return [task.id, members] as const;
