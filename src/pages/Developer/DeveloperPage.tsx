@@ -5,7 +5,6 @@ import AppLayout from "../../components/Layout/AppLayout";
 import ProjectsPage from "../../components/Projects/ProjectsPage";
 import BacklogPage from "../../components/Backlog/BacklogPage";
 import DeveloperDashboard from "./DeveloperDashboard";
-import { DeveloperAnalyticsPage } from "@/components/Analytics-KPI/DeveloperAnalyticsPage";
 import Configuration from "../Configuration";
 
 function DeveloperPage() {
@@ -42,10 +41,6 @@ function DeveloperPage() {
         }
         if (activeRoute === "/backlog") {
           return <BacklogPage canUpdateStatus scope="me" />;
-        }
-
-        if (activeRoute === "/analytics") {
-            return <DeveloperAnalyticsPage />;
         }
 
         if (activeRoute === "/settings") {
