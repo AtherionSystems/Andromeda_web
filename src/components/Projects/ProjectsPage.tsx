@@ -10,13 +10,12 @@ import NewProjectModal from "./EntryPointProjects/NewProjectModal";
 import SearchInput from "./SearchInput";
 import EmptyProjectScreen from "./EmptyProjectScreen";
 import ProjectArchitectureScreen from "./CapabilityPage";
+import SprintsPage from "./Sprint/SprintsPage";
 import ProjectEntryModal from "./EntryPointProjects/ProjectEntryModal";
 
 interface ProjectsPageProps {
   description?: string;
   readOnly?: boolean;
-  // Kept for callers that still pass it; the card click now opens the
-  // architecture view inline instead of navigating.
   onViewTasks?: (projectId: number) => void;
 }
 
@@ -43,7 +42,7 @@ function memberToAvatar(pm: ApiProjectMember): Member {
   return { initials, color, name: pm.username };
 }
 
-function ProjectsPage({ description, readOnly = false, onViewTasks }: ProjectsPageProps) {
+function ProjectsPage({ description, readOnly = false }: ProjectsPageProps) {
   const { breakpoint } = useWindowSize();
   const [projects, setProjects] = useState<ApiProject[]>([]);
   const [memberMap, setMemberMap] = useState<Record<number, Member[]>>({});
@@ -53,6 +52,7 @@ function ProjectsPage({ description, readOnly = false, onViewTasks }: ProjectsPa
   const [searchQuery, setSearchQuery] = useState("");
   const [emptyProject, setEmptyProject] = useState<ApiProject | null>(null);
   const [architectureProject, setArchitectureProject] = useState<ApiProject | null>(null);
+  const [sprintsProject, setSprintsProject] = useState<ApiProject | null>(null);
   const [entryProject, setEntryProject] = useState<ApiProject | null>(null);
   const hasFetched = useRef(false);
 
@@ -131,6 +131,17 @@ function ProjectsPage({ description, readOnly = false, onViewTasks }: ProjectsPa
     );
   }
 
+  if (sprintsProject) {
+    return (
+      <div className="flex-1 px-6 pt-3 pb-4">
+        <SprintsPage
+          project={sprintsProject}
+          onClose={() => setSprintsProject(null)}
+        />
+      </div>
+    );
+  }
+
   if (emptyProject) {
     return (
       <div className="flex-1 px-6 pt-3 pb-4">
@@ -169,12 +180,6 @@ function ProjectsPage({ description, readOnly = false, onViewTasks }: ProjectsPa
           />
           {!readOnly && (
             <div className="flex gap-2">
-              <button
-                style={{ background: "#c74634" }}
-                className="w-8 h-8 border-none rounded bg-oracle-red text-white cursor-pointer text-sm flex items-center justify-center"
-              >
-                ✎
-              </button>
               <button
                 style={{ background: "#c74634" }}
                 className="flex items-center gap-1.5 px-3.5 h-8 bg-oracle-red text-white border-none rounded text-[12px] font-medium cursor-pointer"
@@ -252,9 +257,8 @@ function ProjectsPage({ description, readOnly = false, onViewTasks }: ProjectsPa
             setEntryProject(null);
           }}
           onSelectSprints={() => {
-            const p = entryProject;
+            setSprintsProject(entryProject);
             setEntryProject(null);
-            if (p) onViewTasks?.(p.id);
           }}
         />
       )}

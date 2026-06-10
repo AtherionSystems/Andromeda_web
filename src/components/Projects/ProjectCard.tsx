@@ -4,6 +4,7 @@ import { useTheme } from "../../contexts/useTheme";
 import type { ApiProject } from "../../types/api";
 import type { Member } from "../../types/project";
 import MemberAvatars from "./MemberAvatars";
+import ConfirmDeleteModal from "./EntryPointProjects/ConfirmDeleteModal";
 import { useClickOutside } from "../../hooks/useClickOutside";
 
 const COVER_PALETTES = [
@@ -47,11 +48,13 @@ interface ProjectCardProps {
   index: number;
   onClick?: (project: ApiProject) => void;
   onDelete?: (project: ApiProject) => void;
+  onEdit?: (project: ApiProject) => void;
   onViewTasks?: (project: ApiProject) => void;
 }
 
-function ProjectCard({ project, members, index, onClick, onDelete, onViewTasks }: ProjectCardProps) {
+function ProjectCard({ project, members, index, onClick, onDelete, onEdit, onViewTasks }: ProjectCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [dropdownPos, setDropdownPos] = useState({ top: 0, right: 0 });
   const { darkMode } = useTheme();
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -151,7 +154,18 @@ function ProjectCard({ project, members, index, onClick, onDelete, onViewTasks }
             onClick={(e) => e.stopPropagation()}
           >
             <button
-              onClick={() => { setMenuOpen(false); onDelete?.(project); }}
+              onClick={() => { setMenuOpen(false); onEdit?.(project); }}
+              className={`w-full flex items-center gap-2 px-3 py-2 text-[13px] transition-colors
+                ${darkMode ? "text-slate-200 hover:bg-slate-700" : "text-slate-700 hover:bg-slate-50"}`}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+              </svg>
+              Edit project
+            </button>
+            <button
+              onClick={() => { setMenuOpen(false); setConfirmOpen(true); }}
               className={`w-full flex items-center gap-2 px-3 py-2 text-[13px] text-red-500 transition-colors
                 ${darkMode ? "hover:bg-red-500/10" : "hover:bg-red-50"}`}
             >
@@ -161,6 +175,15 @@ function ProjectCard({ project, members, index, onClick, onDelete, onViewTasks }
           </div>,
           document.body
         )}
+
+      {/* confirmación de borrado */}
+      {confirmOpen && (
+        <ConfirmDeleteModal
+          projectName={project.name}
+          onConfirm={() => { setConfirmOpen(false); onDelete?.(project); }}
+          onCancel={() => setConfirmOpen(false)}
+        />
+      )}
     </article>
   );
 }

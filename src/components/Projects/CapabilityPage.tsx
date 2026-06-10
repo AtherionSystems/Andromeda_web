@@ -19,6 +19,15 @@ function CapabilityPage({ project, onClose }: CapabilityPageProps) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [taskPage, setTaskPage] = useState(0);
+
+  const TASKS_PER_PAGE = 5;
+  const taskPageCount = Math.max(1, Math.ceil(tasks.length / TASKS_PER_PAGE));
+  const safeTaskPage = Math.min(taskPage, taskPageCount - 1);
+  const visibleTasks = tasks.slice(
+    safeTaskPage * TASKS_PER_PAGE,
+    safeTaskPage * TASKS_PER_PAGE + TASKS_PER_PAGE,
+  );
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -190,7 +199,7 @@ function CapabilityPage({ project, onClose }: CapabilityPageProps) {
                   </button>
                 </div>
                 <div className="space-y-3">
-                  {tasks.map((task) => (
+                  {visibleTasks.map((task) => (
                     <TaskCard key={task.id} task={task} />
                   ))}
                   {tasks.length === 0 && (
@@ -203,6 +212,59 @@ function CapabilityPage({ project, onClose }: CapabilityPageProps) {
                     </p>
                   )}
                 </div>
+
+                {taskPageCount > 1 && (
+                  <div className="mt-4 flex items-center justify-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setTaskPage((p) => Math.max(0, p - 1))}
+                      disabled={safeTaskPage === 0}
+                      aria-label="Previous page"
+                      className={`flex h-7 w-7 items-center justify-center rounded text-lg leading-none transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                        darkMode
+                          ? "text-slate-400 hover:bg-slate-800"
+                          : "text-slate-500 hover:bg-slate-100"
+                      }`}
+                    >
+                      ‹
+                    </button>
+
+                    {Array.from({ length: taskPageCount }, (_, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => setTaskPage(i)}
+                        aria-label={`Page ${i + 1}`}
+                        aria-current={i === safeTaskPage}
+                        className={`flex h-7 min-w-[28px] items-center justify-center rounded px-1 text-[12px] font-medium transition-colors ${
+                          i === safeTaskPage
+                            ? "bg-[#c74634] text-white"
+                            : darkMode
+                              ? "text-slate-400 hover:bg-slate-800"
+                              : "text-slate-500 hover:bg-slate-100"
+                        }`}
+                      >
+                        {i + 1}
+                      </button>
+                    ))}
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setTaskPage((p) => Math.min(taskPageCount - 1, p + 1))
+                      }
+                      disabled={safeTaskPage === taskPageCount - 1}
+                      aria-label="Next page"
+                      className={`flex h-7 w-7 items-center justify-center rounded text-lg leading-none transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                        darkMode
+                          ? "text-slate-400 hover:bg-slate-800"
+                          : "text-slate-500 hover:bg-slate-100"
+                      }`}
+                    >
+                      ›
+                    </button>
+                  </div>
+                )}
               </div>
             </>
           )}

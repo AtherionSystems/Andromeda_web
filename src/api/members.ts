@@ -19,14 +19,11 @@ export const getProjectMembers = (
   //   members:p:5          → filtrado por projectId=5
   //   members:u:12         → filtrado por userId=12
   //   members:p:5:u:12     → ambos filtros
-  const KEY =
-    [
-      "members",
-      params?.projectId != null ? `p:${params.projectId}` : null,
-      params?.userId != null ? `u:${params.userId}` : null,
-    ]
-      .filter(Boolean)
-      .join(":") || "members:all";
+  const parts = ["members"];
+  if (params?.projectId != null) parts.push(`p:${params.projectId}`);
+  if (params?.userId != null) parts.push(`u:${params.userId}`);
+  // Sin filtros → "members:all" (la key que invalidan addMember/removeMember).
+  const KEY = parts.length === 1 ? "members:all" : parts.join(":");
 
   const hit = cache.get<ApiProjectMember[]>(KEY);
   if (hit) return Promise.resolve(hit);

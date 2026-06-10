@@ -1,10 +1,10 @@
-﻿import { useRef, useState, useCallback, useEffect, useMemo } from "react";
+import { useRef, useState, useCallback, useEffect, useMemo } from "react";
 import { useTheme } from "../../../contexts/useTheme";
 import { useClickOutside } from "../../../hooks/useClickOutside";
 import { createProject } from "../../../api/projects";
 import { addMember } from "../../../api/members";
 import { getUsers } from "../../../api/auth";
-import type { ApiUser } from "../../../types/api";
+import type { ApiProject, ApiUser } from "../../../types/api";
 import { Calendar } from "@/components/ui/calendar";
 
 interface Props {
@@ -13,18 +13,20 @@ interface Props {
   onCreated: () => void;
 }
 
-
-//fecha local a UTC sin cambiar el dÃ­a, para evitar que cambie al convertir a otras zonas horarias.
-function toDeliveryDateString(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}T00:00:00Z`;
+// LocalDateTime string (no timezone / no trailing "Z") — the backend expects
+// "2026-06-09T10:00:00", not an ISO instant with "Z".
+function toLocalDateTime(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 
 function NewProjectModal({ isOpen, onClose, onCreated }: Props) {
   const { darkMode } = useTheme();
   const modalRef = useRef<HTMLDivElement>(null);
+
+  // Two-step wizard: 1 = project details, 2 = team (responsible + members).
+  const [step, setStep] = useState<1 | 2>(1);
+  const [createdProject, setCreatedProject] = useState<ApiProject | null>(null);
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -56,20 +58,16 @@ function NewProjectModal({ isOpen, onClose, onCreated }: Props) {
 
   const nameInputRef = useRef<HTMLInputElement>(null);
 
-  // Keep a stable reference to the latest onClose for the Escape handler,
-  // so the modal effect can depend only on `isOpen`.
+  // Keep a stable reference to the latest onClose for the Escape handler.
   const onCloseRef = useRef(onClose);
   useEffect(() => {
     onCloseRef.current = onClose;
   }, [onClose]);
 
-  // Computed per render so the calendar's min day is always current (cheap,
-  // and the modal only renders while open).
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  // Modal behavior: Escape to close, body scroll-lock, and focus management
-  // (move focus into the dialog on open, restore it to the opener on close).
+  // Modal behavior: Escape to close, body scroll-lock, focus management.
   useEffect(() => {
     if (!isOpen) return;
     const previouslyFocused = document.activeElement as HTMLElement | null;
@@ -93,6 +91,23 @@ function NewProjectModal({ isOpen, onClose, onCreated }: Props) {
   useEffect(() => {
     if (!isOpen) return;
     getUsers().then(setAllUsers).catch((err) => console.error("Failed to load users:", err));
+  }, [isOpen]);
+
+  // Reset the whole wizard whenever the modal closes.
+  useEffect(() => {
+    if (isOpen) return;
+    setStep(1);
+    setCreatedProject(null);
+    setName("");
+    setDescription("");
+    setEndDate(undefined);
+    setSelectedUsers([]);
+    setSearch("");
+    setResponsible(null);
+    setResponsibleRole("owner");
+    setResponsibleSearch("");
+    setError(null);
+    setSubmitting(false);
   }, [isOpen]);
 
   const filteredUsers = useMemo(() => {
@@ -137,26 +152,13 @@ function NewProjectModal({ isOpen, onClose, onCreated }: Props) {
     setShowResponsibleDropdown(false);
   }
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  // ── Step 1: create the project (POST /api/projects) ───────────────────────────
+  async function handleCreateProject(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!name.trim()) {
       setError("Project name is required.");
       return;
     }
-    if (!description.trim()) {
-      setError("Project description is required.");
-      return;
-    }
-    if (selectedUsers.length === 0) {
-      setError("Add at least one team member.");
-      return;
-    }
-    if (!endDate) {
-      setError("Delivery date is required.");
-      return;
-    }
-
-    const endDateStr = toDeliveryDateString(endDate);
 
     setSubmitting(true);
     setError(null);
@@ -165,37 +167,45 @@ function NewProjectModal({ isOpen, onClose, onCreated }: Props) {
         name: name.trim(),
         description: description.trim() || null,
         status: "active",
-        startDate: new Date().toISOString().split(".")[0] + "Z",
-        endDate: endDateStr,
+        startDate: toLocalDateTime(new Date()),
+        endDate: endDate ? toLocalDateTime(endDate) : null,
       });
+      setCreatedProject(project);
+      onCreated(); // refresh the list so the new project shows immediately
+      setStep(2);
+    } catch {
+      setError("Failed to create project. Please check the fields and try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
+  // ── Step 2: add members (POST /api/project-members per person) ────────────────
+  async function handleAddMembers(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!createdProject) return;
+
+    setSubmitting(true);
+    setError(null);
+    try {
       await Promise.allSettled([
-        ...selectedUsers.map((u) =>
-          addMember({ projectId: project.id, userId: u.id, role: "member" }),
-        ),
         ...(responsible
           ? [
               addMember({
-                projectId: project.id,
+                projectId: createdProject.id,
                 userId: responsible.id,
                 role: responsibleRole,
               }),
             ]
           : []),
+        ...selectedUsers.map((u) =>
+          addMember({ projectId: createdProject.id, userId: u.id, role: "member" }),
+        ),
       ]);
-
       onCreated();
       onClose();
-      setName("");
-      setDescription("");
-      setEndDate(undefined);
-      setSelectedUsers([]);
-      setSearch("");
-      setResponsible(null);
-      setResponsibleRole("owner");
-      setResponsibleSearch("");
     } catch {
-      setError("Failed to create project. Please try again.");
+      setError("Some members could not be added. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -211,6 +221,10 @@ function NewProjectModal({ isOpen, onClose, onCreated }: Props) {
     darkMode
       ? "bg-slate-800 border-slate-700 text-slate-100 placeholder:text-slate-500"
       : "bg-[#f5f5f5] border-transparent text-slate-700 placeholder:text-slate-400"
+  }`;
+
+  const stepLabelClass = `text-[10px] tracking-[1.2px] uppercase font-semibold mb-5 ${
+    darkMode ? "text-slate-500" : "text-slate-400"
   }`;
 
   return (
@@ -250,52 +264,120 @@ function NewProjectModal({ isOpen, onClose, onCreated }: Props) {
           </svg>
         </button>
 
-        <div className="flex">
-          {/* columna izq del form â”€â”€ */}
-          <div className="flex-1 p-8 min-w-0">
+        {/* ── STEP 1: project details ── */}
+        {step === 1 && (
+          <div className="flex">
+            {/* form column */}
+            <div className="flex-1 p-8 min-w-0">
+              <h2
+                id="new-project-title"
+                className={`text-2xl italic font-light mb-1 ${
+                  darkMode ? "text-slate-100" : "text-slate-800"
+                }`}
+              >
+                Add New Project
+              </h2>
+              <p className={stepLabelClass}>Step 1 of 2 · Project details</p>
+
+              <form onSubmit={handleCreateProject}>
+                {/* nombre */}
+                <div className="mb-4">
+                  <label className={labelClass}>Project Name</label>
+                  <input
+                    ref={nameInputRef}
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Enter the project name"
+                    maxLength={255}
+                    className={inputClass}
+                  />
+                </div>
+
+                {/* descripción */}
+                <div className="mb-6">
+                  <label className={labelClass}>Project Description</label>
+                  <textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Describe the project goals and scope."
+                    rows={3}
+                    className={`${inputClass} resize-none`}
+                  />
+                </div>
+
+                {error && <p className="mb-4 text-xs text-red-500">{error}</p>}
+
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  style={{ background: "#C74634" }}
+                  className="w-full py-3.5 text-white text-[12px] font-semibold tracking-[1.5px] uppercase rounded hover:opacity-90 transition-opacity disabled:opacity-60 cursor-pointer"
+                >
+                  {submitting ? "Creating..." : "Next →"}
+                </button>
+              </form>
+            </div>
+
+            {/* divider */}
+            <div
+              className={`w-px self-stretch ${
+                darkMode ? "bg-slate-700" : "bg-slate-100"
+              }`}
+            />
+
+            {/* calendar column */}
+            <div className="flex flex-col p-6 justify-start">
+              <p
+                className={`text-[10px] tracking-[1.2px] uppercase font-semibold mb-3 ${
+                  darkMode ? "text-slate-400" : "text-slate-500"
+                }`}
+              >
+                Delivery Date
+              </p>
+
+              {endDate && (
+                <p className="text-[11px] mb-2 font-medium" style={{ color: "#C74634" }}>
+                  {endDate.toLocaleDateString("en-GB", {
+                    weekday: "short",
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                  })}
+                </p>
+              )}
+
+              <Calendar
+                mode="single"
+                selected={endDate}
+                onSelect={setEndDate}
+                disabled={{ before: today }}
+                captionLayout="label"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* ── STEP 2: team (responsible + members) ── */}
+        {step === 2 && (
+          <div className="p-8">
             <h2
-              id="new-project-title"
-              className={`text-2xl italic font-light mb-7 ${
+              className={`text-2xl italic font-light mb-1 ${
                 darkMode ? "text-slate-100" : "text-slate-800"
               }`}
             >
-              Add New Project
+              Add Team
             </h2>
+            <p className={stepLabelClass}>
+              Step 2 of 2 · {createdProject?.name}
+            </p>
 
-            <form onSubmit={handleSubmit}>
-              {/*nombre del proyecto */}
-              <div className="mb-4">
-                <label className={labelClass}>Project Name</label>
-                <input
-                  ref={nameInputRef}
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Enter the project name"
-                  className={inputClass}
-                />
-              </div>
-
-              {/* desc del proyecto*/}
-              <div className="mb-4">
-                <label className={labelClass}>Project Description</label>
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Describe the project goals and scope."
-                  rows={3}
-                  className={`${inputClass} resize-none`}
-                />
-              </div>
-
+            <form onSubmit={handleAddMembers}>
               {/* Project Responsible */}
               <div className="mb-4">
                 <label className={labelClass}>Project Responsible</label>
                 <div className="flex gap-2 items-start">
-                  <div
-                    className="relative flex-1 min-w-0"
-                    ref={responsibleDropdownRef}
-                  >
+                  <div className="relative flex-1 min-w-0" ref={responsibleDropdownRef}>
                     <div
                       className={`w-full min-h-[44px] rounded border px-3 py-2 flex flex-wrap gap-1.5 items-center focus-within:ring-2 focus-within:ring-[#C74634]/30 focus-within:border-[#C74634] transition-colors ${
                         darkMode
@@ -415,7 +497,7 @@ function NewProjectModal({ isOpen, onClose, onCreated }: Props) {
                           onClick={() => removeUser(user.id)}
                           className="ml-0.5 opacity-60 hover:opacity-100 text-sm leading-none"
                         >
-                          Ã—
+                          ×
                         </button>
                       </span>
                     ))}
@@ -428,9 +510,7 @@ function NewProjectModal({ isOpen, onClose, onCreated }: Props) {
                       }}
                       onFocus={() => setShowDropdown(true)}
                       placeholder={
-                        selectedUsers.length === 0
-                          ? "Search by name or email"
-                          : ""
+                        selectedUsers.length === 0 ? "Search by name or email" : ""
                       }
                       className={`flex-1 min-w-[140px] bg-transparent border-none outline-none text-sm ${
                         darkMode
@@ -479,46 +559,11 @@ function NewProjectModal({ isOpen, onClose, onCreated }: Props) {
                 style={{ background: "#C74634" }}
                 className="w-full py-3.5 text-white text-[12px] font-semibold tracking-[1.5px] uppercase rounded hover:opacity-90 transition-opacity disabled:opacity-60 cursor-pointer"
               >
-                {submitting ? "Creating..." : "Create New Project"}
+                {submitting ? "Saving..." : "Finish"}
               </button>
             </form>
           </div>
-
-          {/*divider*/}
-          <div
-            className={`w-px self-stretch ${
-              darkMode ? "bg-slate-700" : "bg-slate-100"
-            }`}
-          />
-
-          {/* columna de calendario*/}
-          <div className="flex flex-col p-6 justify-start">
-            <p className={`text-[10px] tracking-[1.2px] uppercase font-semibold mb-3 ${
-              darkMode ? "text-slate-400" : "text-slate-500"
-            }`}>
-              Delivery Date
-            </p>
-
-            {endDate && (
-              <p className="text-[11px] mb-2 font-medium" style={{ color: "#C74634" }}>
-                {endDate.toLocaleDateString("en-GB", {
-                  weekday: "short",
-                  day: "2-digit",
-                  month: "short",
-                  year: "numeric",
-                })}
-              </p>
-            )}
-
-            <Calendar
-              mode="single"
-              selected={endDate}
-              onSelect={setEndDate}
-              disabled={{ before: today }}
-              captionLayout="label"
-            />
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );

@@ -45,13 +45,22 @@ function EmptyProjectScreen({ project, onClose }: EmptyProjectScreenProps) {
         This project has no members or tasks yet.
       </p>
 
-      <button
-        type="button"
-        style={{ background: "#c74634" }}
-        className="mt-6 inline-flex items-center gap-2 px-5 py-2.5 rounded text-white text-sm font-medium cursor-pointer transition-opacity hover:opacity-90"
-      >
-        + Start adding capabilities
-      </button>
+      <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+        <button
+          type="button"
+          style={{ background: "#bcd9eb", color: "#1a3a4a" }}
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded text-sm font-medium cursor-pointer transition-opacity hover:opacity-90"
+        >
+          + Start adding capabilities
+        </button>
+        <button
+          type="button"
+          style={{ background: "#c74634" }}
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded text-white text-sm font-medium cursor-pointer transition-opacity hover:opacity-90"
+        >
+          + Start adding sprints
+        </button>
+      </div>
 
       <button
         onClick={onClose}

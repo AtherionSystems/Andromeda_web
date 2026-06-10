@@ -9,7 +9,7 @@ import {
   getSprintTasks,
   updateTask,
 } from "../../api/tasks";
-import MemberAvatars from "../Projects/MemberAvatars";
+import BacklogDetails from "./BacklogDetails";
 import { ThemeContext } from "../../contexts/themeContextValue";
 
 interface RawAssignee {
@@ -44,7 +44,7 @@ function memberInitials(username: string): string {
   return username.slice(0, 2).toUpperCase();
 }
 
-function BacklogPage({ canUpdateStatus = false, initialProjectId }: { canUpdateStatus?: boolean; initialProjectId?: number }) {
+function BacklogPage({ canUpdateStatus = false, canEdit = false, initialProjectId }: { canUpdateStatus?: boolean; canEdit?: boolean; initialProjectId?: number }) {
   const [projects, setProjects] = useState<ApiProject[]>([]);
   const [tasks, setTasks] = useState<ApiTask[]>([]);
   const [sprints, setSprints] = useState<ApiSprint[]>([]);
@@ -81,6 +81,15 @@ function BacklogPage({ canUpdateStatus = false, initialProjectId }: { canUpdateS
   const handlePageChange = (column: string, page: number) => {
     setColumnPages((prev) => ({ ...prev, [column]: page }));
   };
+
+  // Reflect an edited task (title/description) in the board and open modal.
+  function handleTaskSaved(updated: ApiTask) {
+    const merge = (prev: ApiTask[]) =>
+      prev.map((t) => (t.id === updated.id ? { ...t, ...updated } : t));
+    setTasks(merge);
+    baseTasksRef.current = merge(baseTasksRef.current);
+    setSelectedTask(updated);
+  }
 
   async function handleStatusToggle(task: ApiTask) {
     if (task.projectId == null) return;
@@ -485,204 +494,15 @@ function BacklogPage({ canUpdateStatus = false, initialProjectId }: { canUpdateS
         />
       </div>
 
-      {selectedTask &&
-        (() => {
-          const STATUS_META: Record<
-            string,
-            { label: string; subtitle: string; color: string; icon: string }
-          > = {
-            todo: {
-              label: "TO DO",
-              subtitle: "Not Started",
-              color: "#94a3b8",
-              icon: "○",
-            },
-            in_progress: {
-              label: "IN PROGRESS",
-              subtitle: "Active Development",
-              color: "#f97316",
-              icon: "↻",
-            },
-            review: {
-              label: "IN REVIEW",
-              subtitle: "Under Review",
-              color: "#3b82f6",
-              icon: "◎",
-            },
-            done: {
-              label: "DONE",
-              subtitle: "Completed",
-              color: "#22c55e",
-              icon: "✓",
-            },
-          };
-          const PRIORITY_META: Record<
-            string,
-            { label: string; subtitle: string; color: string }
-          > = {
-            critical: {
-              label: "CRITICAL",
-              subtitle: "High Urgency",
-              color: "#C74634",
-            },
-            high: {
-              label: "HIGH",
-              subtitle: "High Priority",
-              color: "#FFB13F",
-            },
-            medium: { label: "MEDIUM", subtitle: "Moderate", color: "#00688C" },
-            low: { label: "LOW", subtitle: "Low Priority", color: "#8FBFD0" },
-          };
-          const statusMeta =
-            STATUS_META[selectedTask.status] ?? STATUS_META.todo;
-          const priorityMeta = PRIORITY_META[selectedTask.priority] ?? {
-            label: selectedTask.priority.toUpperCase(),
-            subtitle: "",
-            color: "#94a3b8",
-          };
-
-          return (
-            <div
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-[1px] p-4"
-              onClick={() => setSelectedTask(null)}
-            >
-              <div
-                role="dialog"
-                aria-modal="true"
-                className={`relative w-full max-w-[700px] rounded-lg shadow-2xl flex ${darkMode ? "bg-slate-900 text-slate-100" : "bg-white text-slate-800"}`}
-                onClick={(e) => e.stopPropagation()}
-              >
-                {/* Close */}
-                <button
-                  onClick={() => setSelectedTask(null)}
-                  className={`absolute top-4 right-5 text-xl leading-none z-10 transition-colors ${darkMode ? "text-slate-500 hover:text-slate-200" : "text-slate-400 hover:text-slate-700"}`}
-                >
-                  ✕
-                </button>
-
-                {/* Left column */}
-                <div className="flex-1 p-8 min-w-0">
-                  <h2
-                    className={`text-2xl italic font-light mb-1 pr-8 ${darkMode ? "text-slate-100" : "text-slate-800"}`}
-                  >
-                    {selectedTask.title}
-                  </h2>
-                  <p
-                    className={`text-[10px] tracking-[1.2px] uppercase font-semibold mb-6 ${darkMode ? "text-slate-500" : "text-slate-400"}`}
-                  >
-                    {selectedTask.projectName ||
-                      `Project #${selectedTask.projectId ?? "N/A"}`}
-                  </p>
-
-                  <p
-                    className={`text-[10px] tracking-[1.2px] uppercase font-semibold mb-1.5 ${darkMode ? "text-slate-400" : "text-slate-500"}`}
-                  >
-                    Task Description
-                  </p>
-                  <div
-                    className={`rounded border px-3 py-2.5 text-sm min-h-[80px] ${darkMode ? "bg-slate-800 border-slate-700 text-slate-300" : "bg-[#f5f5f5] border-transparent text-slate-600"}`}
-                  >
-                    {selectedTask.description || (
-                      <span
-                        className={
-                          darkMode ? "text-slate-500" : "text-slate-400"
-                        }
-                      >
-                        No description available.
-                      </span>
-                    )}
-                  </div>
-
-                  <p
-                    className={`text-[10px] tracking-[1.2px] uppercase font-semibold mt-5 mb-1.5 ${darkMode ? "text-slate-400" : "text-slate-500"}`}
-                  >
-                    Assignees
-                  </p>
-                  {selectedMembers.length === 0 ? (
-                    <p
-                      className={`text-xs ${darkMode ? "text-slate-500" : "text-slate-400"}`}
-                    >
-                      No assignees
-                    </p>
-                  ) : (
-                    <MemberAvatars
-                      members={selectedMembers}
-                      max={selectedMembers.length}
-                    />
-                  )}
-                </div>
-
-                {/* Divider */}
-                <div
-                  className={`w-px self-stretch ${darkMode ? "bg-slate-700" : "bg-slate-100"}`}
-                />
-
-                {/* Right column */}
-                <div className="flex flex-col gap-3 p-6 justify-center min-w-[200px]">
-                  {/* Status card */}
-                  <div
-                    className={`flex items-center gap-4 rounded-lg p-4 ${darkMode ? "bg-slate-800" : "bg-slate-50"}`}
-                  >
-                    <div
-                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-xl text-white"
-                      style={{ backgroundColor: statusMeta.color }}
-                    >
-                      {statusMeta.icon}
-                    </div>
-                    <div>
-                      <p
-                        className={`text-[9px] font-bold tracking-[1.4px] uppercase mb-0.5 ${darkMode ? "text-slate-400" : "text-slate-400"}`}
-                      >
-                        Current Status
-                      </p>
-                      <p
-                        className="text-sm font-bold tracking-wide"
-                        style={{ color: statusMeta.color }}
-                      >
-                        {statusMeta.label}
-                      </p>
-                      <p
-                        className={`text-[10px] mt-0.5 ${darkMode ? "text-slate-400" : "text-slate-400"}`}
-                      >
-                        {statusMeta.subtitle}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Priority card */}
-                  <div
-                    className={`flex items-center gap-4 rounded-lg p-4 ${darkMode ? "bg-slate-800" : "bg-slate-50"}`}
-                  >
-                    <div
-                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-xl font-bold text-white"
-                      style={{ backgroundColor: priorityMeta.color }}
-                    >
-                      !
-                    </div>
-                    <div>
-                      <p
-                        className={`text-[9px] font-bold tracking-[1.4px] uppercase mb-0.5 ${darkMode ? "text-slate-400" : "text-slate-400"}`}
-                      >
-                        Priority Level
-                      </p>
-                      <p
-                        className="text-sm font-bold tracking-wide"
-                        style={{ color: priorityMeta.color }}
-                      >
-                        {priorityMeta.label}
-                      </p>
-                      <p
-                        className={`text-[10px] mt-0.5 ${darkMode ? "text-slate-400" : "text-slate-400"}`}
-                      >
-                        {priorityMeta.subtitle}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          );
-        })()}
+      {selectedTask && (
+        <BacklogDetails
+          task={selectedTask}
+          members={selectedMembers}
+          canEdit={canEdit}
+          onClose={() => setSelectedTask(null)}
+          onSaved={handleTaskSaved}
+        />
+      )}
     </div>
   );
 }
