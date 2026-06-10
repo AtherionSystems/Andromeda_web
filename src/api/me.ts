@@ -39,8 +39,10 @@ export interface ApiMeTasksPerSprintItem {
 
 export interface ApiMeDashboard {
   projectId: number;
+  userId?: number;
+  userName?: string;
   generatedAt?: string;
-  taskDistribution: ApiMeTaskDistributionItem[];
+  myTaskDistribution: ApiMeTaskDistributionItem[];
   myHoursPerSprint: ApiMeHoursPerSprintItem[];
   myTasksPerSprint: ApiMeTasksPerSprintItem[];
 }

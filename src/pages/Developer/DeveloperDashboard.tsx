@@ -43,7 +43,7 @@ interface SprintTaskEntry {
 
 const EMPTY_COUNTS: MyTaskStatusCounts = { todo: 0, in_progress: 0, review: 0, done: 0 };
 
-// Convert taskDistribution array → object indexed by status.
+// Convert myTaskDistribution array → object indexed by status.
 // Normalizes the status so it tolerates different casings/separators
 // (e.g. "TODO", "IN_PROGRESS", "in-progress", "InProgress").
 function normalizeStatus(raw: string): keyof MyTaskStatusCounts | null {
@@ -323,9 +323,9 @@ export default function DeveloperDashboard() {
 
         // Log so we can compare against the assumed shape.
         console.log("[/api/me/dashboard] raw response:", d);
-        console.log("[/api/me/dashboard] taskDistribution raw:", d.taskDistribution);
+        console.log("[/api/me/dashboard] myTaskDistribution raw:", d.myTaskDistribution);
 
-        const dist = d.taskDistribution ?? [];
+        const dist = d.myTaskDistribution ?? [];
         const hours = d.myHoursPerSprint ?? [];
         const tasks = d.myTasksPerSprint ?? [];
 
@@ -419,7 +419,7 @@ export default function DeveloperDashboard() {
             <p>
               If hours/tasks rows have data but distribution total is 0, the <code>status</code> values
               probably differ from <code>todo / in_progress / review / done</code> (e.g. they may be
-              uppercase or camelCase). The console log shows the exact <code>taskDistribution</code> array
+              uppercase or camelCase). The console log shows the exact <code>myTaskDistribution</code> array
               the backend returned.
             </p>
             <pre className={`mt-2 max-h-60 overflow-auto rounded p-2 text-[10px] ${darkMode ? "bg-slate-900" : "bg-white"}`}>
