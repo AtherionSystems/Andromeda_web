@@ -1,6 +1,8 @@
-import { Bar, BarChart, Cell, CartesianGrid, ReferenceLine, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import {
   ChartContainer,
+  ChartLegend,
+  ChartLegendContent,
   ChartTooltip,
   type ChartConfig,
 } from "@/components/ui/chart";
@@ -13,7 +15,8 @@ export interface SprintHourEntry {
 }
 
 const chartConfig = {
-  deviation: { label: "Deviation", color: "#00688C" },
+  estimated: { label: "Estimated", color: "#8FBFD0" },
+  actual:    { label: "Actual",    color: "#00688C" },
 } satisfies ChartConfig;
 
 const OVERRUN_COLOR  = "#c74634"; // actual > estimated
@@ -110,7 +113,7 @@ export default function HoursPerSprintCard({ darkMode, loading, data }: Props) {
         )}
       </div>
       <p className={`m-0 mb-4 text-[10px] uppercase tracking-[1.2px] ${darkMode ? "text-slate-400" : "text-[#6a8a9a]"}`}>
-        Actual hours vs estimate per sprint — above zero is overrun
+        Estimated vs actual hours per sprint
       </p>
 
       {loading ? (
@@ -121,7 +124,7 @@ export default function HoursPerSprintCard({ darkMode, loading, data }: Props) {
         </p>
       ) : (
         <ChartContainer config={chartConfig} className="h-[220px] w-full">
-          <BarChart data={chartData} barSize={22} barCategoryGap="22%">
+          <BarChart data={chartData} barSize={18} barCategoryGap="25%">
             <CartesianGrid vertical={false} stroke={gridColor} />
             <XAxis
               dataKey="sprint"
@@ -136,18 +139,12 @@ export default function HoursPerSprintCard({ darkMode, loading, data }: Props) {
               tickLine={false}
               axisLine={false}
               tick={{ fontSize: 10, fill: tickColor }}
-              tickFormatter={(v: number) => `${v > 0 ? "+" : ""}${v}h`}
+              tickFormatter={(v: number) => `${v}h`}
             />
-            <ReferenceLine y={0} stroke={darkMode ? "#475569" : "#94a3b8"} strokeWidth={1.5} />
             <ChartTooltip content={<DeviationTooltip darkMode={darkMode} />} />
-            <Bar dataKey="deviation" radius={[4, 4, 4, 4]}>
-              {chartData.map((d, i) => (
-                <Cell
-                  key={i}
-                  fill={d.deviation > 0 ? OVERRUN_COLOR : d.deviation < 0 ? UNDERRUN_COLOR : ZERO_COLOR}
-                />
-              ))}
-            </Bar>
+            <ChartLegend content={<ChartLegendContent />} />
+            <Bar dataKey="estimated" fill="var(--color-estimated)" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="actual"    fill="var(--color-actual)"    radius={[4, 4, 0, 0]} />
           </BarChart>
         </ChartContainer>
       )}

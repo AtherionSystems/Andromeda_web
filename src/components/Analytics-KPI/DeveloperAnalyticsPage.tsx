@@ -663,7 +663,11 @@ export function DeveloperAnalyticsPage() {
         if (ac.signal.aborted) return;
 
         setProjects(projectList);
-        setTasks(myTasks);
+
+        // Drop tasks from projects the user isn't a member of (orphan
+        // assignments in the backend) so they don't skew the charts.
+        const memberProjects = new Set(projectList.map((p) => p.name));
+        setTasks(myTasks.filter((t) => memberProjects.has(t.projectName)));
 
         const results = await Promise.allSettled(
           projectList.map((p) => getMyDashboard(p.id, ac.signal)),
