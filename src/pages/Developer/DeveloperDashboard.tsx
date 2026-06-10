@@ -15,7 +15,6 @@ import type { EnrichedTask } from "../../components/dashboard/types";
 import { PRIORITY_ORDER } from "../../components/dashboard/types";
 import Skeleton from "../../components/dashboard/Skeleton";
 import UpcomingCard from "../../components/dashboard/UpcomingCard";
-import SystemConfigCard from "../../components/dashboard/SystemConfigCard";
 import MyTaskDistributionCard, {
   type MyTaskStatusCounts,
 } from "../../components/dashboard/MyTaskDistributionCard";
@@ -33,6 +32,8 @@ interface SprintProgressItem {
   sprintName: string;
   done: number;
   total: number;
+  /** True when no sprint is active and we're showing the last completed one. */
+  isFallback: boolean;
 }
 
 interface SprintTaskEntry {
@@ -114,9 +115,16 @@ function SprintProgressCard({
               <div key={`${item.projectName}-${item.sprintName}`}>
                 <div className="flex items-start justify-between mb-1 gap-2">
                   <div className="min-w-0">
-                    <p className={`text-[12px] font-semibold truncate ${darkMode ? "text-slate-200" : "text-[#1a3a4a]"}`}>
-                      {item.projectName}
-                    </p>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <p className={`text-[12px] font-semibold truncate ${darkMode ? "text-slate-200" : "text-[#1a3a4a]"}`}>
+                        {item.projectName}
+                      </p>
+                      {item.isFallback && (
+                        <span className={`text-[8px] font-bold uppercase tracking-wide rounded px-1 py-px shrink-0 ${darkMode ? "bg-slate-700 text-slate-300" : "bg-slate-100 text-slate-500"}`}>
+                          Last sprint
+                        </span>
+                      )}
+                    </div>
                     <p className={`text-[10px] truncate ${darkMode ? "text-slate-400" : "text-slate-400"}`}>
                       {item.sprintName}
                     </p>
@@ -271,7 +279,18 @@ export default function DeveloperDashboard() {
             const r = sprintLists[i];
             if (r.status !== "fulfilled") return null;
             const active = r.value.find((s) => s.status === "active");
-            return active ? { project, sprint: active } : null;
+            if (active) return { project, sprint: active, isFallback: false };
+            // No active sprint → fall back to the most recently finished one.
+            const lastCompleted = r.value
+              .filter((s) => s.status === "completed")
+              .sort(
+                (a, b) =>
+                  new Date(b.actualEnd ?? b.dueDate ?? 0).getTime() -
+                  new Date(a.actualEnd ?? a.dueDate ?? 0).getTime(),
+              )[0];
+            return lastCompleted
+              ? { project, sprint: lastCompleted, isFallback: true }
+              : null;
           })
           .filter((x): x is NonNullable<typeof x> => x !== null);
 
@@ -283,7 +302,7 @@ export default function DeveloperDashboard() {
         if (signal.aborted) return;
 
         const items: SprintProgressItem[] = activePairs
-          .map(({ project, sprint }, i) => {
+          .map(({ project, sprint, isFallback }, i) => {
             const r = sprintTaskResults[i];
             if (r.status !== "fulfilled") return null;
             const raw = r.value as unknown as SprintTaskEntry[];
@@ -296,6 +315,7 @@ export default function DeveloperDashboard() {
               sprintName: sprint.name,
               total: tasks.length,
               done:  tasks.filter((t) => t.status === "done").length,
+              isFallback,
             };
           })
           .filter((x): x is SprintProgressItem => x !== null && x.total > 0);
@@ -439,7 +459,25 @@ export default function DeveloperDashboard() {
         <div className="flex flex-col gap-3.5">
           <UpcomingCard       darkMode={darkMode} tasks={upcoming} loading={tasksLoading} />
           <SprintProgressCard items={sprintProgress} loading={sprintLoading} darkMode={darkMode} />
-          <SystemConfigCard   healthUp={healthUp} />
+
+          {/* Compact backend health indicator */}
+          <div className={`flex items-center justify-between rounded-lg border px-3 py-2 ${darkMode ? "bg-slate-800 border-slate-700" : "bg-white border-black/[0.06]"}`}>
+            <span className={`text-[10px] font-bold uppercase tracking-[0.1em] ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+              Backend
+            </span>
+            <div className="flex items-center gap-1.5">
+              <span
+                className="w-1.5 h-1.5 rounded-full inline-block"
+                style={{ background: healthUp === null ? "#94a3b8" : healthUp ? "#4ade80" : "#f87171" }}
+              />
+              <span
+                className="text-[10px] font-semibold"
+                style={{ color: healthUp === null ? "#94a3b8" : healthUp ? "#4ade80" : "#f87171" }}
+              >
+                {healthUp === null ? "Checking" : healthUp ? "Operational" : "Unavailable"}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
