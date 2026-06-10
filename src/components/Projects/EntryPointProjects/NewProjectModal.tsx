@@ -1,10 +1,10 @@
 ﻿import { useRef, useState, useCallback, useEffect, useMemo } from "react";
-import { useTheme } from "../../contexts/useTheme";
-import { useClickOutside } from "../../hooks/useClickOutside";
-import { createProject } from "../../api/projects";
-import { addMember } from "../../api/members";
-import { getUsers } from "../../api/auth";
-import type { ApiUser } from "../../types/api";
+import { useTheme } from "../../../contexts/useTheme";
+import { useClickOutside } from "../../../hooks/useClickOutside";
+import { createProject } from "../../../api/projects";
+import { addMember } from "../../../api/members";
+import { getUsers } from "../../../api/auth";
+import type { ApiUser } from "../../../types/api";
 import { Calendar } from "@/components/ui/calendar";
 
 interface Props {
@@ -38,9 +38,21 @@ function NewProjectModal({ isOpen, onClose, onCreated }: Props) {
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Project Responsible: a single user assigned with an "owner" or "manager" role.
+  const [responsible, setResponsible] = useState<ApiUser | null>(null);
+  const [responsibleRole, setResponsibleRole] = useState<"owner" | "manager">("owner");
+  const [responsibleSearch, setResponsibleSearch] = useState("");
+  const [showResponsibleDropdown, setShowResponsibleDropdown] = useState(false);
+  const responsibleDropdownRef = useRef<HTMLDivElement>(null);
+
   const closeDropdown = useCallback(() => setShowDropdown(false), []);
+  const closeResponsibleDropdown = useCallback(
+    () => setShowResponsibleDropdown(false),
+    [],
+  );
   useClickOutside(modalRef, isOpen, onClose);
   useClickOutside(dropdownRef, showDropdown, closeDropdown);
+  useClickOutside(responsibleDropdownRef, showResponsibleDropdown, closeResponsibleDropdown);
 
   const nameInputRef = useRef<HTMLInputElement>(null);
 
@@ -84,8 +96,22 @@ function NewProjectModal({ isOpen, onClose, onCreated }: Props) {
   }, [isOpen]);
 
   const filteredUsers = useMemo(() => {
-    const selectedIds = new Set(selectedUsers.map((u) => u.id));
+    const excludedIds = new Set(selectedUsers.map((u) => u.id));
+    if (responsible) excludedIds.add(responsible.id);
     const q = search.toLowerCase();
+    return allUsers.filter(
+      (u) =>
+        !excludedIds.has(u.id) &&
+        (u.name.toLowerCase().includes(q) ||
+          u.email.toLowerCase().includes(q) ||
+          u.username.toLowerCase().includes(q)),
+    );
+  }, [allUsers, selectedUsers, responsible, search]);
+
+  // Anyone can be made the responsible, except those already added as team members.
+  const filteredResponsibleUsers = useMemo(() => {
+    const selectedIds = new Set(selectedUsers.map((u) => u.id));
+    const q = responsibleSearch.toLowerCase();
     return allUsers.filter(
       (u) =>
         !selectedIds.has(u.id) &&
@@ -93,7 +119,7 @@ function NewProjectModal({ isOpen, onClose, onCreated }: Props) {
           u.email.toLowerCase().includes(q) ||
           u.username.toLowerCase().includes(q)),
     );
-  }, [allUsers, selectedUsers, search]);
+  }, [allUsers, selectedUsers, responsibleSearch]);
 
   function selectUser(user: ApiUser) {
     setSelectedUsers((prev) => [...prev, user]);
@@ -103,6 +129,12 @@ function NewProjectModal({ isOpen, onClose, onCreated }: Props) {
 
   function removeUser(id: number) {
     setSelectedUsers((prev) => prev.filter((u) => u.id !== id));
+  }
+
+  function selectResponsible(user: ApiUser) {
+    setResponsible(user);
+    setResponsibleSearch("");
+    setShowResponsibleDropdown(false);
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -137,11 +169,20 @@ function NewProjectModal({ isOpen, onClose, onCreated }: Props) {
         endDate: endDateStr,
       });
 
-      await Promise.allSettled(
-        selectedUsers.map((u) =>
+      await Promise.allSettled([
+        ...selectedUsers.map((u) =>
           addMember({ projectId: project.id, userId: u.id, role: "member" }),
         ),
-      );
+        ...(responsible
+          ? [
+              addMember({
+                projectId: project.id,
+                userId: responsible.id,
+                role: responsibleRole,
+              }),
+            ]
+          : []),
+      ]);
 
       onCreated();
       onClose();
@@ -150,6 +191,9 @@ function NewProjectModal({ isOpen, onClose, onCreated }: Props) {
       setEndDate(undefined);
       setSelectedUsers([]);
       setSearch("");
+      setResponsible(null);
+      setResponsibleRole("owner");
+      setResponsibleSearch("");
     } catch {
       setError("Failed to create project. Please try again.");
     } finally {
@@ -185,13 +229,25 @@ function NewProjectModal({ isOpen, onClose, onCreated }: Props) {
           type="button"
           onClick={onClose}
           aria-label="Close"
-          className={`absolute top-4 right-5 text-xl leading-none transition-colors z-10 ${
+          className={`absolute top-4 right-5 leading-none transition-colors z-10 ${
             darkMode
               ? "text-slate-500 hover:text-slate-200"
               : "text-slate-400 hover:text-slate-700"
           }`}
         >
-          âœ•
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            aria-hidden="true"
+          >
+            <line x1="6" y1="6" x2="18" y2="18" />
+            <line x1="18" y1="6" x2="6" y2="18" />
+          </svg>
         </button>
 
         <div className="flex">
@@ -230,6 +286,107 @@ function NewProjectModal({ isOpen, onClose, onCreated }: Props) {
                   rows={3}
                   className={`${inputClass} resize-none`}
                 />
+              </div>
+
+              {/* Project Responsible */}
+              <div className="mb-4">
+                <label className={labelClass}>Project Responsible</label>
+                <div className="flex gap-2 items-start">
+                  <div
+                    className="relative flex-1 min-w-0"
+                    ref={responsibleDropdownRef}
+                  >
+                    <div
+                      className={`w-full min-h-[44px] rounded border px-3 py-2 flex flex-wrap gap-1.5 items-center focus-within:ring-2 focus-within:ring-[#C74634]/30 focus-within:border-[#C74634] transition-colors ${
+                        darkMode
+                          ? "bg-slate-800 border-slate-700"
+                          : "bg-[#f5f5f5] border-transparent"
+                      }`}
+                    >
+                      {responsible ? (
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] tracking-wide uppercase ${
+                            darkMode
+                              ? "bg-slate-700 text-slate-300"
+                              : "bg-slate-200 text-slate-600"
+                          }`}
+                        >
+                          {responsible.email}
+                          <button
+                            type="button"
+                            onClick={() => setResponsible(null)}
+                            className="ml-0.5 opacity-60 hover:opacity-100 text-sm leading-none"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ) : (
+                        <input
+                          type="text"
+                          value={responsibleSearch}
+                          onChange={(e) => {
+                            setResponsibleSearch(e.target.value);
+                            setShowResponsibleDropdown(true);
+                          }}
+                          onFocus={() => setShowResponsibleDropdown(true)}
+                          placeholder="Search by name or email"
+                          className={`flex-1 min-w-[140px] bg-transparent border-none outline-none text-sm ${
+                            darkMode
+                              ? "text-slate-100 placeholder:text-slate-500"
+                              : "text-slate-700 placeholder:text-slate-400"
+                          }`}
+                        />
+                      )}
+                    </div>
+
+                    {showResponsibleDropdown &&
+                      !responsible &&
+                      filteredResponsibleUsers.length > 0 && (
+                        <ul
+                          className={`absolute z-10 mt-1 w-full rounded border shadow-lg max-h-40 overflow-y-auto ${
+                            darkMode
+                              ? "bg-slate-800 border-slate-700"
+                              : "bg-white border-slate-200"
+                          }`}
+                        >
+                          {filteredResponsibleUsers.map((user) => (
+                            <li key={user.id}>
+                              <button
+                                type="button"
+                                onClick={() => selectResponsible(user)}
+                                className={`w-full text-left px-3 py-2 text-sm flex flex-col transition-colors ${
+                                  darkMode
+                                    ? "hover:bg-slate-700 text-slate-100"
+                                    : "hover:bg-slate-50 text-slate-700"
+                                }`}
+                              >
+                                <span className="font-medium">{user.name}</span>
+                                <span className="text-[11px] text-slate-400">
+                                  {user.email}
+                                </span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                  </div>
+
+                  <select
+                    value={responsibleRole}
+                    onChange={(e) =>
+                      setResponsibleRole(e.target.value as "owner" | "manager")
+                    }
+                    aria-label="Responsible role"
+                    className={`rounded border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C74634]/30 focus:border-[#C74634] transition-colors ${
+                      darkMode
+                        ? "bg-slate-800 border-slate-700 text-slate-100"
+                        : "bg-[#f5f5f5] border-transparent text-slate-700"
+                    }`}
+                  >
+                    <option value="owner">Owner</option>
+                    <option value="manager">Manager</option>
+                  </select>
+                </div>
               </div>
 
               {/* Team Members */}

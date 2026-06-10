@@ -2,15 +2,21 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useWindowSize } from "../../hooks/useWindowSize";
 import { getProjects, deleteProject } from "../../api/projects";
 import { getProjectMembers } from "../../api/members";
+import { getProjectTasks } from "../../api/tasks";
 import type { ApiProject, ApiProjectMember } from "../../types/api";
 import type { Member } from "../../types/project";
 import ProjectCard from "./ProjectCard";
-import NewProjectModal from "./NewProjectModal";
+import NewProjectModal from "./EntryPointProjects/NewProjectModal";
 import SearchInput from "./SearchInput";
+import EmptyProjectScreen from "./EmptyProjectScreen";
+import ProjectArchitectureScreen from "./CapabilityPage";
+import ProjectEntryModal from "./EntryPointProjects/ProjectEntryModal";
 
 interface ProjectsPageProps {
   description?: string;
   readOnly?: boolean;
+  // Kept for callers that still pass it; the card click now opens the
+  // architecture view inline instead of navigating.
   onViewTasks?: (projectId: number) => void;
 }
 
@@ -45,7 +51,28 @@ function ProjectsPage({ description, readOnly = false, onViewTasks }: ProjectsPa
   const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [emptyProject, setEmptyProject] = useState<ApiProject | null>(null);
+  const [architectureProject, setArchitectureProject] = useState<ApiProject | null>(null);
+  const [entryProject, setEntryProject] = useState<ApiProject | null>(null);
   const hasFetched = useRef(false);
+
+  // Open a project: if it has no members and no tasks, show the empty-state
+  // screen; otherwise show the chooser (Capabilities / Sprints).
+  async function handleOpen(project: ApiProject) {
+    const members = memberMap[project.id] ?? [];
+    if (members.length === 0) {
+      try {
+        const tasks = await getProjectTasks(project.id);
+        if (tasks.length === 0) {
+          setEmptyProject(project);
+          return;
+        }
+      } catch {
+        // If tasks can't be confirmed, still show the chooser.
+      }
+    }
+    setEntryProject(project);
+  }
 
   async function handleDelete(project: ApiProject) {
     try {
@@ -92,6 +119,28 @@ function ProjectsPage({ description, readOnly = false, onViewTasks }: ProjectsPa
       (p.description ?? "").toLowerCase().includes(q)
     );
   });
+
+  if (architectureProject) {
+    return (
+      <div className="flex-1 px-6 pt-3 pb-4">
+        <ProjectArchitectureScreen
+          project={architectureProject}
+          onClose={() => setArchitectureProject(null)}
+        />
+      </div>
+    );
+  }
+
+  if (emptyProject) {
+    return (
+      <div className="flex-1 px-6 pt-3 pb-4">
+        <EmptyProjectScreen
+          project={emptyProject}
+          onClose={() => setEmptyProject(null)}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 px-6 pt-3 pb-4">
@@ -176,7 +225,7 @@ function ProjectsPage({ description, readOnly = false, onViewTasks }: ProjectsPa
               members={memberMap[project.id] ?? []}
               index={i}
               onDelete={readOnly ? undefined : handleDelete}
-              onViewTasks={onViewTasks ? () => onViewTasks(project.id) : undefined}
+              onViewTasks={() => handleOpen(project)}
             />
           ))}
           {filtered.length === 0 && !loading && (
@@ -194,6 +243,21 @@ function ProjectsPage({ description, readOnly = false, onViewTasks }: ProjectsPa
           load();
         }}
       />
+      {entryProject && (
+        <ProjectEntryModal
+          project={entryProject}
+          onClose={() => setEntryProject(null)}
+          onSelectCapabilities={() => {
+            setArchitectureProject(entryProject);
+            setEntryProject(null);
+          }}
+          onSelectSprints={() => {
+            const p = entryProject;
+            setEntryProject(null);
+            if (p) onViewTasks?.(p.id);
+          }}
+        />
+      )}
     </div>
   );
 }
