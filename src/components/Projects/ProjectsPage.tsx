@@ -18,7 +18,8 @@ import ProjectEntryModal from "./EntryPointProjects/ProjectEntryModal";
 interface ProjectsPageProps {
   description?: string;
   readOnly?: boolean;
-  onViewTasks?: (projectId: number) => void;
+  /** "me" → only projects where the current user is a member. Defaults to "all". */
+  scope?: "me" | "all";
 }
 
 const AVATAR_COLORS = [
@@ -44,7 +45,7 @@ function memberToAvatar(pm: ApiProjectMember): Member {
   return { initials, color, name: pm.username };
 }
 
-function ProjectsPage({ description, readOnly = false }: ProjectsPageProps) {
+function ProjectsPage({ description, readOnly = false, scope = "all" }: ProjectsPageProps) {
   const { breakpoint } = useWindowSize();
   const [projects, setProjects] = useState<ApiProject[]>([]);
   const [memberMap, setMemberMap] = useState<Record<number, Member[]>>({});
@@ -100,14 +101,18 @@ function ProjectsPage({ description, readOnly = false }: ProjectsPageProps) {
     setLoading(true);
     setError(null);
     try {
-      const [allProjects, allMembers] = await Promise.all([
-        getProjects(),
+      const projectFetch = scope === "me" ? getMyProjects() : getProjects();
+      const [visibleProjects, allMembers] = await Promise.all([
+        projectFetch,
         getProjectMembers(),
       ]);
-      setProjects(allProjects);
+      setProjects(visibleProjects);
 
+      // Only keep members for projects the user can see, so PO data doesn't leak in.
+      const visibleIds = new Set(visibleProjects.map((p) => p.id));
       const map: Record<number, Member[]> = {};
       allMembers.forEach((pm) => {
+        if (!visibleIds.has(pm.projectId)) return;
         if (!map[pm.projectId]) map[pm.projectId] = [];
         map[pm.projectId].push(memberToAvatar(pm));
       });
@@ -117,7 +122,7 @@ function ProjectsPage({ description, readOnly = false }: ProjectsPageProps) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [scope]);
 
   useEffect(() => {
     if (hasFetched.current) return;

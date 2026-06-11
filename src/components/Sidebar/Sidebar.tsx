@@ -60,7 +60,6 @@ const DEV_NAV = [
   { label: "Dashboard", route: "/" },
   { label: "Projects", route: "/projects" },
   { label: "Backlog", route: "/backlog" },
-  { label: "Analytics", route: "/analytics" },
   { label: "Settings", route: "/settings" },
 ];
 

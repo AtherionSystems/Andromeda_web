@@ -9,7 +9,17 @@
       "Bash(git commit -m ' *)",
       "Bash(findstr /i \"entities depend\")",
       "Bash(node -e \"require\\('parse5'\\)\")",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(curl -sk https://localhost:5173)",
+      "Bash(curl *)",
+      "Bash(git -C /Users/paco/WebstormProjects/Andromeda_web checkout -b improvements --track origin/improvements)",
+      "Bash(git -C /Users/paco/WebstormProjects/Andromeda_web checkout improvements)",
+      "Bash(git *)",
+      "Bash(pkill -f \"vite\")",
+      "Bash(grep -E \"\\\\.\\(tsx|jsx|ts|js\\)$\")",
+      "Bash(npx tsc *)",
+      "Bash(npx eslint *)",
+      "Bash(npx vite *)"
     ],
     "additionalDirectories": [
       "c:\\Users\\manua\\Downloads\\TatrasSem6\\AtherionSystems\\AndromedaWeb\\src\\components\\Sidebar"

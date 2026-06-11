@@ -65,9 +65,9 @@ function AppRoutes() {
       <Route
         path="/po"
         element={
-          <ProtectedRoute allowedRole="po">
+          <AuthRoute>
             <POPage />
-          </ProtectedRoute>
+          </AuthRoute>
         }
       />
       <Route
