@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTheme } from "../../../contexts/useTheme";
 import type { Feature } from "./types";
 import { Chevron } from "./shared";
@@ -20,13 +20,10 @@ function FeatureCard({ feature, onAddStory, onExpand, loadingStories }: Props) {
   const [open, setOpen] = useState(feature.status === "active");
 
   // Trigger the lazy story load whenever the feature becomes open (the parent
-  // dedupes, so calling it repeatedly is safe). Ref keeps the latest callback
-  // without re-running on every render.
-  const onExpandRef = useRef(onExpand);
-  onExpandRef.current = onExpand;
+  // dedupes, so calling it repeatedly is safe.
   useEffect(() => {
-    if (open) onExpandRef.current?.();
-  }, [open]);
+    if (open) onExpand?.();
+  }, [open, onExpand]);
 
   return (
     <div

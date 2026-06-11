@@ -241,7 +241,6 @@ function AgendaSidebar({ projectId, showUpcoming = true }: AgendaSidebarProps) {
     null,
   );
   const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false);
-  const [removingMember, setRemovingMember] = useState(false);
   const [removeError, setRemoveError] = useState<string | null>(null);
 
   // Track which projectId has already been fetched to prevent double calls
@@ -328,7 +327,6 @@ function AgendaSidebar({ projectId, showUpcoming = true }: AgendaSidebarProps) {
 
   async function handleRemoveMember() {
     if (!activeMember) return;
-    setRemovingMember(true);
     setRemoveError(null);
     try {
       await removeMember(activeMember.id);
@@ -339,8 +337,6 @@ function AgendaSidebar({ projectId, showUpcoming = true }: AgendaSidebarProps) {
       if (members.length - 1 <= MEMBERS_VISIBLE) setMembersExpanded(false);
     } catch {
       setRemoveError("Could not remove this member. Please try again.");
-    } finally {
-      setRemovingMember(false);
     }
   }
 

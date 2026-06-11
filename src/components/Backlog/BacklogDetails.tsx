@@ -90,7 +90,7 @@ function BacklogDetails({
     setError(null);
     setShowAssignPicker(false);
     setAssignError(null);
-  }, [task.id]);
+  }, [task.id, task.title, task.description, task.status, task.priority]);
 
   // Load the project's members — only they can be assigned to the task.
   useEffect(() => {
