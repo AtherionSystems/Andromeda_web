@@ -612,16 +612,18 @@ function BacklogPage({
             </div>
           </div>
 
-          <div className="mt-3 flex justify-end -mr-5">
-            <button
-              type="button"
-              onClick={() => setAddTaskOpen(true)}
-              style={{ background: "#c74634" }}
-              className="flex items-center justify-center gap-1.5 rounded px-3.5 h-8 min-w-[220px] text-white text-[12px] font-medium cursor-pointer transition-opacity hover:opacity-90"
-            >
-              + Add Task
-            </button>
-          </div>
+          {isPOView && (
+            <div className="mt-3 flex justify-end -mr-5">
+              <button
+                type="button"
+                onClick={() => setAddTaskOpen(true)}
+                style={{ background: "#c74634" }}
+                className="flex items-center justify-center gap-1.5 rounded px-3.5 h-8 min-w-[220px] text-white text-[12px] font-medium cursor-pointer transition-opacity hover:opacity-90"
+              >
+                + Add Task
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

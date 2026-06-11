@@ -256,7 +256,7 @@ function ProjectsPage({ description, readOnly = false, scope = "all" }: Projects
               project={project}
               members={memberMap[project.id] ?? []}
               index={i}
-              onClick={() => handleOpen(project)}
+              onClick={readOnly ? undefined : () => handleOpen(project)}
               onDelete={readOnly ? undefined : handleDelete}
               onEdit={readOnly ? undefined : () => setEditProject(project)}
             />
