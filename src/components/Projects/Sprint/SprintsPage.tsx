@@ -345,7 +345,28 @@ function SprintsPage({ project, onClose }: SprintsPageProps) {
                   key={selectedSprint.id}
                   sprint={selectedSprint}
                   tasks={tasksBySprint[selectedSprint.id] ?? []}
+                  project={project}
                   defaultOpen
+                  onEdited={(updated) => {
+                    setSprints((prev) =>
+                      prev
+                        .map((s) => (s.id === updated.id ? updated : s))
+                        .sort((a, b) => {
+                          const d = (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9);
+                          if (d !== 0) return d;
+                          return (a.startDate ?? "").localeCompare(b.startDate ?? "");
+                        }),
+                    );
+                  }}
+                  onDeleted={(sprintId) => {
+                    setSprints((prev) => prev.filter((s) => s.id !== sprintId));
+                    setSelectedId(null);
+                    setTasksBySprint((prev) => {
+                      const next = { ...prev };
+                      delete next[sprintId];
+                      return next;
+                    });
+                  }}
                 />
               )}
             </>

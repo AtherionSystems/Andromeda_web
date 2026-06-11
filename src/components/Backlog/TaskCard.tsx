@@ -8,10 +8,11 @@ interface TaskCardProps {
   task: ApiTask;
   assignedMembers?: Member[];
   onClick: (task: ApiTask) => void;
+  onAssignSprint?: (task: ApiTask) => void;
   index?: number;
 }
 
-const TaskCard: React.FC<TaskCardProps> = ({ task, assignedMembers = [], onClick, index }) => {
+const TaskCard: React.FC<TaskCardProps> = ({ task, assignedMembers = [], onClick, onAssignSprint, index }) => {
   const priorityStyles: Record<string, string> = {
     critical: "#C74634",
     high: "#FFB13F",
@@ -85,9 +86,9 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, assignedMembers = [], onClick
           <MemberAvatars members={assignedMembers} max={3} />
         </div>
 
-        <div className="flex flex-col items-end">
+        <div className="flex flex-col items-end gap-1">
           {task.storyPoints && (
-            <div className="flex items-center gap-1 mb-1">
+            <div className="flex items-center gap-1">
               <span className={`flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold ${darkMode ? "bg-slate-700 text-slate-100" : "bg-slate-100 text-slate-600"}`}>
                 {task.storyPoints}
               </span>
@@ -98,6 +99,26 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, assignedMembers = [], onClick
             <span className={`text-[9px] font-medium italic ${darkMode ? "text-slate-300" : "text-slate-400"}`}>
               Due: {new Date(task.dueDate).toLocaleDateString("es-MX", { month: "short", day: "numeric" })}
             </span>
+          )}
+          {onAssignSprint && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onAssignSprint(task); }}
+              className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-semibold tracking-wide transition-colors ${
+                task.sprintId != null
+                  ? darkMode
+                    ? "bg-blue-900/50 text-blue-300 hover:bg-blue-800/60"
+                    : "bg-blue-50 text-blue-600 hover:bg-blue-100"
+                  : darkMode
+                    ? "bg-slate-700 text-slate-400 hover:text-slate-200"
+                    : "bg-slate-100 text-slate-400 hover:text-slate-600"
+              }`}
+            >
+              <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+              </svg>
+              {task.sprintId != null ? (task.sprintName ?? "Sprint") : "+ Sprint"}
+            </button>
           )}
         </div>
       </div>

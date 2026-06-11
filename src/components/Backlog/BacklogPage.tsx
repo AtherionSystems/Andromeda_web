@@ -19,6 +19,7 @@ import { useAuth } from "../../contexts/auth";
 import MemberAvatars from "../Projects/MemberAvatars";
 import BacklogDetails from "./BacklogDetails";
 import NewTaskModal from "./NewTaskModal";
+import AssignToSprintModal from "./AssignToSprintModal";
 import { ThemeContext } from "../../contexts/themeContextValue";
 
 interface RawAssignee {
@@ -94,6 +95,7 @@ function BacklogPage({
   const [error, setError] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<ApiTask | null>(null);
   const [addTaskOpen, setAddTaskOpen] = useState(false);
+  const [assignSprintTask, setAssignSprintTask] = useState<ApiTask | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<number | "all">(
     initialProjectId ?? "all",
   );
@@ -633,6 +635,7 @@ function BacklogPage({
           subtitle={selectedSprintName === "all" ? "All Sprints" : selectedSprintName}
           tasks={visibleTasks.filter((t) => t.status === "todo")}
           onTaskClick={setSelectedTask}
+          onAssignSprint={isPOView && selectedProjectId !== "all" ? setAssignSprintTask : undefined}
           taskAssignments={taskAssignments}
           onPageChange={(page) => handlePageChange("todo", page)}
         />
@@ -641,6 +644,7 @@ function BacklogPage({
           subtitle={selectedSprintName === "all" ? "All Sprints" : selectedSprintName}
           tasks={visibleTasks.filter((t) => t.status === "in_progress" || t.status === "revision")}
           onTaskClick={setSelectedTask}
+          onAssignSprint={isPOView && selectedProjectId !== "all" ? setAssignSprintTask : undefined}
           taskAssignments={taskAssignments}
           onPageChange={(page) => handlePageChange("in_progress", page)}
         />
@@ -649,6 +653,7 @@ function BacklogPage({
           subtitle={selectedSprintName === "all" ? "All Sprints" : selectedSprintName}
           tasks={visibleTasks.filter((t) => t.status === "review")}
           onTaskClick={setSelectedTask}
+          onAssignSprint={isPOView && selectedProjectId !== "all" ? setAssignSprintTask : undefined}
           taskAssignments={taskAssignments}
           onPageChange={(page) => handlePageChange("review", page)}
         />
@@ -657,6 +662,7 @@ function BacklogPage({
           subtitle={selectedSprintName === "all" ? "All Sprints" : selectedSprintName}
           tasks={visibleTasks.filter((t) => t.status === "done")}
           onTaskClick={setSelectedTask}
+          onAssignSprint={isPOView && selectedProjectId !== "all" ? setAssignSprintTask : undefined}
           taskAssignments={taskAssignments}
           onPageChange={(page) => handlePageChange("done", page)}
         />
@@ -930,6 +936,18 @@ function BacklogPage({
           defaultProjectId={selectedProjectId}
           onClose={() => setAddTaskOpen(false)}
           onCreated={handleTaskCreated}
+        />
+      )}
+
+      {assignSprintTask && (
+        <AssignToSprintModal
+          task={assignSprintTask}
+          sprints={sprints}
+          onClose={() => setAssignSprintTask(null)}
+          onAssigned={(updated) => {
+            setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+            setAssignSprintTask(null);
+          }}
         />
       )}
     </div>

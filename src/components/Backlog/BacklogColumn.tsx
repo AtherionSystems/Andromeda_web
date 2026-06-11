@@ -12,6 +12,7 @@ interface ColumnProps {
   subtitle?: string;
   tasks: ApiTask[];
   onTaskClick?: (task: ApiTask) => void;
+  onAssignSprint?: (task: ApiTask) => void;
   taskAssignments?: Record<number, Member[]>;
   onPageChange?: (page: number) => void;
 }
@@ -21,6 +22,7 @@ const BacklogColumn: React.FC<ColumnProps> = ({
   subtitle = "All Sprints",
   tasks,
   onTaskClick,
+  onAssignSprint,
   taskAssignments = {},
   onPageChange,
 }) => {
@@ -63,6 +65,7 @@ const BacklogColumn: React.FC<ColumnProps> = ({
             key={task.id}
             task={task}
             onClick={(selectedTask) => onTaskClick?.(selectedTask)}
+            onAssignSprint={onAssignSprint}
             assignedMembers={taskAssignments[task.id] || []}
             index={startIndex + i}
           />
