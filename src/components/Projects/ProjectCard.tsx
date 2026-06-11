@@ -49,7 +49,6 @@ interface ProjectCardProps {
   onClick?: (project: ApiProject) => void;
   onDelete?: (project: ApiProject) => void;
   onEdit?: (project: ApiProject) => void;
-  onViewTasks?: (project: ApiProject) => void;
 }
 
 function ProjectCard({ project, members, index, onClick, onDelete, onEdit }: ProjectCardProps) {
