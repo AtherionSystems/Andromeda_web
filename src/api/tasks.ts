@@ -106,10 +106,12 @@ export const createTask = (
   >,
   userStoryId?: number,
 ): Promise<ApiTask> => {
-  const qs = userStoryId != null ? `?userStoryId=${userStoryId}` : "";
-  return apiFetch<ApiTask>(`/api/projects/${projectId}/tasks${qs}`, {
+  const fullBody = userStoryId != null
+    ? { ...body, userStoryId: String(userStoryId) }
+    : body;
+  return apiFetch<ApiTask>(`/api/projects/${projectId}/tasks`, {
     method: "POST",
-    body: JSON.stringify(body),
+    body: JSON.stringify(fullBody),
   }).then((data) => {
     cache.invalidatePrefix(`tasks:project:${projectId}`);
     cache.invalidatePrefix(`tasks:sprint:${projectId}:`);
