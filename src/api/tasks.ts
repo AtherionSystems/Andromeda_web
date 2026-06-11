@@ -102,6 +102,39 @@ export const updateTask = (
     return data;
   });
 
+// ─── assignments ───────────────────────────────────────────────────────────
+
+export const assignTask = (
+  projectId: number,
+  taskId: number,
+  userId: number,
+): Promise<ApiTaskAssignment> => {
+  // Invalidate up-front too: the backend can 500 on the response while still
+  // persisting, so a follow-up read must fetch the fresh list.
+  cache.invalidate(`assignments:${projectId}:${taskId}`);
+  return apiFetch<ApiTaskAssignment>(
+    `/api/projects/${projectId}/tasks/${taskId}/assignments`,
+    { method: "POST", body: JSON.stringify({ userId }) },
+  ).then((data) => {
+    cache.invalidate(`assignments:${projectId}:${taskId}`);
+    return data;
+  });
+};
+
+export const unassignTask = (
+  projectId: number,
+  taskId: number,
+  userId: number,
+): Promise<void> => {
+  cache.invalidate(`assignments:${projectId}:${taskId}`);
+  return apiFetch<void>(
+    `/api/projects/${projectId}/tasks/${taskId}/assignments/${userId}`,
+    { method: "DELETE" },
+  ).then(() => {
+    cache.invalidate(`assignments:${projectId}:${taskId}`);
+  });
+};
+
 export const deleteTask = (projectId: number, taskId: number): Promise<void> =>
   apiFetch<void>(`/api/projects/${projectId}/tasks/${taskId}`, {
     method: "DELETE",

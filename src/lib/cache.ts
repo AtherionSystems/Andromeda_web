@@ -29,10 +29,10 @@ class CacheStore {
 export const cache = new CacheStore();
 
 export const TTL = {
-  PROJECTS: 2 * 60_000, // 2 min — cambian poco
-  TASKS: 60_000, // 1 min — más volátiles
-  MEMBERS: 5 * 60_000, // 5 min — casi estáticos
-  ASSIGNMENTS: 60_000, // 1 min
-  SPRINTS: 5 * 60_000, // 5 min
-  DASHBOARD: 5 * 60_000, // 5 min
+  PROJECTS: 2 * 60_000,
+  TASKS: 60_000,
+  MEMBERS: 5 * 60_000,
+  ASSIGNMENTS: 60_000,
+  SPRINTS: 5 * 60_000,
+  DASHBOARD: 5 * 60_000,
 } as const;

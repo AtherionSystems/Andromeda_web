@@ -39,7 +39,7 @@ function POPage() {
 
         // 3. Renderizado del Backlog cuando la ruta coincida
         if (activeRoute === "/backlog") {
-          return <BacklogPage />;
+          return <BacklogPage canEdit />;
         }
 
         if (activeRoute === "/analytics") {
