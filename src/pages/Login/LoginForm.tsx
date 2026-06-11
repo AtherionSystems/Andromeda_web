@@ -1,25 +1,10 @@
 import { useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import InputField from "../../components/InputField";
-import Button from "../../components/Button";
-import { useAuth } from "../../contexts/auth";
+import { useSearchParams } from "react-router-dom";
 import { useTheme } from "../../contexts/useTheme";
 import { login as ociLogin } from "../../ociAuth";
-import type { ApiUser } from "../../types/api";
-
-/**
- * True only when VITE_OCI_CLIENT_ID is set to a real value (not the placeholder).
- * This prevents the OCI login button from appearing before the Client ID is filled in.
- */
-const _ociClientId = import.meta.env.VITE_OCI_CLIENT_ID as string | undefined;
-const OCI_ENABLED =
-  Boolean(_ociClientId) &&
-  _ociClientId !== 'your_client_id_here';
 
 function LoginForm() {
-  const { login } = useAuth();
   const { darkMode } = useTheme();
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
   // OAuth2 callback error surfaced by bootstrap() in main.tsx
@@ -27,19 +12,7 @@ function LoginForm() {
     ? (searchParams.get("desc") ?? "OAuth2 login failed.")
     : null;
 
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [isTransitioning] = useState(false);
-  
-  // Added a 'root' error for server/auth failures
   const [ociLoading, setOciLoading] = useState(false);
-  const [errors, setErrors] = useState({
-    username: "",
-    password: "",
-    root: "", 
-  });
 
   // ── OCI IAM login (prod) ────────────────────────────────────────────────────
   async function handleOciLogin() {
@@ -51,83 +24,6 @@ function LoginForm() {
       setOciLoading(false);
     }
   }
-
-  // ── Dev-profile login (POST /api/auth/login) ────────────────────────────────
-  const validate = () => {
-    const newErrors = { username: "", password: "", root: "" };
-    let isValid = true;
-
-    if (!username.trim()) {
-      newErrors.username = "Username is required";
-      isValid = false;
-    }
-
-    if (!password) {
-      newErrors.password = "Password is required";
-      isValid = false;
-    }
-
-    setErrors(newErrors);
-    return isValid;
-  };
-
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault(); // Handled entirely by the form now
-
-    if (!validate()) return;
-
-    setLoading(true);
-    setErrors((prev) => ({ ...prev, root: "" })); // Clear previous root errors
-
-    try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        // Set generic errors to the root, not the username
-        setErrors((prev) => ({
-          ...prev,
-          root: data.message || "Invalid credentials. Please try again.",
-        }));
-        return;
-      }
-
-      // Backend may return { token, user: {...} } or flat { id, token, ... }.
-      // Either way the token must end up inside the stored user object so
-      // apiFetch can read it from andromeda_user.
-      const rawUser = (data as { user?: ApiUser }).user ?? (data as ApiUser);
-      const topToken = (data as { token?: string }).token;
-      const loggedUser: ApiUser =
-        topToken && !rawUser.token ? { ...rawUser, token: topToken } : rawUser;
-
-      if (import.meta.env.DEV) {
-        console.log("[auth] storing user:", loggedUser);
-        console.log("[auth] token present:", Boolean(loggedUser.token));
-      }
-
-      login(loggedUser);
-
-      const role = loggedUser.userType?.toLowerCase();
-      if (role === "developer") {
-        navigate("/developer", { replace: true });
-      } else {
-        navigate("/po", { replace: true });
-      }
-    } catch (error) {
-      console.error("Network error:", error);
-      setErrors((prev) => ({
-        ...prev,
-        root: "Could not connect to server. Please check your connection.",
-      }));
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <div
@@ -156,111 +52,24 @@ function LoginForm() {
         </div>
       )}
 
-      {/* ── OCI IAM login button (shown when configured for prod) ──────────── */}
-      {OCI_ENABLED && (
-        <div className="mb-6">
-          <button
-            type="button"
-            onClick={handleOciLogin}
-            disabled={ociLoading}
-            className="w-full flex items-center justify-center gap-2.5 px-4 py-2.5 rounded border border-[#c74634] bg-white text-[#c74634] text-[13px] font-medium hover:bg-[#c74634] hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {/* Oracle / OCI icon */}
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" />
-            </svg>
-            {ociLoading ? "Redirecting to OCI IAM…" : "Login with OCI IAM"}
-          </button>
-
-          <div className="flex items-center gap-3 my-5">
-            <span className="flex-1 h-px bg-slate-200" />
-            <span className="text-[11px] text-slate-400">or use dev credentials</span>
-            <span className="flex-1 h-px bg-slate-200" />
-          </div>
-        </div>
-      )}
-
-      {/* ── Dev-profile credential form ─────────────────────────────────────── */}
-      <form onSubmit={handleSubmit}>
-        {/* Render root errors at the top of the form */}
-        {errors.root && (
-          <div className={`mb-4 rounded p-3 text-sm ${darkMode ? "bg-red-900/30 text-red-200" : "bg-red-50 text-red-600"}`}>
-            {errors.root}
-          </div>
-        )}
-
-        <InputField
-          label="Username"
-          value={username}
-          onChange={(val) => {
-            setUsername(val);
-            if (errors.username) setErrors((prev) => ({ ...prev, username: "" }));
-          }}
-          placeholder="Enter your username"
-          error={errors.username}
-        />
-
-        <InputField
-          label="Password"
-          type={showPassword ? "text" : "password"}
-          value={password}
-          onChange={(val) => {
-            setPassword(val);
-            if (errors.password) setErrors((prev) => ({ ...prev, password: "" }));
-          }}
-          placeholder="Enter your password"
-          error={errors.password}
-          rightIconSrc={showPassword ? "/Andromeda_web/Media/Icons/visibilityOffred.svg" : "/Andromeda_web/Media/Icons/visibilityRed.svg"}
-          rightIconAlt={showPassword ? "Hide password" : "Show password"}
-          rightIconAriaLabel={showPassword ? "Hide password" : "Show password"}
-          onRightIconClick={() => setShowPassword((prev) => !prev)}
-        />
-
-        <div className="-mt-2 mb-4 text-right">
-          <button
-            type="button"
-            onClick={() => navigate("/forgot-password")}
-            className={`text-xs font-medium transition-opacity hover:opacity-80 ${darkMode ? "text-red-300" : "text-[#C74634]"}`}
-          >
-            Forgot password?
-          </button>
-        </div>
-
-        <div className="mt-2">
-          {/* Removed onClick. The form onSubmit handles it because type="submit" */}
-          <Button
-            text={loading ? "Authorizing..." : "Authorize Session"}
-            type="submit" 
-            disabled={loading || isTransitioning} 
-          />
-        </div>
-      </form>
+      {/* ── OCI IAM login button ────────────────────────────────────────────── */}
+      <button
+        type="button"
+        onClick={handleOciLogin}
+        disabled={ociLoading}
+        className="w-full flex items-center justify-center gap-2.5 px-4 py-2.5 rounded border border-[#c74634] bg-white text-[#c74634] text-[13px] font-medium hover:bg-[#c74634] hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {/* Oracle / OCI icon */}
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" />
+        </svg>
+        {ociLoading ? "Redirecting to OCI IAM…" : "Login with OCI IAM"}
+      </button>
 
       <div className={`mt-8 text-xs ${darkMode ? "text-slate-200" : "text-slate-600"}`}>
         <span>© 2026 Atherion Systems. All rights reserved.</span> |{" "}
         <span>Privacy</span> | <span>Compliance</span>
       </div>
-
-      {isTransitioning ? (
-        <div
-          className={`fixed inset-0 z-50 flex items-center justify-center andromeda-login-transition ${
-            darkMode ? "andromeda-login-transition-dark" : "andromeda-login-transition-light"
-          }`}
-          aria-live="polite"
-        >
-          <div
-            className={`andromeda-login-sweep ${
-              darkMode ? "andromeda-login-sweep-dark" : "andromeda-login-sweep-light"
-            }`}
-            aria-hidden="true"
-          />
-          <img
-            src="/Andromeda_web/Media/Images/Andromeda_Transparent.png"
-            alt="Andromeda"
-            className="relative z-10 w-[280px] max-w-[78vw] andromeda-login-logo"
-          />
-        </div>
-      ) : null}
     </div>
   );
 }

@@ -1,6 +1,11 @@
 import React, { useState, useEffect, useContext, useRef } from "react";
 import BacklogColumn from "../../components/Backlog/BacklogColumn";
-import type { ApiProject, ApiTask, ApiSprint, TaskStatus } from "../../types/api";
+import type {
+  ApiProject,
+  ApiTask,
+  ApiSprint,
+  TaskStatus,
+} from "../../types/api";
 import type { Member } from "../../types/project";
 import { getProjects, getProjectSprints } from "../../api/projects";
 import { getMyProjects, getMyTasks, type ApiMeTask } from "../../api/me";
@@ -12,6 +17,8 @@ import {
 } from "../../api/tasks";
 import { useAuth } from "../../contexts/auth";
 import MemberAvatars from "../Projects/MemberAvatars";
+import BacklogDetails from "./BacklogDetails";
+import NewTaskModal from "./NewTaskModal";
 import { ThemeContext } from "../../contexts/themeContextValue";
 
 interface RawAssignee {
@@ -86,6 +93,7 @@ function BacklogPage({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<ApiTask | null>(null);
+  const [addTaskOpen, setAddTaskOpen] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState<number | "all">(
     initialProjectId ?? "all",
   );
@@ -147,6 +155,47 @@ function BacklogPage({
     else revSet.delete(task.id);
     writeRevisionSet(revSet);
 
+  // Reflect an edited task (title/description) in the board and open modal.
+  function handleTaskSaved(updated: ApiTask) {
+    const merge = (prev: ApiTask[]) =>
+      prev.map((t) => (t.id === updated.id ? { ...t, ...updated } : t));
+    setTasks(merge);
+    baseTasksRef.current = merge(baseTasksRef.current);
+    setSelectedTask(updated);
+  }
+
+  // Add a newly created task to the board.
+  function handleTaskCreated(created: ApiTask) {
+    setTasks((prev) => [created, ...prev]);
+    baseTasksRef.current = [created, ...baseTasksRef.current];
+  }
+
+  // Refresh a task's assignees after they change in the detail modal.
+  async function handleAssigneesChanged() {
+    if (!selectedTask || selectedTask.projectId == null) return;
+    const { projectId, id } = selectedTask;
+    loadedAssignmentsRef.current.delete(id);
+    try {
+      const assignments = await getTaskAssignments(projectId, id);
+      const members: Member[] = assignments
+        .filter((a) => a.userName != null)
+        .map((a) => ({
+          initials: memberInitials(a.userName!),
+          color: AVATAR_COLORS[a.userId % AVATAR_COLORS.length],
+          name: a.userName!,
+        }));
+      setTaskAssignments((prev) => ({ ...prev, [id]: members }));
+      loadedAssignmentsRef.current.add(id);
+    } catch (err) {
+      console.error("Failed to refresh assignees:", err);
+    }
+  }
+
+  async function handleStatusToggle(task: ApiTask) {
+    if (task.projectId == null) return;
+    const newStatus: TaskStatus =
+      task.status === "done" ? "in_progress" : "done";
+    // Optimistic update
     const update = (prev: ApiTask[]) =>
       prev.map((t) => (t.id === task.id ? { ...t, status: newStatus } : t));
     setTasks(update);
@@ -282,7 +331,9 @@ function BacklogPage({
     });
 
     const toFetch = tasks.filter(
-      (t) => visibleTaskIds.includes(t.id) && !loadedAssignmentsRef.current.has(t.id),
+      (t) =>
+        visibleTaskIds.includes(t.id) &&
+        !loadedAssignmentsRef.current.has(t.id),
     );
 
     const fetchVisibleAssignments = async () => {
@@ -295,11 +346,11 @@ function BacklogPage({
               task.id,
             );
             const members: Member[] = assignments
-              .filter((a) => a.assignedUserName != null)
+              .filter((a) => a.userName != null)
               .map((a) => ({
-                initials: memberInitials(a.assignedUserName!),
-                color: AVATAR_COLORS[a.id % AVATAR_COLORS.length],
-                name: a.assignedUserName!,
+                initials: memberInitials(a.userName!),
+                color: AVATAR_COLORS[a.userId % AVATAR_COLORS.length],
+                name: a.userName!,
               }));
             loadedAssignmentsRef.current.add(task.id);
             return [task.id, members] as const;
@@ -568,6 +619,17 @@ function BacklogPage({
                 </div>
               )}
             </div>
+          </div>
+
+          <div className="mt-3 flex justify-end -mr-5">
+            <button
+              type="button"
+              onClick={() => setAddTaskOpen(true)}
+              style={{ background: "#c74634" }}
+              className="flex items-center justify-center gap-1.5 rounded px-3.5 h-8 min-w-[220px] text-white text-[12px] font-medium cursor-pointer transition-opacity hover:opacity-90"
+            >
+              + Add Task
+            </button>
           </div>
         </div>
       </div>
@@ -858,6 +920,25 @@ function BacklogPage({
             </div>
           );
         })()}
+      {selectedTask && (
+        <BacklogDetails
+          task={selectedTask}
+          members={selectedMembers}
+          canEdit={canEdit}
+          onClose={() => setSelectedTask(null)}
+          onSaved={handleTaskSaved}
+          onAssigneesChanged={handleAssigneesChanged}
+        />
+      )}
+
+      {addTaskOpen && (
+        <NewTaskModal
+          projects={projects}
+          defaultProjectId={selectedProjectId}
+          onClose={() => setAddTaskOpen(false)}
+          onCreated={handleTaskCreated}
+        />
+      )}
     </div>
   );
 }

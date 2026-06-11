@@ -1,0 +1,572 @@
+import { useRef, useState, useCallback, useEffect, useMemo } from "react";
+import { useTheme } from "../../../contexts/useTheme";
+import { useClickOutside } from "../../../hooks/useClickOutside";
+import { createProject } from "../../../api/projects";
+import { addMember } from "../../../api/members";
+import { getUsers } from "../../../api/auth";
+import type { ApiProject, ApiUser } from "../../../types/api";
+import { Calendar } from "@/components/ui/calendar";
+
+interface Props {
+  isOpen: boolean;
+  onClose: () => void;
+  onCreated: () => void;
+}
+
+// LocalDateTime string (no timezone / no trailing "Z") — the backend expects
+// "2026-06-09T10:00:00", not an ISO instant with "Z".
+function toLocalDateTime(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+function NewProjectModal({ isOpen, onClose, onCreated }: Props) {
+  const { darkMode } = useTheme();
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  // Two-step wizard: 1 = project details, 2 = team (responsible + members).
+  const [step, setStep] = useState<1 | 2>(1);
+  const [createdProject, setCreatedProject] = useState<ApiProject | null>(null);
+
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const [allUsers, setAllUsers] = useState<ApiUser[]>([]);
+  const [selectedUsers, setSelectedUsers] = useState<ApiUser[]>([]);
+  const [search, setSearch] = useState("");
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Project Responsible: a single user assigned with an "owner" or "manager" role.
+  const [responsible, setResponsible] = useState<ApiUser | null>(null);
+  const [responsibleRole, setResponsibleRole] = useState<"owner" | "manager">("owner");
+  const [responsibleSearch, setResponsibleSearch] = useState("");
+  const [showResponsibleDropdown, setShowResponsibleDropdown] = useState(false);
+  const responsibleDropdownRef = useRef<HTMLDivElement>(null);
+
+  const closeDropdown = useCallback(() => setShowDropdown(false), []);
+  const closeResponsibleDropdown = useCallback(
+    () => setShowResponsibleDropdown(false),
+    [],
+  );
+  useClickOutside(modalRef, isOpen, onClose);
+  useClickOutside(dropdownRef, showDropdown, closeDropdown);
+  useClickOutside(responsibleDropdownRef, showResponsibleDropdown, closeResponsibleDropdown);
+
+  const nameInputRef = useRef<HTMLInputElement>(null);
+
+  // Keep a stable reference to the latest onClose for the Escape handler.
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Modal behavior: Escape to close, body scroll-lock, focus management.
+  useEffect(() => {
+    if (!isOpen) return;
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onCloseRef.current();
+    };
+    document.addEventListener("keydown", onKey);
+    const raf = requestAnimationFrame(() => nameInputRef.current?.focus());
+
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+      cancelAnimationFrame(raf);
+      previouslyFocused?.focus?.();
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    getUsers().then(setAllUsers).catch((err) => console.error("Failed to load users:", err));
+  }, [isOpen]);
+
+  // Reset the whole wizard whenever the modal closes.
+  useEffect(() => {
+    if (isOpen) return;
+    setStep(1);
+    setCreatedProject(null);
+    setName("");
+    setDescription("");
+    setEndDate(undefined);
+    setSelectedUsers([]);
+    setSearch("");
+    setResponsible(null);
+    setResponsibleRole("owner");
+    setResponsibleSearch("");
+    setError(null);
+    setSubmitting(false);
+  }, [isOpen]);
+
+  const filteredUsers = useMemo(() => {
+    const excludedIds = new Set(selectedUsers.map((u) => u.id));
+    if (responsible) excludedIds.add(responsible.id);
+    const q = search.toLowerCase();
+    return allUsers.filter(
+      (u) =>
+        !excludedIds.has(u.id) &&
+        (u.name.toLowerCase().includes(q) ||
+          u.email.toLowerCase().includes(q) ||
+          u.username.toLowerCase().includes(q)),
+    );
+  }, [allUsers, selectedUsers, responsible, search]);
+
+  // Anyone can be made the responsible, except those already added as team members.
+  const filteredResponsibleUsers = useMemo(() => {
+    const selectedIds = new Set(selectedUsers.map((u) => u.id));
+    const q = responsibleSearch.toLowerCase();
+    return allUsers.filter(
+      (u) =>
+        !selectedIds.has(u.id) &&
+        (u.name.toLowerCase().includes(q) ||
+          u.email.toLowerCase().includes(q) ||
+          u.username.toLowerCase().includes(q)),
+    );
+  }, [allUsers, selectedUsers, responsibleSearch]);
+
+  function selectUser(user: ApiUser) {
+    setSelectedUsers((prev) => [...prev, user]);
+    setSearch("");
+    setShowDropdown(false);
+  }
+
+  function removeUser(id: number) {
+    setSelectedUsers((prev) => prev.filter((u) => u.id !== id));
+  }
+
+  function selectResponsible(user: ApiUser) {
+    setResponsible(user);
+    setResponsibleSearch("");
+    setShowResponsibleDropdown(false);
+  }
+
+  // ── Step 1: create the project (POST /api/projects) ───────────────────────────
+  async function handleCreateProject(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!name.trim()) {
+      setError("Project name is required.");
+      return;
+    }
+
+    setSubmitting(true);
+    setError(null);
+    try {
+      const project = await createProject({
+        name: name.trim(),
+        description: description.trim() || null,
+        status: "active",
+        startDate: toLocalDateTime(new Date()),
+        endDate: endDate ? toLocalDateTime(endDate) : null,
+      });
+      setCreatedProject(project);
+      onCreated(); // refresh the list so the new project shows immediately
+      setStep(2);
+    } catch {
+      setError("Failed to create project. Please check the fields and try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  // ── Step 2: add members (POST /api/project-members per person) ────────────────
+  async function handleAddMembers(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!createdProject) return;
+
+    setSubmitting(true);
+    setError(null);
+    try {
+      await Promise.allSettled([
+        ...(responsible
+          ? [
+              addMember({
+                projectId: createdProject.id,
+                userId: responsible.id,
+                role: responsibleRole,
+              }),
+            ]
+          : []),
+        ...selectedUsers.map((u) =>
+          addMember({ projectId: createdProject.id, userId: u.id, role: "member" }),
+        ),
+      ]);
+      onCreated();
+      onClose();
+    } catch {
+      setError("Some members could not be added. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (!isOpen) return null;
+
+  const labelClass = `text-[10px] tracking-[1.2px] uppercase font-semibold mb-1.5 block ${
+    darkMode ? "text-slate-400" : "text-slate-500"
+  }`;
+
+  const inputClass = `w-full rounded border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C74634]/30 focus:border-[#C74634] transition-colors ${
+    darkMode
+      ? "bg-slate-800 border-slate-700 text-slate-100 placeholder:text-slate-500"
+      : "bg-[#f5f5f5] border-transparent text-slate-700 placeholder:text-slate-400"
+  }`;
+
+  const stepLabelClass = `text-[10px] tracking-[1.2px] uppercase font-semibold mb-5 ${
+    darkMode ? "text-slate-500" : "text-slate-400"
+  }`;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-[1px] px-4">
+      <div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="new-project-title"
+        className={`relative w-full max-w-[820px] rounded-lg shadow-2xl transition-colors ${
+          darkMode ? "bg-slate-900 text-slate-100" : "bg-white text-slate-800"
+        }`}
+      >
+        {/* cerrar */}
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          className={`absolute top-4 right-5 leading-none transition-colors z-10 ${
+            darkMode
+              ? "text-slate-500 hover:text-slate-200"
+              : "text-slate-400 hover:text-slate-700"
+          }`}
+        >
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            aria-hidden="true"
+          >
+            <line x1="6" y1="6" x2="18" y2="18" />
+            <line x1="18" y1="6" x2="6" y2="18" />
+          </svg>
+        </button>
+
+        {/* ── STEP 1: project details ── */}
+        {step === 1 && (
+          <div className="flex">
+            {/* form column */}
+            <div className="flex-1 p-8 min-w-0">
+              <h2
+                id="new-project-title"
+                className={`text-2xl italic font-light mb-1 ${
+                  darkMode ? "text-slate-100" : "text-slate-800"
+                }`}
+              >
+                Add New Project
+              </h2>
+              <p className={stepLabelClass}>Step 1 of 2 · Project details</p>
+
+              <form onSubmit={handleCreateProject}>
+                {/* nombre */}
+                <div className="mb-4">
+                  <label className={labelClass}>Project Name</label>
+                  <input
+                    ref={nameInputRef}
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Enter the project name"
+                    maxLength={255}
+                    className={inputClass}
+                  />
+                </div>
+
+                {/* descripción */}
+                <div className="mb-6">
+                  <label className={labelClass}>Project Description</label>
+                  <textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Describe the project goals and scope."
+                    rows={3}
+                    className={`${inputClass} resize-none`}
+                  />
+                </div>
+
+                {error && <p className="mb-4 text-xs text-red-500">{error}</p>}
+
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  style={{ background: "#C74634" }}
+                  className="w-full py-3.5 text-white text-[12px] font-semibold tracking-[1.5px] uppercase rounded hover:opacity-90 transition-opacity disabled:opacity-60 cursor-pointer"
+                >
+                  {submitting ? "Creating..." : "Next →"}
+                </button>
+              </form>
+            </div>
+
+            {/* divider */}
+            <div
+              className={`w-px self-stretch ${
+                darkMode ? "bg-slate-700" : "bg-slate-100"
+              }`}
+            />
+
+            {/* calendar column */}
+            <div className="flex flex-col p-6 justify-start">
+              <p
+                className={`text-[10px] tracking-[1.2px] uppercase font-semibold mb-3 ${
+                  darkMode ? "text-slate-400" : "text-slate-500"
+                }`}
+              >
+                Delivery Date
+              </p>
+
+              {endDate && (
+                <p className="text-[11px] mb-2 font-medium" style={{ color: "#C74634" }}>
+                  {endDate.toLocaleDateString("en-GB", {
+                    weekday: "short",
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                  })}
+                </p>
+              )}
+
+              <Calendar
+                mode="single"
+                selected={endDate}
+                onSelect={setEndDate}
+                disabled={{ before: today }}
+                captionLayout="label"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* ── STEP 2: team (responsible + members) ── */}
+        {step === 2 && (
+          <div className="p-8">
+            <h2
+              className={`text-2xl italic font-light mb-1 ${
+                darkMode ? "text-slate-100" : "text-slate-800"
+              }`}
+            >
+              Add Team
+            </h2>
+            <p className={stepLabelClass}>
+              Step 2 of 2 · {createdProject?.name}
+            </p>
+
+            <form onSubmit={handleAddMembers}>
+              {/* Project Responsible */}
+              <div className="mb-4">
+                <label className={labelClass}>Project Responsible</label>
+                <div className="flex gap-2 items-start">
+                  <div className="relative flex-1 min-w-0" ref={responsibleDropdownRef}>
+                    <div
+                      className={`w-full min-h-[44px] rounded border px-3 py-2 flex flex-wrap gap-1.5 items-center focus-within:ring-2 focus-within:ring-[#C74634]/30 focus-within:border-[#C74634] transition-colors ${
+                        darkMode
+                          ? "bg-slate-800 border-slate-700"
+                          : "bg-[#f5f5f5] border-transparent"
+                      }`}
+                    >
+                      {responsible ? (
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] tracking-wide uppercase ${
+                            darkMode
+                              ? "bg-slate-700 text-slate-300"
+                              : "bg-slate-200 text-slate-600"
+                          }`}
+                        >
+                          {responsible.email}
+                          <button
+                            type="button"
+                            onClick={() => setResponsible(null)}
+                            className="ml-0.5 opacity-60 hover:opacity-100 text-sm leading-none"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ) : (
+                        <input
+                          type="text"
+                          value={responsibleSearch}
+                          onChange={(e) => {
+                            setResponsibleSearch(e.target.value);
+                            setShowResponsibleDropdown(true);
+                          }}
+                          onFocus={() => setShowResponsibleDropdown(true)}
+                          placeholder="Search by name or email"
+                          className={`flex-1 min-w-[140px] bg-transparent border-none outline-none text-sm ${
+                            darkMode
+                              ? "text-slate-100 placeholder:text-slate-500"
+                              : "text-slate-700 placeholder:text-slate-400"
+                          }`}
+                        />
+                      )}
+                    </div>
+
+                    {showResponsibleDropdown &&
+                      !responsible &&
+                      filteredResponsibleUsers.length > 0 && (
+                        <ul
+                          className={`absolute z-10 mt-1 w-full rounded border shadow-lg max-h-40 overflow-y-auto ${
+                            darkMode
+                              ? "bg-slate-800 border-slate-700"
+                              : "bg-white border-slate-200"
+                          }`}
+                        >
+                          {filteredResponsibleUsers.map((user) => (
+                            <li key={user.id}>
+                              <button
+                                type="button"
+                                onClick={() => selectResponsible(user)}
+                                className={`w-full text-left px-3 py-2 text-sm flex flex-col transition-colors ${
+                                  darkMode
+                                    ? "hover:bg-slate-700 text-slate-100"
+                                    : "hover:bg-slate-50 text-slate-700"
+                                }`}
+                              >
+                                <span className="font-medium">{user.name}</span>
+                                <span className="text-[11px] text-slate-400">
+                                  {user.email}
+                                </span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                  </div>
+
+                  <select
+                    value={responsibleRole}
+                    onChange={(e) =>
+                      setResponsibleRole(e.target.value as "owner" | "manager")
+                    }
+                    aria-label="Responsible role"
+                    className={`rounded border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C74634]/30 focus:border-[#C74634] transition-colors ${
+                      darkMode
+                        ? "bg-slate-800 border-slate-700 text-slate-100"
+                        : "bg-[#f5f5f5] border-transparent text-slate-700"
+                    }`}
+                  >
+                    <option value="owner">Owner</option>
+                    <option value="manager">Manager</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Team Members */}
+              <div className="mb-6">
+                <label className={labelClass}>Add Team Members</label>
+                <div className="relative" ref={dropdownRef}>
+                  <div
+                    className={`w-full min-h-[52px] rounded border px-3 py-2 flex flex-wrap gap-1.5 items-center focus-within:ring-2 focus-within:ring-[#C74634]/30 focus-within:border-[#C74634] transition-colors ${
+                      darkMode
+                        ? "bg-slate-800 border-slate-700"
+                        : "bg-[#f5f5f5] border-transparent"
+                    }`}
+                  >
+                    {selectedUsers.map((user) => (
+                      <span
+                        key={user.id}
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] tracking-wide uppercase ${
+                          darkMode
+                            ? "bg-slate-700 text-slate-300"
+                            : "bg-slate-200 text-slate-600"
+                        }`}
+                      >
+                        {user.email}
+                        <button
+                          type="button"
+                          onClick={() => removeUser(user.id)}
+                          className="ml-0.5 opacity-60 hover:opacity-100 text-sm leading-none"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                    <input
+                      type="text"
+                      value={search}
+                      onChange={(e) => {
+                        setSearch(e.target.value);
+                        setShowDropdown(true);
+                      }}
+                      onFocus={() => setShowDropdown(true)}
+                      placeholder={
+                        selectedUsers.length === 0 ? "Search by name or email" : ""
+                      }
+                      className={`flex-1 min-w-[140px] bg-transparent border-none outline-none text-sm ${
+                        darkMode
+                          ? "text-slate-100 placeholder:text-slate-500"
+                          : "text-slate-700 placeholder:text-slate-400"
+                      }`}
+                    />
+                  </div>
+
+                  {showDropdown && filteredUsers.length > 0 && (
+                    <ul
+                      className={`absolute z-10 mt-1 w-full rounded border shadow-lg max-h-40 overflow-y-auto ${
+                        darkMode
+                          ? "bg-slate-800 border-slate-700"
+                          : "bg-white border-slate-200"
+                      }`}
+                    >
+                      {filteredUsers.map((user) => (
+                        <li key={user.id}>
+                          <button
+                            type="button"
+                            onClick={() => selectUser(user)}
+                            className={`w-full text-left px-3 py-2 text-sm flex flex-col transition-colors ${
+                              darkMode
+                                ? "hover:bg-slate-700 text-slate-100"
+                                : "hover:bg-slate-50 text-slate-700"
+                            }`}
+                          >
+                            <span className="font-medium">{user.name}</span>
+                            <span className="text-[11px] text-slate-400">
+                              {user.email}
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+
+              {error && <p className="mb-4 text-xs text-red-500">{error}</p>}
+
+              <button
+                type="submit"
+                disabled={submitting}
+                style={{ background: "#C74634" }}
+                className="w-full py-3.5 text-white text-[12px] font-semibold tracking-[1.5px] uppercase rounded hover:opacity-90 transition-opacity disabled:opacity-60 cursor-pointer"
+              >
+                {submitting ? "Saving..." : "Finish"}
+              </button>
+            </form>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default NewProjectModal;

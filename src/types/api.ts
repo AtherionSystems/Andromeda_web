@@ -55,12 +55,24 @@ export interface ApiTask {
   projectName?: string;
   sprintId?: number;
   sprintName?: string;
+  // capabilities
+  capabilityId?: number | null;
+  featureId?: number | null;
 }
 
 export interface ApiTaskAssignment {
   id: number;
-  task: { id: number; title: string };
-  assignedUserName: string | null;
+  taskId: number;
+  taskTitle: string;
+  taskStatus: string;
+  taskPriority: string;
+  taskEstimatedHours: number | null;
+  taskActualHours: number | null;
+  taskUserStoryId: number | null;
+  userId: number;
+  userName: string | null;
+  userUsername: string | null;
+  userEmail: string | null;
   assignedAt: string;
 }
 
