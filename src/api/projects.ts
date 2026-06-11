@@ -74,3 +74,23 @@ export const deleteProject = (id: number): Promise<void> =>
     cache.invalidatePrefix(`tasks:sprint:${id}:`);
     cache.invalidatePrefix(`members:${id}`);
   });
+
+export const createSprint = (
+  projectId: number,
+  body: {
+    name: string;
+    goal?: string | null;
+    status?: "planned" | "active" | "completed";
+    startDate?: string | null;
+    dueDate?: string | null;
+  },
+): Promise<ApiSprint> => {
+  const KEY_LIST = `sprints:${projectId}`;
+  return apiFetch<ApiSprint>(`/api/projects/${projectId}/sprints`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  }).then((data) => {
+    cache.invalidate(KEY_LIST); // fuerza re-fetch de la lista en la próxima visita
+    return data;
+  });
+};

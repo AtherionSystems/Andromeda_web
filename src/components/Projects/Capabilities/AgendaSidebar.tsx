@@ -1,12 +1,18 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTheme } from "../../../contexts/useTheme";
 import { getProjectSprints } from "../../../api/projects";
-import { addMember, getProjectMembers, removeMember } from "../../../api/members";
+import {
+  addMember,
+  getProjectMembers,
+  removeMember,
+} from "../../../api/members";
 import { getUsers } from "../../../api/auth";
 import type { ApiSprint } from "../../../types/api";
 import type { ApiProjectMember, ApiUser } from "../../../types/api";
 import CalendarWidget from "./CalendarWidget";
+
+const MEMBERS_VISIBLE = 4;
 
 function SectionLabel({
   children,
@@ -17,9 +23,7 @@ function SectionLabel({
 }) {
   return (
     <p
-      className={`mb-3 text-[10px] font-semibold uppercase tracking-[1.2px] ${
-        darkMode ? "text-slate-500" : "text-slate-400"
-      }`}
+      className={`mb-3 text-[10px] font-semibold uppercase tracking-[1.2px] ${darkMode ? "text-slate-500" : "text-slate-400"}`}
     >
       {children}
     </p>
@@ -69,16 +73,12 @@ function UpcomingItem({
       </div>
       <div className="min-w-0">
         <p
-          className={`truncate text-[12px] font-semibold ${
-            darkMode ? "text-slate-100" : "text-slate-800"
-          }`}
+          className={`truncate text-[12px] font-semibold ${darkMode ? "text-slate-100" : "text-slate-800"}`}
         >
           {title}
         </p>
         <p
-          className={`truncate text-[11px] ${
-            darkMode ? "text-slate-400" : "text-slate-500"
-          }`}
+          className={`truncate text-[11px] ${darkMode ? "text-slate-400" : "text-slate-500"}`}
         >
           {subtitle}
         </p>
@@ -87,7 +87,6 @@ function UpcomingItem({
   );
 }
 
-/** Converts an ISO date string → { time: "10:00", meridiem: "AM" } */
 function formatTime(iso: string | null): { time: string; meridiem: string } {
   if (!iso) return { time: "--:--", meridiem: "—" };
   const d = new Date(iso);
@@ -98,7 +97,6 @@ function formatTime(iso: string | null): { time: string; meridiem: string } {
   return { time: `${hour}:${m}`, meridiem };
 }
 
-/** Subtitle label for a sprint */
 function sprintSubtitle(sprint: ApiSprint): string {
   if (sprint.status === "active") return "Active sprint";
   if (sprint.dueDate) {
@@ -110,12 +108,17 @@ function sprintSubtitle(sprint: ApiSprint): string {
 
 interface AgendaSidebarProps {
   projectId: number;
-  // When false, hides the "Coming up" sprints widget (e.g. on the Sprints page
-  // where the full sprint list is already the main content).
   showUpcoming?: boolean;
 }
 
-const MEMBER_COLORS = ["#4a3f7a", "#c74634", "#2a6a5a", "#7a4a2a", "#2a4a7a", "#6a2a4a"];
+const MEMBER_COLORS = [
+  "#4a3f7a",
+  "#c74634",
+  "#2a6a5a",
+  "#7a4a2a",
+  "#2a4a7a",
+  "#6a2a4a",
+];
 
 function memberToChip(member: ApiProjectMember) {
   const parts = member.username.split(/[_.\-\s]+/);
@@ -123,11 +126,9 @@ function memberToChip(member: ApiProjectMember) {
     parts.length >= 2
       ? (parts[0][0] + parts[1][0]).toUpperCase()
       : member.username.slice(0, 2).toUpperCase();
-
   let hash = 0;
   for (const c of member.username) hash = (hash * 31 + c.charCodeAt(0)) | 0;
   const color = MEMBER_COLORS[Math.abs(hash) % MEMBER_COLORS.length];
-
   return { initials, color };
 }
 
@@ -170,11 +171,7 @@ function ConfirmRemoveMemberModal({
           type="button"
           onClick={onCancel}
           aria-label="Cancel"
-          className={`absolute top-3 right-3 transition-colors ${
-            darkMode
-              ? "text-slate-500 hover:text-slate-200"
-              : "text-slate-400 hover:text-slate-700"
-          }`}
+          className={`absolute top-3 right-3 transition-colors ${darkMode ? "text-slate-500 hover:text-slate-200" : "text-slate-400 hover:text-slate-700"}`}
         >
           <svg
             width="18"
@@ -190,11 +187,8 @@ function ConfirmRemoveMemberModal({
             <line x1="18" y1="6" x2="6" y2="18" />
           </svg>
         </button>
-
         <div
-          className={`mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full ${
-            darkMode ? "bg-red-500/15" : "bg-red-100"
-          }`}
+          className={`mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full ${darkMode ? "bg-red-500/15" : "bg-red-100"}`}
         >
           <svg
             width="28"
@@ -212,12 +206,12 @@ function ConfirmRemoveMemberModal({
             <line x1="12" y1="17" x2="12.01" y2="17" />
           </svg>
         </div>
-
         <h3 className="mb-1 text-lg font-semibold">Remove member?</h3>
-        <p className={`mb-6 text-sm ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+        <p
+          className={`mb-6 text-sm ${darkMode ? "text-slate-400" : "text-slate-500"}`}
+        >
           "{memberName}" will be removed from this project.
         </p>
-
         <button
           type="button"
           onClick={onConfirm}
@@ -240,56 +234,75 @@ function AgendaSidebar({ projectId, showUpcoming = true }: AgendaSidebarProps) {
   const [selectedUserId, setSelectedUserId] = useState("");
   const [adding, setAdding] = useState(false);
   const [memberError, setMemberError] = useState<string | null>(null);
+  const [membersExpanded, setMembersExpanded] = useState(false);
   const [memberMenuOpen, setMemberMenuOpen] = useState(false);
   const [memberMenuPos, setMemberMenuPos] = useState({ top: 0, right: 0 });
-  const [activeMember, setActiveMember] = useState<ApiProjectMember | null>(null);
+  const [activeMember, setActiveMember] = useState<ApiProjectMember | null>(
+    null,
+  );
   const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false);
   const [removingMember, setRemovingMember] = useState(false);
   const [removeError, setRemoveError] = useState<string | null>(null);
 
+  // Track which projectId has already been fetched to prevent double calls
+  // in React 18 Strict Mode while still re-fetching when projectId changes.
+  const fetchedProjectRef = useRef<number | null>(null);
+
   const availableUsers = useMemo(
-    () => users.filter((user) => !members.some((member) => member.userId === user.id)),
+    () =>
+      users.filter(
+        (user) => !members.some((member) => member.userId === user.id),
+      ),
     [users, members],
   );
 
+  const visibleMembers = membersExpanded
+    ? members
+    : members.slice(0, MEMBERS_VISIBLE);
+  const hiddenCount = members.length - MEMBERS_VISIBLE;
+
+  // Sprints — AbortController is sufficient here (read-only, no double-call risk)
   useEffect(() => {
+    const ac = new AbortController();
     getProjectSprints(projectId)
-      .then((all) =>
+      .then((all) => {
+        if (ac.signal.aborted) return;
         setSprints(
           all
             .filter((s) => s.status === "active" || s.status === "planned")
             .sort((a, b) => {
-              // active first, then by startDate
               if (a.status === "active" && b.status !== "active") return -1;
               if (b.status === "active" && a.status !== "active") return 1;
               return (a.startDate ?? "").localeCompare(b.startDate ?? "");
             })
-            .slice(0, 4), // show at most 4 upcoming sprints
-        ),
-      )
-      .catch(console.error);
+            .slice(0, 4),
+        );
+      })
+      .catch((err) => {
+        if (!ac.signal.aborted) console.error(err);
+      });
+    return () => ac.abort();
   }, [projectId]);
 
+  // Members + Users — hasFetched guard prevents the Strict Mode double call.
+  // The ref resets when projectId changes so a new project always fetches fresh.
   useEffect(() => {
-    let active = true;
+    if (fetchedProjectRef.current === projectId) return;
+    fetchedProjectRef.current = projectId;
 
     Promise.all([getProjectMembers({ projectId }), getUsers()])
       .then(([projectMembers, allUsers]) => {
-        if (!active) return;
+        // Guard: if projectId changed while the request was in flight, discard
+        if (fetchedProjectRef.current !== projectId) return;
         setMembers(projectMembers);
         setUsers(allUsers);
       })
       .catch(console.error);
-
-    return () => {
-      active = false;
-    };
   }, [projectId]);
 
   async function handleAddMember(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!selectedUserId) return;
-
     setAdding(true);
     setMemberError(null);
     try {
@@ -306,21 +319,24 @@ function AgendaSidebar({ projectId, showUpcoming = true }: AgendaSidebarProps) {
 
   function openMemberMenu(member: ApiProjectMember, rect: DOMRect) {
     setActiveMember(member);
-    setMemberMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+    setMemberMenuPos({
+      top: rect.bottom + 4,
+      right: window.innerWidth - rect.right,
+    });
     setMemberMenuOpen(true);
   }
 
   async function handleRemoveMember() {
     if (!activeMember) return;
-
     setRemovingMember(true);
     setRemoveError(null);
     try {
       await removeMember(activeMember.id);
-      setMembers((prev) => prev.filter((member) => member.id !== activeMember.id));
+      setMembers((prev) => prev.filter((m) => m.id !== activeMember.id));
       setRemoveConfirmOpen(false);
       setMemberMenuOpen(false);
       setActiveMember(null);
+      if (members.length - 1 <= MEMBERS_VISIBLE) setMembersExpanded(false);
     } catch {
       setRemoveError("Could not remove this member. Please try again.");
     } finally {
@@ -335,64 +351,128 @@ function AgendaSidebar({ projectId, showUpcoming = true }: AgendaSidebarProps) {
       <div>
         <SectionLabel darkMode={darkMode}>Project Members</SectionLabel>
 
-        <div className={`space-y-3 rounded-lg border p-3 ${darkMode ? "border-slate-700 bg-slate-800" : "border-slate-200 bg-white"}`}>
+        <div
+          className={`space-y-3 rounded-lg border p-3 ${darkMode ? "border-slate-700 bg-slate-800" : "border-slate-200 bg-white"}`}
+        >
           <div className="space-y-2">
             {members.length === 0 ? (
-              <p className={`text-[12px] ${darkMode ? "text-slate-500" : "text-slate-400"}`}>
+              <p
+                className={`text-[12px] ${darkMode ? "text-slate-500" : "text-slate-400"}`}
+              >
                 No members added yet.
               </p>
             ) : (
-              members.map((member) => {
-                const chip = memberToChip(member);
-                return (
-                  <div key={member.id} className="flex items-center gap-3 rounded-md px-2 py-2">
+              <>
+                {visibleMembers.map((member) => {
+                  const chip = memberToChip(member);
+                  return (
                     <div
-                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold text-white"
-                      style={{ background: chip.color }}
+                      key={member.id}
+                      className="flex items-center gap-3 rounded-md px-2 py-2"
                     >
-                      {chip.initials}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className={`truncate text-[12px] font-semibold ${darkMode ? "text-slate-100" : "text-slate-800"}`}>
-                        {member.username}
-                      </p>
-                      <p className={`truncate text-[10px] capitalize ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
-                        {member.role}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      aria-label={`Member options for ${member.username}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openMemberMenu(member, e.currentTarget.getBoundingClientRect());
-                      }}
-                      className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-colors ${
-                        darkMode
-                          ? "text-slate-500 hover:bg-slate-700 hover:text-slate-200"
-                          : "text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                      }`}
-                    >
-                      <svg
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                        aria-hidden="true"
+                      <div
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold text-white"
+                        style={{ background: chip.color }}
                       >
-                        <circle cx="12" cy="5" r="1.8" />
-                        <circle cx="12" cy="12" r="1.8" />
-                        <circle cx="12" cy="19" r="1.8" />
-                      </svg>
-                    </button>
-                  </div>
-                );
-              })
+                        {chip.initials}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p
+                          className={`truncate text-[12px] font-semibold ${darkMode ? "text-slate-100" : "text-slate-800"}`}
+                        >
+                          {member.username}
+                        </p>
+                        <p
+                          className={`truncate text-[10px] capitalize ${darkMode ? "text-slate-400" : "text-slate-500"}`}
+                        >
+                          {member.role}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        aria-label={`Member options for ${member.username}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openMemberMenu(
+                            member,
+                            e.currentTarget.getBoundingClientRect(),
+                          );
+                        }}
+                        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-colors ${
+                          darkMode
+                            ? "text-slate-500 hover:bg-slate-700 hover:text-slate-200"
+                            : "text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                        }`}
+                      >
+                        <svg
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="currentColor"
+                          aria-hidden="true"
+                        >
+                          <circle cx="12" cy="5" r="1.8" />
+                          <circle cx="12" cy="12" r="1.8" />
+                          <circle cx="12" cy="19" r="1.8" />
+                        </svg>
+                      </button>
+                    </div>
+                  );
+                })}
+
+                {members.length > MEMBERS_VISIBLE && (
+                  <button
+                    type="button"
+                    onClick={() => setMembersExpanded((v) => !v)}
+                    className={`flex w-full items-center justify-center gap-1.5 rounded-md py-1.5 text-[11px] font-semibold transition-colors ${
+                      darkMode
+                        ? "text-slate-400 hover:text-slate-200 hover:bg-slate-700"
+                        : "text-slate-500 hover:text-slate-700 hover:bg-slate-100"
+                    }`}
+                  >
+                    {membersExpanded ? (
+                      <>
+                        <svg
+                          width="12"
+                          height="12"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          aria-hidden="true"
+                        >
+                          <path d="M18 15l-6-6-6 6" />
+                        </svg>
+                        Show less
+                      </>
+                    ) : (
+                      <>
+                        <svg
+                          width="12"
+                          height="12"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          aria-hidden="true"
+                        >
+                          <path d="M6 9l6 6 6-6" />
+                        </svg>
+                        {hiddenCount} more member{hiddenCount !== 1 ? "s" : ""}
+                      </>
+                    )}
+                  </button>
+                )}
+              </>
             )}
           </div>
 
-          <form onSubmit={handleAddMember} className="space-y-2 border-t pt-3" >
-            <label className={`block text-[10px] font-semibold uppercase tracking-[1.2px] ${darkMode ? "text-slate-500" : "text-slate-400"}`}>
+          <form onSubmit={handleAddMember} className="space-y-2 border-t pt-3">
+            <label
+              className={`block text-[10px] font-semibold uppercase tracking-[1.2px] ${darkMode ? "text-slate-500" : "text-slate-400"}`}
+            >
               Add member
             </label>
             <div className="flex gap-2">
@@ -414,15 +494,21 @@ function AgendaSidebar({ projectId, showUpcoming = true }: AgendaSidebarProps) {
               </select>
               <button
                 type="submit"
-                disabled={adding || !selectedUserId || availableUsers.length === 0}
+                disabled={
+                  adding || !selectedUserId || availableUsers.length === 0
+                }
                 className="rounded bg-[#c74634] px-3 py-2 text-[11px] font-semibold uppercase tracking-[1.2px] text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Add
               </button>
             </div>
-            {memberError && <p className="text-[11px] text-red-500">{memberError}</p>}
+            {memberError && (
+              <p className="text-[11px] text-red-500">{memberError}</p>
+            )}
             {availableUsers.length === 0 && (
-              <p className={`text-[11px] ${darkMode ? "text-slate-500" : "text-slate-400"}`}>
+              <p
+                className={`text-[11px] ${darkMode ? "text-slate-500" : "text-slate-400"}`}
+              >
                 No more users available to add.
               </p>
             )}
@@ -430,17 +516,21 @@ function AgendaSidebar({ projectId, showUpcoming = true }: AgendaSidebarProps) {
         </div>
       </div>
 
-      {memberMenuOpen && activeMember &&
+      {memberMenuOpen &&
+        activeMember &&
         createPortal(
           <div
             className="fixed inset-0 z-[9998]"
             onClick={() => setMemberMenuOpen(false)}
           >
             <div
-              style={{ position: "fixed", top: memberMenuPos.top, right: memberMenuPos.right, zIndex: 9999 }}
-              className={`w-44 rounded-md shadow-lg border py-1 ${
-                darkMode ? "bg-slate-800 border-slate-600" : "bg-white border-black/10"
-              }`}
+              style={{
+                position: "fixed",
+                top: memberMenuPos.top,
+                right: memberMenuPos.right,
+                zIndex: 9999,
+              }}
+              className={`w-44 rounded-md shadow-lg border py-1 ${darkMode ? "bg-slate-800 border-slate-600" : "bg-white border-black/10"}`}
               onClick={(e) => e.stopPropagation()}
             >
               <button
@@ -449,11 +539,13 @@ function AgendaSidebar({ projectId, showUpcoming = true }: AgendaSidebarProps) {
                   setMemberMenuOpen(false);
                   setRemoveConfirmOpen(true);
                 }}
-                className={`w-full flex items-center gap-2 px-3 py-2 text-[13px] text-red-500 transition-colors ${
-                  darkMode ? "hover:bg-red-500/10" : "hover:bg-red-50"
-                }`}
+                className={`w-full flex items-center gap-2 px-3 py-2 text-[13px] text-red-500 transition-colors ${darkMode ? "hover:bg-red-500/10" : "hover:bg-red-50"}`}
               >
-                <img src="/Andromeda_web/Media/Icons/deleteIcon.svg" alt="" className="w-4 h-4 shrink-0" />
+                <img
+                  src="/Andromeda_web/Media/Icons/deleteIcon.svg"
+                  alt=""
+                  className="w-4 h-4 shrink-0"
+                />
                 Remove member
               </button>
             </div>
@@ -473,43 +565,43 @@ function AgendaSidebar({ projectId, showUpcoming = true }: AgendaSidebarProps) {
       )}
 
       {removeError && (
-        <div className={`rounded-lg border px-3 py-2 text-[12px] ${darkMode ? "border-red-500/20 bg-red-500/10 text-red-300" : "border-red-200 bg-red-50 text-red-600"}`}>
+        <div
+          className={`rounded-lg border px-3 py-2 text-[12px] ${darkMode ? "border-red-500/20 bg-red-500/10 text-red-300" : "border-red-200 bg-red-50 text-red-600"}`}
+        >
           {removeError}
         </div>
       )}
 
       {showUpcoming && (
-      <div>
-        <SectionLabel darkMode={darkMode}>Coming up</SectionLabel>
-        <div className="space-y-2">
-          {sprints.length === 0 ? (
-            <p
-              className={`text-[12px] ${
-                darkMode ? "text-slate-500" : "text-slate-400"
-              }`}
-            >
-              No upcoming sprints.
-            </p>
-          ) : (
-            sprints.map((sprint, i) => {
-              const { time, meridiem } = formatTime(
-                sprint.dueDate ?? sprint.startDate,
-              );
-              return (
-                <UpcomingItem
-                  key={sprint.id}
-                  meridiem={meridiem}
-                  time={time}
-                  title={sprint.name}
-                  subtitle={sprintSubtitle(sprint)}
-                  highlight={sprint.status === "active" || i === 0}
-                  darkMode={darkMode}
-                />
-              );
-            })
-          )}
+        <div>
+          <SectionLabel darkMode={darkMode}>Coming up</SectionLabel>
+          <div className="space-y-2">
+            {sprints.length === 0 ? (
+              <p
+                className={`text-[12px] ${darkMode ? "text-slate-500" : "text-slate-400"}`}
+              >
+                No upcoming sprints.
+              </p>
+            ) : (
+              sprints.map((sprint, i) => {
+                const { time, meridiem } = formatTime(
+                  sprint.dueDate ?? sprint.startDate,
+                );
+                return (
+                  <UpcomingItem
+                    key={sprint.id}
+                    meridiem={meridiem}
+                    time={time}
+                    title={sprint.name}
+                    subtitle={sprintSubtitle(sprint)}
+                    highlight={sprint.status === "active" || i === 0}
+                    darkMode={darkMode}
+                  />
+                );
+              })
+            )}
+          </div>
         </div>
-      </div>
       )}
     </aside>
   );

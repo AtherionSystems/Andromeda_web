@@ -2,8 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { useTheme } from "../../contexts/useTheme";
 import type { ApiProject } from "../../types/api";
 import type { Capability, Task } from "./Capabilities/types";
-import { getCapabilities, getFeatures, getStories } from "../../api/capabilities";
-import { getProjectTasks } from "../../api/tasks";
+import {
+  getCapabilities,
+  getFeatures,
+  getStories,
+} from "../../api/capabilities";
+import { getProjectTasks, getTaskAssignments } from "../../api/tasks";
 import CapabilityCard from "./Capabilities/CapabilityCard";
 import TaskCard from "./Capabilities/TaskCard";
 import AgendaSidebar from "./Capabilities/AgendaSidebar";
@@ -14,6 +18,21 @@ import NewStoryModal from "./Capabilities/NewStoryModal";
 interface CapabilityPageProps {
   project: ApiProject;
   onClose: () => void;
+}
+
+const AVATAR_COLORS = [
+  "#4a3f7a",
+  "#2a6a5a",
+  "#c74634",
+  "#d97706",
+  "#2a4a7a",
+  "#6a2a4a",
+];
+
+function memberInitials(username: string): string {
+  const parts = username.trim().split(/[\s._-]+/);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return username.slice(0, 2).toUpperCase();
 }
 
 function CapabilityPage({ project, onClose }: CapabilityPageProps) {
@@ -69,7 +88,10 @@ function CapabilityPage({ project, onClose }: CapabilityPageProps) {
         const enrichedCaps = await Promise.all(
           caps.map(async (cap) => {
             const feats = await getFeatures(project.id, cap.id).catch(() => []);
-            return { ...cap, features: feats.map((f) => ({ ...f, stories: [] })) };
+            return {
+              ...cap,
+              features: feats.map((f) => ({ ...f, stories: [] })),
+            };
           }),
         );
 
@@ -77,17 +99,42 @@ function CapabilityPage({ project, onClose }: CapabilityPageProps) {
 
         setCapabilities(enrichedCaps);
 
-        // Standalone tasks: those not linked to any capability or feature
-        // Adapt the filter condition to match your API's shape if needed
-        const standalone = rawTasks
-          .filter((t) => !t.capabilityId && !t.featureId)
-          .map((t) => ({
-            id: String(t.id),
-            title: t.title,
-            priority: t.priority.toUpperCase() as Task["priority"],
-            status: t.status.toUpperCase() as Task["status"],
-            assignee: { initials: "?", color: "#69777B" }, // replace when assignments are available
-          }));
+        // Standalone tasks: those not linked to any capability or feature.
+        // Fetch assignments for each task; results are cached by cache.ts
+        // (key: assignments:${projectId}:${taskId}) so subsequent views are free.
+        const standaloneTasks = rawTasks.filter(
+          (t) => !t.capabilityId && !t.featureId,
+        );
+
+        const standalone = await Promise.all(
+          standaloneTasks.map(async (t) => {
+            let assignee: Task["assignee"] = {
+              initials: "?",
+              color: "#69777B",
+            };
+            try {
+              const assignments = await getTaskAssignments(project.id, t.id);
+              const first = assignments.find((a) => a.userName != null);
+              if (first) {
+                assignee = {
+                  initials: memberInitials(first.userName!),
+                  color: AVATAR_COLORS[first.userId % AVATAR_COLORS.length],
+                };
+              }
+            } catch {
+              // leave default placeholder
+            }
+            return {
+              id: String(t.id),
+              title: t.title,
+              priority: t.priority.toUpperCase() as Task["priority"],
+              status: t.status.toUpperCase() as Task["status"],
+              assignee,
+            };
+          }),
+        );
+
+        if (signal.aborted) return;
 
         setTasks(standalone);
       } catch (err) {
@@ -246,13 +293,6 @@ function CapabilityPage({ project, onClose }: CapabilityPageProps) {
                       Standalone tasks not linked to a capability or feature.
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    style={{ background: "#c74634" }}
-                    className="flex shrink-0 items-center justify-center gap-2 rounded px-4 py-2.5 text-[13px] font-medium text-white transition-opacity hover:opacity-90 min-w-[160px]"
-                  >
-                    + Add Task
-                  </button>
                 </div>
                 <div className="space-y-3">
                   {visibleTasks.map((task) => (

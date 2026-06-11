@@ -18,7 +18,10 @@ const STATUS_LABEL: Record<string, string> = {
 
 function formatRange(sprint: ApiSprint): string | null {
   const fmt = (iso: string) =>
-    new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    new Date(iso).toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+    });
   if (sprint.startDate && sprint.dueDate)
     return `${fmt(sprint.startDate)} – ${fmt(sprint.dueDate)}`;
   if (sprint.dueDate) return `Due ${fmt(sprint.dueDate)}`;
@@ -44,7 +47,9 @@ function SprintCard({ sprint, tasks, defaultOpen }: Props) {
   return (
     <div
       className={`overflow-hidden rounded-lg border-l-4 border border-l-[#1a3a4a] ${
-        darkMode ? "bg-slate-800/40 border-slate-700" : "bg-[#D7E9E9] border-[#a9c0c0]"
+        darkMode
+          ? "bg-slate-800/40 border-slate-700"
+          : "bg-[#D7E9E9] border-[#a9c0c0]"
       }`}
     >
       <button
@@ -56,13 +61,19 @@ function SprintCard({ sprint, tasks, defaultOpen }: Props) {
           <Chevron open={open} />
         </span>
         <div className="min-w-0 flex-1">
-          <p className={`text-[16px] font-semibold uppercase tracking-[1.2px] ${darkMode ? "text-slate-400" : "text-slate-600"}`}>
+          <p
+            className={`text-[16px] font-semibold uppercase tracking-[1.2px] ${darkMode ? "text-slate-400" : "text-slate-600"}`}
+          >
             Sprint
           </p>
-          <p className={`truncate text-[16px] font-semibold ${darkMode ? "text-slate-100" : "text-slate-800"}`}>
+          <p
+            className={`truncate text-[16px] font-semibold ${darkMode ? "text-slate-100" : "text-slate-800"}`}
+          >
             {sprint.name}
           </p>
-          <p className={`mt-1 text-[13px] ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+          <p
+            className={`mt-1 text-[13px] ${darkMode ? "text-slate-400" : "text-slate-500"}`}
+          >
             {range ? `${range} · ` : ""}
             {total} {total === 1 ? "task" : "tasks"}
           </p>
@@ -79,7 +90,9 @@ function SprintCard({ sprint, tasks, defaultOpen }: Props) {
       {/* goal — always visible */}
       {sprint.goal && (
         <div className="px-4 pb-3 pl-11">
-          <p className={`text-[14px] leading-relaxed ${darkMode ? "text-slate-300" : "text-slate-600"}`}>
+          <p
+            className={`text-[14px] leading-relaxed ${darkMode ? "text-slate-300" : "text-slate-600"}`}
+          >
             {sprint.goal}
           </p>
         </div>
@@ -87,14 +100,18 @@ function SprintCard({ sprint, tasks, defaultOpen }: Props) {
 
       {open && (
         <div className="space-y-2 px-4 pb-4 pl-11">
-          <p className={`text-[14px] font-bold uppercase tracking-[1.2px] ${darkMode ? "text-slate-400" : "text-slate-800"}`}>
+          <p
+            className={`text-[14px] font-bold uppercase tracking-[1.2px] ${darkMode ? "text-slate-400" : "text-slate-800"}`}
+          >
             Tasks
           </p>
           {tasks.map((task) => (
             <SprintTaskRow key={task.id} task={task} />
           ))}
           {tasks.length === 0 && (
-            <p className={`text-[13px] ${darkMode ? "text-slate-400" : "text-slate-800"}`}>
+            <p
+              className={`text-[13px] ${darkMode ? "text-slate-400" : "text-slate-800"}`}
+            >
               No tasks in this sprint yet.
             </p>
           )}
