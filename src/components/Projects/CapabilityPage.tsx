@@ -253,12 +253,84 @@ function CapabilityPage({ project, onClose }: CapabilityPageProps) {
                     key={cap.id}
                     capability={cap}
                     defaultOpen={i === 0}
+                    projectId={project.id}
                     onAddFeature={setAddFeatureCapId}
                     onAddStory={(capabilityId, featureId) =>
                       setAddStoryTarget({ capabilityId, featureId })
                     }
                     onExpandFeature={handleExpandFeature}
                     loadingStoryIds={storiesLoading}
+                    onEdited={(updated) =>
+                      setCapabilities((prev) =>
+                        prev.map((c) => (c.id === updated.id ? { ...c, ...updated } : c)),
+                      )
+                    }
+                    onDeleted={(capId) =>
+                      setCapabilities((prev) => prev.filter((c) => c.id !== capId))
+                    }
+                    onFeatureEdited={(capId, updated) =>
+                      setCapabilities((prev) =>
+                        prev.map((c) =>
+                          c.id === capId
+                            ? {
+                                ...c,
+                                features: c.features.map((f) =>
+                                  f.id === updated.id ? { ...f, ...updated } : f,
+                                ),
+                              }
+                            : c,
+                        ),
+                      )
+                    }
+                    onFeatureDeleted={(capId, featId) =>
+                      setCapabilities((prev) =>
+                        prev.map((c) =>
+                          c.id === capId
+                            ? { ...c, features: c.features.filter((f) => f.id !== featId) }
+                            : c,
+                        ),
+                      )
+                    }
+                    onStoryEdited={(capId, featId, updated) =>
+                      setCapabilities((prev) =>
+                        prev.map((c) =>
+                          c.id === capId
+                            ? {
+                                ...c,
+                                features: c.features.map((f) =>
+                                  f.id === featId
+                                    ? {
+                                        ...f,
+                                        stories: f.stories.map((s) =>
+                                          s.id === updated.id ? { ...s, ...updated } : s,
+                                        ),
+                                      }
+                                    : f,
+                                ),
+                              }
+                            : c,
+                        ),
+                      )
+                    }
+                    onStoryDeleted={(capId, featId, storyId) =>
+                      setCapabilities((prev) =>
+                        prev.map((c) =>
+                          c.id === capId
+                            ? {
+                                ...c,
+                                features: c.features.map((f) =>
+                                  f.id === featId
+                                    ? {
+                                        ...f,
+                                        stories: f.stories.filter((s) => s.id !== storyId),
+                                      }
+                                    : f,
+                                ),
+                              }
+                            : c,
+                        ),
+                      )
+                    }
                   />
                 ))}
                 {capabilities.length === 0 && (
