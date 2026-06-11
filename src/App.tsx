@@ -18,27 +18,8 @@ function OAuthCallbackPage() {
   );
 }
 
-interface ProtectedRouteProps {
-  children: ReactNode;
-  allowedRole: "po" | "developer";
-}
-
 function roleDashboard(userType: string | undefined): string {
   return userType?.toLowerCase() === "developer" ? "/developer" : "/po";
-}
-
-function ProtectedRoute({ children, allowedRole }: ProtectedRouteProps) {
-  const { user } = useAuth();
-
-  if (!user) return <Navigate to="/login" replace />;
-
-  const role = user.userType?.toLowerCase();
-  if (allowedRole === "developer" && role !== "developer")
-    return <Navigate to="/po" replace />;
-  if (allowedRole === "po" && role === "developer")
-    return <Navigate to="/developer" replace />;
-
-  return <>{children}</>;
 }
 
 function AuthRoute({ children }: { children: ReactNode }) {
@@ -65,9 +46,9 @@ function AppRoutes() {
       <Route
         path="/po"
         element={
-          <ProtectedRoute allowedRole="po">
+          <AuthRoute>
             <POPage />
-          </ProtectedRoute>
+          </AuthRoute>
         }
       />
       <Route

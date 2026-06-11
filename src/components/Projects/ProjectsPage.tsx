@@ -1,17 +1,26 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useWindowSize } from "../../hooks/useWindowSize";
-import { getProjects, deleteProject } from "../../api/projects";
+import { getProjects, deleteProject, getProjectSprints } from "../../api/projects";
+import { getMyProjects } from "../../api/me";
 import { getProjectMembers } from "../../api/members";
+import { getProjectTasks } from "../../api/tasks";
+import { getCapabilities } from "../../api/capabilities";
 import type { ApiProject, ApiProjectMember } from "../../types/api";
 import type { Member } from "../../types/project";
 import ProjectCard from "./ProjectCard";
-import NewProjectModal from "./NewProjectModal";
+import NewProjectModal from "./EntryPointProjects/NewProjectModal";
 import SearchInput from "./SearchInput";
+import EmptyProjectScreen from "./EmptyProjectScreen";
+import EditProjectModal from "./EditProjectModal";
+import ProjectArchitectureScreen from "./CapabilityPage";
+import SprintsPage from "./Sprint/SprintsPage";
+import ProjectEntryModal from "./EntryPointProjects/ProjectEntryModal";
 
 interface ProjectsPageProps {
   description?: string;
   readOnly?: boolean;
-  onViewTasks?: (projectId: number) => void;
+  /** "me" → only projects where the current user is a member. Defaults to "all". */
+  scope?: "me" | "all";
 }
 
 const AVATAR_COLORS = [
@@ -37,7 +46,7 @@ function memberToAvatar(pm: ApiProjectMember): Member {
   return { initials, color, name: pm.username };
 }
 
-function ProjectsPage({ description, readOnly = false, onViewTasks }: ProjectsPageProps) {
+function ProjectsPage({ description, readOnly = false, scope = "all" }: ProjectsPageProps) {
   const { breakpoint } = useWindowSize();
   const [projects, setProjects] = useState<ApiProject[]>([]);
   const [memberMap, setMemberMap] = useState<Record<number, Member[]>>({});
@@ -45,7 +54,40 @@ function ProjectsPage({ description, readOnly = false, onViewTasks }: ProjectsPa
   const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [emptyProject, setEmptyProject] = useState<ApiProject | null>(null);
+  const [architectureProject, setArchitectureProject] = useState<ApiProject | null>(null);
+  const [sprintsProject, setSprintsProject] = useState<ApiProject | null>(null);
+  const [entryProject, setEntryProject] = useState<ApiProject | null>(null);
+  const [editProject, setEditProject] = useState<ApiProject | null>(null);
   const hasFetched = useRef(false);
+
+  // Open a project: only show the empty-state screen when it is truly empty —
+  // no members, no tasks, no capabilities AND no sprints. The moment it has
+  // anything (even just a sprint, or just a capability), show the chooser
+  // (Capabilities / Sprints) so the user can land on either view.
+  async function handleOpen(project: ApiProject) {
+    const members = memberMap[project.id] ?? [];
+    if (members.length === 0) {
+      try {
+        const [tasks, capabilities, sprints] = await Promise.all([
+          getProjectTasks(project.id),
+          getCapabilities(project.id),
+          getProjectSprints(project.id),
+        ]);
+        if (
+          tasks.length === 0 &&
+          capabilities.length === 0 &&
+          sprints.length === 0
+        ) {
+          setEmptyProject(project);
+          return;
+        }
+      } catch {
+        // If we can't confirm, still show the chooser.
+      }
+    }
+    setEntryProject(project);
+  }
 
   async function handleDelete(project: ApiProject) {
     try {
@@ -60,14 +102,18 @@ function ProjectsPage({ description, readOnly = false, onViewTasks }: ProjectsPa
     setLoading(true);
     setError(null);
     try {
-      const [allProjects, allMembers] = await Promise.all([
-        getProjects(),
+      const projectFetch = scope === "me" ? getMyProjects() : getProjects();
+      const [visibleProjects, allMembers] = await Promise.all([
+        projectFetch,
         getProjectMembers(),
       ]);
-      setProjects(allProjects);
+      setProjects(visibleProjects);
 
+      // Only keep members for projects the user can see, so PO data doesn't leak in.
+      const visibleIds = new Set(visibleProjects.map((p: ApiProject) => p.id));
       const map: Record<number, Member[]> = {};
-      allMembers.forEach((pm) => {
+      allMembers.forEach((pm: ApiProjectMember) => {
+        if (!visibleIds.has(pm.projectId)) return;
         if (!map[pm.projectId]) map[pm.projectId] = [];
         map[pm.projectId].push(memberToAvatar(pm));
       });
@@ -77,7 +123,7 @@ function ProjectsPage({ description, readOnly = false, onViewTasks }: ProjectsPa
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [scope]);
 
   useEffect(() => {
     if (hasFetched.current) return;
@@ -92,6 +138,47 @@ function ProjectsPage({ description, readOnly = false, onViewTasks }: ProjectsPa
       (p.description ?? "").toLowerCase().includes(q)
     );
   });
+
+  if (architectureProject) {
+    return (
+      <div className="flex-1 px-6 pt-3 pb-4">
+        <ProjectArchitectureScreen
+          project={architectureProject}
+          onClose={() => setArchitectureProject(null)}
+        />
+      </div>
+    );
+  }
+
+  if (sprintsProject) {
+    return (
+      <div className="flex-1 px-6 pt-3 pb-4">
+        <SprintsPage
+          project={sprintsProject}
+          onClose={() => setSprintsProject(null)}
+        />
+      </div>
+    );
+  }
+
+  if (emptyProject) {
+    return (
+      <div className="flex-1 px-6 pt-3 pb-4">
+        <EmptyProjectScreen
+          project={emptyProject}
+          onClose={() => setEmptyProject(null)}
+          onAddCapabilities={() => {
+            setArchitectureProject(emptyProject);
+            setEmptyProject(null);
+          }}
+          onAddSprints={() => {
+            setSprintsProject(emptyProject);
+            setEmptyProject(null);
+          }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 px-6 pt-3 pb-4">
@@ -120,12 +207,6 @@ function ProjectsPage({ description, readOnly = false, onViewTasks }: ProjectsPa
           />
           {!readOnly && (
             <div className="flex gap-2">
-              <button
-                style={{ background: "#c74634" }}
-                className="w-8 h-8 border-none rounded bg-oracle-red text-white cursor-pointer text-sm flex items-center justify-center"
-              >
-                ✎
-              </button>
               <button
                 style={{ background: "#c74634" }}
                 className="flex items-center gap-1.5 px-3.5 h-8 bg-oracle-red text-white border-none rounded text-[12px] font-medium cursor-pointer"
@@ -176,7 +257,8 @@ function ProjectsPage({ description, readOnly = false, onViewTasks }: ProjectsPa
               members={memberMap[project.id] ?? []}
               index={i}
               onDelete={readOnly ? undefined : handleDelete}
-              onViewTasks={onViewTasks ? () => onViewTasks(project.id) : undefined}
+              onEdit={readOnly ? undefined : () => setEditProject(project)}
+              onViewTasks={() => handleOpen(project)}
             />
           ))}
           {filtered.length === 0 && !loading && (
@@ -194,6 +276,34 @@ function ProjectsPage({ description, readOnly = false, onViewTasks }: ProjectsPa
           load();
         }}
       />
+      {entryProject && (
+        <ProjectEntryModal
+          project={entryProject}
+          onClose={() => setEntryProject(null)}
+          onSelectCapabilities={() => {
+            setArchitectureProject(entryProject);
+            setEntryProject(null);
+          }}
+          onSelectSprints={() => {
+            setSprintsProject(entryProject);
+            setEntryProject(null);
+          }}
+        />
+      )}
+      {editProject && (
+        <EditProjectModal
+          project={editProject}
+          members={memberMap[editProject.id] ?? []}
+          index={Math.max(0, filtered.findIndex((p) => p.id === editProject.id))}
+          onClose={() => setEditProject(null)}
+          onSaved={(updated) => {
+            setProjects((prev) =>
+              prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)),
+            );
+            setEditProject(null);
+          }}
+        />
+      )}
     </div>
   );
 }

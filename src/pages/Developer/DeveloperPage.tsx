@@ -5,15 +5,12 @@ import AppLayout from "../../components/Layout/AppLayout";
 import ProjectsPage from "../../components/Projects/ProjectsPage";
 import BacklogPage from "../../components/Backlog/BacklogPage";
 import DeveloperDashboard from "./DeveloperDashboard";
-import { AnalyticsPage} from "@/components/Analytics-KPI/AnalyticsPage";
 import Configuration from "../Configuration";
 
 function DeveloperPage() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [activeRoute, setActiveRoute] = useState("/");
-  const [backlogProjectId, setBacklogProjectId] = useState<number | undefined>(undefined);
-
   function handleLogout() {
     logout();
     navigate("/login", { replace: true });
@@ -21,17 +18,12 @@ function DeveloperPage() {
 
   if (!user) return null;
 
-  function handleNavigate(route: string) {
-    if (route !== "/backlog") setBacklogProjectId(undefined);
-    setActiveRoute(route);
-  }
-
   return (
     <AppLayout
       user={user}
       role="developer"
       onLogout={handleLogout}
-      onNavigate={handleNavigate}
+      onNavigate={setActiveRoute}
       activeRoute={activeRoute}
     >
       {() => {
@@ -42,20 +34,13 @@ function DeveloperPage() {
           return (
             <ProjectsPage
               readOnly
-              description="Review your current project portfolio, teams and key performance indicators for all active initiatives in your department. Provide deep visibility into technical tasks to optimize software delivery cycles and team velocity."
-              onViewTasks={(projectId) => {
-                setBacklogProjectId(projectId);
-                setActiveRoute("/backlog");
-              }}
+              scope="me"
+              description="Your active projects — only initiatives where you are a member. Drill in to track your tasks and personal velocity."
             />
           );
         }
         if (activeRoute === "/backlog") {
-          return <BacklogPage canUpdateStatus initialProjectId={backlogProjectId} />;
-        }
-
-        if (activeRoute === "/analytics") {
-            return <AnalyticsPage />;
+          return <BacklogPage canUpdateStatus scope="me" />;
         }
 
         if (activeRoute === "/settings") {
