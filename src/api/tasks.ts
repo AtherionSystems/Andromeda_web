@@ -93,7 +93,7 @@ export const addTaskToSprint = (
 ): Promise<void> =>
   apiFetch<void>(`/api/projects/${projectId}/sprints/${sprintId}/tasks`, {
     method: "POST",
-    body: JSON.stringify({ taskId }),
+    body: JSON.stringify({ taskId: String(taskId) }),
   }).then(() => {
     cache.invalidate(`tasks:sprint:${projectId}:${sprintId}`);
     cache.invalidatePrefix(`tasks:project:${projectId}`);
