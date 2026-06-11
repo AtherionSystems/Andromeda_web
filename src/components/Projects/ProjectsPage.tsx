@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useWindowSize } from "../../hooks/useWindowSize";
 import { getProjects, deleteProject, getProjectSprints } from "../../api/projects";
+import { getMyProjects } from "../../api/me";
 import { getProjectMembers } from "../../api/members";
 import { getProjectTasks } from "../../api/tasks";
 import { getCapabilities } from "../../api/capabilities";
@@ -109,9 +110,9 @@ function ProjectsPage({ description, readOnly = false, scope = "all" }: Projects
       setProjects(visibleProjects);
 
       // Only keep members for projects the user can see, so PO data doesn't leak in.
-      const visibleIds = new Set(visibleProjects.map((p) => p.id));
+      const visibleIds = new Set(visibleProjects.map((p: ApiProject) => p.id));
       const map: Record<number, Member[]> = {};
-      allMembers.forEach((pm) => {
+      allMembers.forEach((pm: ApiProjectMember) => {
         if (!visibleIds.has(pm.projectId)) return;
         if (!map[pm.projectId]) map[pm.projectId] = [];
         map[pm.projectId].push(memberToAvatar(pm));

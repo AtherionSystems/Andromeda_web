@@ -149,13 +149,36 @@ function BacklogPage({
 
     const apiStatus: TaskStatus = newStatus === "revision" ? "in_progress" : newStatus;
 
-    // Update the local revision flag set.
     const revSet = readRevisionSet();
     if (newStatus === "revision") revSet.add(task.id);
     else revSet.delete(task.id);
     writeRevisionSet(revSet);
 
-  // Reflect an edited task (title/description) in the board and open modal.
+    const update = (prev: ApiTask[]) =>
+      prev.map((t) => (t.id === task.id ? { ...t, status: newStatus } : t));
+    setTasks(update);
+    baseTasksRef.current = baseTasksRef.current.map((t) =>
+      t.id === task.id ? { ...t, status: newStatus } : t,
+    );
+
+    try {
+      await updateTask(task.projectId, task.id, { status: apiStatus });
+    } catch (err) {
+      console.error("Failed to update task status:", err);
+      const rollbackRev = readRevisionSet();
+      if (task.status === "revision") rollbackRev.add(task.id);
+      else rollbackRev.delete(task.id);
+      writeRevisionSet(rollbackRev);
+
+      const rollback = (prev: ApiTask[]) =>
+        prev.map((t) => (t.id === task.id ? { ...t, status: task.status } : t));
+      setTasks(rollback);
+      baseTasksRef.current = baseTasksRef.current.map((t) =>
+        t.id === task.id ? { ...t, status: task.status } : t,
+      );
+    }
+  }
+
   function handleTaskSaved(updated: ApiTask) {
     const merge = (prev: ApiTask[]) =>
       prev.map((t) => (t.id === updated.id ? { ...t, ...updated } : t));
@@ -164,13 +187,11 @@ function BacklogPage({
     setSelectedTask(updated);
   }
 
-  // Add a newly created task to the board.
   function handleTaskCreated(created: ApiTask) {
     setTasks((prev) => [created, ...prev]);
     baseTasksRef.current = [created, ...baseTasksRef.current];
   }
 
-  // Refresh a task's assignees after they change in the detail modal.
   async function handleAssigneesChanged() {
     if (!selectedTask || selectedTask.projectId == null) return;
     const { projectId, id } = selectedTask;
@@ -191,42 +212,12 @@ function BacklogPage({
     }
   }
 
-  async function handleStatusToggle(task: ApiTask) {
-    if (task.projectId == null) return;
-    const newStatus: TaskStatus =
-      task.status === "done" ? "in_progress" : "done";
-    // Optimistic update
-    const update = (prev: ApiTask[]) =>
-      prev.map((t) => (t.id === task.id ? { ...t, status: newStatus } : t));
-    setTasks(update);
-    baseTasksRef.current = baseTasksRef.current.map((t) =>
-      t.id === task.id ? { ...t, status: newStatus } : t,
-    );
-
-    try {
-      await updateTask(task.projectId, task.id, { status: apiStatus });
-    } catch (err) {
-      console.error("Failed to update task status:", err);
-      // Rollback revision flag too.
-      const rollbackRev = readRevisionSet();
-      if (task.status === "revision") rollbackRev.add(task.id);
-      else rollbackRev.delete(task.id);
-      writeRevisionSet(rollbackRev);
-
-      const rollback = (prev: ApiTask[]) =>
-        prev.map((t) => (t.id === task.id ? { ...t, status: task.status } : t));
-      setTasks(rollback);
-      baseTasksRef.current = baseTasksRef.current.map((t) =>
-        t.id === task.id ? { ...t, status: task.status } : t,
-      );
-    }
-  }
-
   const activeRole: "developer" | "po" | undefined = isPOView
     ? "po"
     : canUpdateStatus
       ? "developer"
       : undefined;
+  const canEdit = isPOView;
 
   // ── Initial load ────────────────────────────────────────────────────────────
   useEffect(() => {

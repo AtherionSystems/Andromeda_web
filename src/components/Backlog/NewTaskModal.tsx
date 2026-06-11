@@ -18,6 +18,7 @@ const STATUS_LABEL: Record<TaskStatus, string> = {
   todo: "To Do",
   in_progress: "In Progress",
   review: "Review",
+  revision: "Revision",
   done: "Done",
 };
 
