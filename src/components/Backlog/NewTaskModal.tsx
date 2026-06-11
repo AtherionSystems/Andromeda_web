@@ -47,7 +47,11 @@ function NewTaskModal({ projects, defaultProjectId, lockedStory, onClose, onCrea
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<TaskPriority>("medium");
   const [status, setStatus] = useState<TaskStatus>("todo");
+  const [startDate, setStartDate] = useState("");
   const [dueDate, setDueDate] = useState("");
+  const [actualEnd, setActualEnd] = useState("");
+  const [estimatedHours, setEstimatedHours] = useState("");
+  const [actualHours, setActualHours] = useState("");
   const [selectedStoryId, setSelectedStoryId] = useState<string>(lockedStory?.id ?? "");
   const [storyOptions, setStoryOptions] = useState<StoryOption[]>([]);
   const [storiesLoading, setStoriesLoading] = useState(false);
@@ -133,7 +137,11 @@ function NewTaskModal({ projects, defaultProjectId, lockedStory, onClose, onCrea
       status,
     };
     if (description.trim()) body.description = description.trim();
+    if (startDate) body.startDate = `${startDate}T00:00:00`;
     if (dueDate) body.dueDate = `${dueDate}T00:00:00`;
+    if (actualEnd) body.actualEnd = `${actualEnd}T00:00:00`;
+    if (estimatedHours !== "") body.estimatedHours = Number(estimatedHours);
+    if (actualHours !== "") body.actualHours = Number(actualHours);
 
     const selectedStory = lockedStory ?? storyOptions.find((s) => s.id === selectedStoryId);
     const numericStoryId = selectedStory?.numericId;
@@ -334,14 +342,62 @@ function NewTaskModal({ projects, defaultProjectId, lockedStory, onClose, onCrea
             </div>
           </div>
 
-          <div className="mb-6">
-            <label className={labelClass}>Due Date</label>
+          <div className="mb-4 flex gap-3">
+            <div className="flex-1">
+              <label className={labelClass}>Start Date</label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className={fieldClass}
+              />
+            </div>
+            <div className="flex-1">
+              <label className={labelClass}>Due Date</label>
+              <input
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                className={fieldClass}
+              />
+            </div>
+          </div>
+
+          <div className="mb-4">
+            <label className={labelClass}>Actual End</label>
             <input
               type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
+              value={actualEnd}
+              onChange={(e) => setActualEnd(e.target.value)}
               className={fieldClass}
             />
+          </div>
+
+          <div className="mb-6 flex gap-3">
+            <div className="flex-1">
+              <label className={labelClass}>Estimated Hours</label>
+              <input
+                type="number"
+                min="0"
+                step="0.5"
+                value={estimatedHours}
+                onChange={(e) => setEstimatedHours(e.target.value)}
+                placeholder="e.g. 8"
+                className={fieldClass}
+              />
+            </div>
+            <div className="flex-1">
+              <label className={labelClass}>Actual Hours</label>
+              <input
+                type="number"
+                min="0"
+                step="0.5"
+                value={actualHours}
+                onChange={(e) => setActualHours(e.target.value)}
+                placeholder="e.g. 0"
+                className={fieldClass}
+              />
+            </div>
           </div>
 
           {error && <p className="mb-4 text-xs text-red-500">{error}</p>}
