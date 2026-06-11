@@ -34,29 +34,45 @@ npx vitest run     # tests
 
 | Documento | Contenido |
 |---|---|
-| [Arquitectura C4](docs/arquitectura-c4.md) | Niveles de contexto, contenedores y componentes |
+| [Arquitectura C4](docs/arquitectura-c4.md) | Niveles de contexto, contenedores y componentes (Developer y PO) |
 | [Vista Developer](docs/developer/README.md) | Funcionalidad, pantallas y endpoints de la vista de desarrollador |
 | [Requerimientos Developer](docs/developer/requerimientos.md) | HU, RF y RNF de la vista de desarrollador |
-| Vista PO | _Pendiente — se documenta en la branch del PO (`docs/po/`)_ |
+| [Vista PO](docs/po/README.md) | Funcionalidad, pantallas y endpoints de la vista de Product Owner |
+| [Requerimientos PO](docs/po/requerimientos.md) | HU, RF y RNF de la vista de Product Owner |
 
-> Convención para evitar conflictos entre branches: cada vista documenta en su propia carpeta (`docs/developer/`, `docs/po/`). Este README y el C4 de niveles 1–2 son compartidos; el nivel 3 (componentes) se agrega por vista.
+> Cada vista documenta en su propia carpeta (`docs/developer/`, `docs/po/`). El README raíz y el C4 de niveles 1–2 son compartidos; el nivel 3 (componentes) se documenta por vista.
 
 ## Estructura del proyecto
 
 ```
 src/
-├── api/            # Clientes HTTP por dominio (me, projects, tasks, health) + caché TTL
+├── api/              # Clientes HTTP por dominio + caché TTL
+│   ├── me.ts         # Endpoints /api/me/* (proyectos, tareas y dashboard del usuario)
+│   ├── projects.ts   # CRUD de proyectos y sprints
+│   ├── tasks.ts      # CRUD de tareas y asignaciones
+│   ├── members.ts    # Gestión de miembros por proyecto
+│   ├── dashboard.ts  # KPIs de equipo (/api/dashboard)
+│   ├── health.ts     # Probe de disponibilidad del backend
+│   ├── auth.ts       # Utilidades de autenticación OCI
+│   └── client.ts     # Función base apiFetch (Bearer token, manejo de errores)
 ├── components/
-│   ├── Backlog/    # Tablero kanban (compartido Developer/PO vía props scope)
-│   ├── Projects/   # Listado de proyectos (compartido vía scope)
-│   ├── Sidebar/    # Navegación por rol (DEV_NAV / PO_NAV)
-│   ├── dashboard/  # Cards del dashboard de developer
-│   └── ui/         # Primitivas shadcn/ui
-├── contexts/       # Auth (sesión OCI) y tema (dark mode)
-└── pages/
-    ├── Developer/  # Vista Developer (esta branch)
-    ├── PO/         # Vista Product Owner (branch del PO)
-    └── Login/      # Flujo PKCE
+│   ├── Analytics-KPI/ # Gráficas de KPIs del equipo (solo vista PO)
+│   ├── Backlog/       # Tablero kanban (compartido Developer/PO vía props)
+│   ├── Layout/        # AppLayout, Footer y LegalModal
+│   ├── Projects/      # Gestión de proyectos, sprints y capabilities
+│   ├── Sidebar/       # Navegación por rol (DEV_NAV / PO_NAV)
+│   ├── TelegramBot/   # Widget del bot de Telegram
+│   ├── TopBar/        # Barra superior y menú de usuario
+│   ├── dashboard/     # Cards del dashboard (compartidas Developer/PO)
+│   └── ui/            # Primitivas shadcn/ui
+├── contexts/          # Auth (sesión OCI) y tema (dark mode)
+├── hooks/             # Hooks reutilizables (useAndromedaBot, useClickOutside, useWindowSize)
+├── lib/               # Utilidades: caché TTL, helpers de usuario
+├── pages/
+│   ├── Developer/     # Vista Developer
+│   ├── PO/            # Vista Product Owner
+│   └── Login/         # Flujo PKCE (LoginPage, Callback, LoggedOut)
+└── types/             # Tipos TypeScript de la API (api.ts, project.ts)
 ```
 
 ## Equipo de documentación

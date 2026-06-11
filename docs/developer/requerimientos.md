@@ -1,6 +1,6 @@
 # Requerimientos — Vista Developer
 
-> **Autores:** JaviSan, Paco · Branch: `DeveloperView` · Los requerimientos de la vista PO se documentan en `docs/po/`.
+> **Autores:** JaviSan, Paco · Los requerimientos de la vista PO se documentan en [`docs/po/requerimientos.md`](../po/requerimientos.md).
 
 ## Historias de Usuario (HU)
 
