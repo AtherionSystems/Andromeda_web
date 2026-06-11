@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTheme } from "../../contexts/useTheme";
-import { updateTask } from "../../api/tasks";
+import { addTaskToSprint } from "../../api/tasks";
 import type { ApiSprint, ApiTask } from "../../types/api";
 
 interface Props {
@@ -22,16 +22,17 @@ function AssignToSprintModal({ task, sprints, onClose, onAssigned }: Props) {
     e.preventDefault();
     if (!projectId) { setError("Task has no project."); return; }
 
+    if (selectedId === "") { setError("Select a sprint to assign."); return; }
+
     setSubmitting(true);
     setError(null);
     try {
-      const sprintId = selectedId === "" ? null : (selectedId as number);
-      const updated = await updateTask(projectId, task.id, { sprintId: sprintId ?? undefined });
+      const sprintId = selectedId as number;
+      await addTaskToSprint(projectId, sprintId, task.id);
       const sprint = sprints.find((s) => s.id === sprintId);
       onAssigned({
         ...task,
-        ...updated,
-        sprintId: sprintId ?? undefined,
+        sprintId,
         sprintName: sprint?.name,
       });
       onClose();
@@ -93,7 +94,7 @@ function AssignToSprintModal({ task, sprints, onClose, onAssigned }: Props) {
               className={fieldClass}
               autoFocus
             >
-              <option value="">— None (unassign) —</option>
+              <option value="">— Select a sprint —</option>
               {sprints.map((s) => (
                 <option key={s.id} value={s.id}>{s.name}</option>
               ))}

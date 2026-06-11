@@ -104,17 +104,17 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, assignedMembers = [], onClick
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); onAssignSprint(task); }}
-              className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-semibold tracking-wide transition-colors ${
+              className={`mt-1 flex items-center gap-1.5 rounded px-2.5 py-1.5 text-[11px] font-semibold tracking-wide transition-colors ${
                 task.sprintId != null
                   ? darkMode
-                    ? "bg-blue-900/50 text-blue-300 hover:bg-blue-800/60"
-                    : "bg-blue-50 text-blue-600 hover:bg-blue-100"
+                    ? "bg-blue-900/60 text-blue-300 hover:bg-blue-800/80"
+                    : "bg-blue-100 text-blue-700 hover:bg-blue-200"
                   : darkMode
-                    ? "bg-slate-700 text-slate-400 hover:text-slate-200"
-                    : "bg-slate-100 text-slate-400 hover:text-slate-600"
+                    ? "bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-slate-100"
+                    : "bg-slate-200 text-slate-600 hover:bg-slate-300"
               }`}
             >
-              <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
               </svg>
               {task.sprintId != null ? (task.sprintName ?? "Sprint") : "+ Sprint"}

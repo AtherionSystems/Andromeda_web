@@ -86,6 +86,19 @@ export const getTaskAssignments = (
 
 // ─── mutations ────────────────────────────────────────────────────────────────
 
+export const addTaskToSprint = (
+  projectId: number,
+  sprintId: number,
+  taskId: number,
+): Promise<void> =>
+  apiFetch<void>(`/api/projects/${projectId}/sprints/${sprintId}/tasks`, {
+    method: "POST",
+    body: JSON.stringify({ taskId }),
+  }).then(() => {
+    cache.invalidate(`tasks:sprint:${projectId}:${sprintId}`);
+    cache.invalidatePrefix(`tasks:project:${projectId}`);
+  });
+
 export const createTask = (
   projectId: number,
   body: Partial<
