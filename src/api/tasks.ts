@@ -75,8 +75,10 @@ export const createTask = (
   body: Partial<
     Omit<ApiTask, "id" | "createdAt" | "projectId" | "projectName">
   >,
-): Promise<ApiTask> =>
-  apiFetch<ApiTask>(`/api/projects/${projectId}/tasks`, {
+  userStoryId?: number,
+): Promise<ApiTask> => {
+  const qs = userStoryId != null ? `?userStoryId=${userStoryId}` : "";
+  return apiFetch<ApiTask>(`/api/projects/${projectId}/tasks${qs}`, {
     method: "POST",
     body: JSON.stringify(body),
   }).then((data) => {
@@ -84,6 +86,7 @@ export const createTask = (
     cache.invalidatePrefix(`tasks:sprint:${projectId}:`);
     return data;
   });
+};
 
 export const updateTask = (
   projectId: number,

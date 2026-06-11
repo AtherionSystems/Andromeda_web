@@ -1,11 +1,18 @@
 import { useEffect, useState } from "react";
 import { useTheme } from "../../contexts/useTheme";
 import { createTask } from "../../api/tasks";
+import { getCapabilities, getFeatures, getStories } from "../../api/capabilities";
 import type { ApiProject, ApiTask, TaskPriority, TaskStatus } from "../../types/api";
+
+interface StoryOption {
+  id: string;
+  numericId: number;
+  title: string;
+  label: string;
+}
 
 interface Props {
   projects: ApiProject[];
-  // Current "Filter by project" value — used to preselect the project.
   defaultProjectId: number | "all";
   onClose: () => void;
   onCreated: (task: ApiTask) => void;
@@ -32,7 +39,10 @@ function NewTaskModal({ projects, defaultProjectId, onClose, onCreated }: Props)
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<TaskPriority>("medium");
   const [status, setStatus] = useState<TaskStatus>("todo");
-  const [dueDate, setDueDate] = useState(""); // yyyy-mm-dd from the date input
+  const [dueDate, setDueDate] = useState("");
+  const [selectedStoryId, setSelectedStoryId] = useState<string>("");
+  const [storyOptions, setStoryOptions] = useState<StoryOption[]>([]);
+  const [storiesLoading, setStoriesLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -49,6 +59,53 @@ function NewTaskModal({ projects, defaultProjectId, onClose, onCreated }: Props)
     };
   }, [onClose]);
 
+  // Load stories for the selected project whenever it changes.
+  useEffect(() => {
+    setStoryOptions([]);
+    setSelectedStoryId("");
+    if (projectId === "") return;
+
+    const ac = new AbortController();
+    setStoriesLoading(true);
+
+    (async () => {
+      try {
+        const caps = await getCapabilities(projectId as number, ac.signal);
+        const options: StoryOption[] = [];
+
+        await Promise.all(
+          caps.map(async (cap) => {
+            const feats = await getFeatures(projectId as number, cap.id).catch(() => []);
+            await Promise.all(
+              feats.map(async (feat) => {
+                const stories = await getStories(projectId as number, cap.id, feat.id).catch(() => []);
+                for (const s of stories) {
+                  const numericId = parseInt(s.id, 10);
+                  if (!Number.isNaN(numericId)) {
+                    options.push({
+                      id: s.id,
+                      numericId,
+                      title: s.title,
+                      label: `${cap.name} › ${feat.name} › ${s.title}`,
+                    });
+                  }
+                }
+              }),
+            );
+          }),
+        );
+
+        if (!ac.signal.aborted) setStoryOptions(options);
+      } catch {
+        // Non-critical — story linking is optional.
+      } finally {
+        if (!ac.signal.aborted) setStoriesLoading(false);
+      }
+    })();
+
+    return () => ac.abort();
+  }, [projectId]);
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (projectId === "") {
@@ -60,23 +117,29 @@ function NewTaskModal({ projects, defaultProjectId, onClose, onCreated }: Props)
       return;
     }
 
-    // Only send what the user filled. projectId goes in the URL, not the body.
     const body: Partial<Omit<ApiTask, "id" | "createdAt" | "projectId" | "projectName">> = {
       title: title.trim(),
       priority,
       status,
     };
     if (description.trim()) body.description = description.trim();
-    // LocalDateTime without timezone, as the backend expects.
     if (dueDate) body.dueDate = `${dueDate}T00:00:00`;
+
+    const selectedStory = storyOptions.find((s) => s.id === selectedStoryId);
+    const numericStoryId = selectedStory?.numericId;
 
     setSubmitting(true);
     setError(null);
     try {
-      const created = await createTask(projectId, body);
+      const created = await createTask(projectId as number, body, numericStoryId);
       const proj = projects.find((p) => p.id === projectId);
-      // The API response omits the client-side enrichment, so add it back.
-      onCreated({ ...created, projectId, projectName: proj?.name });
+      onCreated({
+        ...created,
+        projectId: projectId as number,
+        projectName: proj?.name,
+        ...(numericStoryId != null && { userStoryId: numericStoryId }),
+        ...(selectedStory && { userStoryTitle: selectedStory.title }),
+      });
       onClose();
     } catch {
       setError("Could not create the task. Please try again.");
@@ -104,7 +167,7 @@ function NewTaskModal({ projects, defaultProjectId, onClose, onCreated }: Props)
         role="dialog"
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}
-        className={`relative w-full max-w-[520px] rounded-lg p-8 shadow-2xl ${
+        className={`relative w-full max-w-[520px] max-h-[90vh] overflow-y-auto rounded-lg p-8 shadow-2xl ${
           darkMode ? "bg-slate-900 text-slate-100" : "bg-white text-slate-800"
         }`}
       >
@@ -156,6 +219,38 @@ function NewTaskModal({ projects, defaultProjectId, onClose, onCreated }: Props)
               ))}
             </select>
           </div>
+
+          {/* User Story — shown only after a project is selected */}
+          {projectId !== "" && (
+            <div className="mb-4">
+              <label className={labelClass}>
+                User Story
+                {storiesLoading && (
+                  <span className={`ml-2 font-normal normal-case tracking-normal ${darkMode ? "text-slate-500" : "text-slate-400"}`}>
+                    loading…
+                  </span>
+                )}
+              </label>
+              <select
+                value={selectedStoryId}
+                onChange={(e) => setSelectedStoryId(e.target.value)}
+                disabled={storiesLoading}
+                className={fieldClass}
+              >
+                <option value="">— None —</option>
+                {storyOptions.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.label}
+                  </option>
+                ))}
+              </select>
+              {!storiesLoading && storyOptions.length === 0 && projectId !== "" && (
+                <p className={`mt-1 text-[10px] ${darkMode ? "text-slate-500" : "text-slate-400"}`}>
+                  No user stories found for this project.
+                </p>
+              )}
+            </div>
+          )}
 
           <div className="mb-4">
             <label className={labelClass}>Title</label>

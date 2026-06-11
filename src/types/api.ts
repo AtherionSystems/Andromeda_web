@@ -58,6 +58,9 @@ export interface ApiTask {
   // capabilities
   capabilityId?: number | null;
   featureId?: number | null;
+  userStoryId?: number | null;
+  // client-side enrichment
+  userStoryTitle?: string;
 }
 
 export interface ApiTaskAssignment {
