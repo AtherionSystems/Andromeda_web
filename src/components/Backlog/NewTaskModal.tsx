@@ -244,7 +244,7 @@ function NewTaskModal({ projects, defaultProjectId, onClose, onCreated }: Props)
                   </option>
                 ))}
               </select>
-              {!storiesLoading && storyOptions.length === 0 && projectId !== "" && (
+              {!storiesLoading && storyOptions.length === 0 && (
                 <p className={`mt-1 text-[10px] ${darkMode ? "text-slate-500" : "text-slate-400"}`}>
                   No user stories found for this project.
                 </p>
