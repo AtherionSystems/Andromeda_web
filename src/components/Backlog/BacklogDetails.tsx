@@ -44,6 +44,15 @@ const PRIORITY_META: Record<
 const STATUS_OPTIONS: TaskStatus[] = ["todo", "in_progress", "review", "done"];
 const PRIORITY_OPTIONS: TaskPriority[] = ["low", "medium", "high", "critical"];
 
+function isoToDateInput(iso: string | null | undefined): string {
+  if (!iso) return "";
+  return iso.slice(0, 10);
+}
+
+function dateInputToIso(val: string): string {
+  return `${val}T00:00:00`;
+}
+
 interface BacklogDetailsProps {
   task: ApiTask;
   members: Member[];
@@ -71,6 +80,11 @@ function BacklogDetails({
   const [description, setDescription] = useState(task.description ?? "");
   const [status, setStatus] = useState<TaskStatus>(task.status);
   const [priority, setPriority] = useState<TaskPriority>(task.priority);
+  const [startDate, setStartDate] = useState(isoToDateInput(task.startDate));
+  const [dueDate, setDueDate] = useState(isoToDateInput(task.dueDate));
+  const [actualEnd, setActualEnd] = useState(isoToDateInput(task.actualEnd));
+  const [estimatedHours, setEstimatedHours] = useState(task.estimatedHours != null ? String(task.estimatedHours) : "");
+  const [actualHours, setActualHours] = useState(task.actualHours != null ? String(task.actualHours) : "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -87,10 +101,15 @@ function BacklogDetails({
     setDescription(task.description ?? "");
     setStatus(task.status);
     setPriority(task.priority);
+    setStartDate(isoToDateInput(task.startDate));
+    setDueDate(isoToDateInput(task.dueDate));
+    setActualEnd(isoToDateInput(task.actualEnd));
+    setEstimatedHours(task.estimatedHours != null ? String(task.estimatedHours) : "");
+    setActualHours(task.actualHours != null ? String(task.actualHours) : "");
     setError(null);
     setShowAssignPicker(false);
     setAssignError(null);
-  }, [task.id, task.title, task.description, task.status, task.priority]);
+  }, [task.id]);
 
   // Load the project's members — only they can be assigned to the task.
   useEffect(() => {
@@ -167,6 +186,11 @@ function BacklogDetails({
     setDescription(task.description ?? "");
     setStatus(task.status);
     setPriority(task.priority);
+    setStartDate(isoToDateInput(task.startDate));
+    setDueDate(isoToDateInput(task.dueDate));
+    setActualEnd(isoToDateInput(task.actualEnd));
+    setEstimatedHours(task.estimatedHours != null ? String(task.estimatedHours) : "");
+    setActualHours(task.actualHours != null ? String(task.actualHours) : "");
     setError(null);
     setEditing(true);
   }
@@ -195,6 +219,11 @@ function BacklogDetails({
         description: description.trim(),
         status,
         priority,
+        ...(startDate && { startDate: dateInputToIso(startDate) }),
+        ...(dueDate && { dueDate: dateInputToIso(dueDate) }),
+        ...(actualEnd && { actualEnd: dateInputToIso(actualEnd) }),
+        ...(estimatedHours !== "" && { estimatedHours: Number(estimatedHours) }),
+        ...(actualHours !== "" && { actualHours: Number(actualHours) }),
       });
       // Preserve client-side enrichment that the API response omits.
       onSaved?.({
@@ -445,51 +474,67 @@ function BacklogDetails({
           className={`w-px self-stretch ${darkMode ? "bg-slate-700" : "bg-slate-100"}`}
         />
 
-        {/* Right column — edit mode: status & priority selects */}
+        {/* Right column — edit mode */}
         {editing && (
-          <div className="flex flex-col gap-4 p-6 justify-center min-w-[220px]">
+          <div className="flex flex-col gap-4 p-6 justify-start min-w-[240px] overflow-y-auto">
             <div>
-              <label
-                className={`mb-1.5 block text-[9px] font-bold tracking-[1.4px] uppercase ${darkMode ? "text-slate-400" : "text-slate-500"}`}
-              >
+              <label className={`mb-1.5 block text-[9px] font-bold tracking-[1.4px] uppercase ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
                 Current Status
               </label>
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value as TaskStatus)}
-                className={fieldClass}
-              >
+              <select value={status} onChange={(e) => setStatus(e.target.value as TaskStatus)} className={fieldClass}>
                 {STATUS_OPTIONS.map((s) => (
-                  <option key={s} value={s}>
-                    {STATUS_META[s].label}
-                  </option>
+                  <option key={s} value={s}>{STATUS_META[s].label}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label
-                className={`mb-1.5 block text-[9px] font-bold tracking-[1.4px] uppercase ${darkMode ? "text-slate-400" : "text-slate-500"}`}
-              >
+              <label className={`mb-1.5 block text-[9px] font-bold tracking-[1.4px] uppercase ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
                 Priority Level
               </label>
-              <select
-                value={priority}
-                onChange={(e) => setPriority(e.target.value as TaskPriority)}
-                className={fieldClass}
-              >
+              <select value={priority} onChange={(e) => setPriority(e.target.value as TaskPriority)} className={fieldClass}>
                 {PRIORITY_OPTIONS.map((p) => (
-                  <option key={p} value={p}>
-                    {PRIORITY_META[p].label}
-                  </option>
+                  <option key={p} value={p}>{PRIORITY_META[p].label}</option>
                 ))}
               </select>
+            </div>
+            <div>
+              <label className={`mb-1.5 block text-[9px] font-bold tracking-[1.4px] uppercase ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+                Start Date
+              </label>
+              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={fieldClass} />
+            </div>
+            <div>
+              <label className={`mb-1.5 block text-[9px] font-bold tracking-[1.4px] uppercase ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+                Due Date
+              </label>
+              <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={fieldClass} />
+            </div>
+            <div>
+              <label className={`mb-1.5 block text-[9px] font-bold tracking-[1.4px] uppercase ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+                Actual End
+              </label>
+              <input type="date" value={actualEnd} onChange={(e) => setActualEnd(e.target.value)} className={fieldClass} />
+            </div>
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <label className={`mb-1.5 block text-[9px] font-bold tracking-[1.4px] uppercase ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+                  Est. Hours
+                </label>
+                <input type="number" min="0" step="0.5" value={estimatedHours} onChange={(e) => setEstimatedHours(e.target.value)} placeholder="—" className={fieldClass} />
+              </div>
+              <div className="flex-1">
+                <label className={`mb-1.5 block text-[9px] font-bold tracking-[1.4px] uppercase ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+                  Actual Hrs
+                </label>
+                <input type="number" min="0" step="0.5" value={actualHours} onChange={(e) => setActualHours(e.target.value)} placeholder="—" className={fieldClass} />
+              </div>
             </div>
           </div>
         )}
 
-        {/* Right column — read mode: status & priority cards */}
+        {/* Right column — read mode: status & priority cards + task details */}
         {!editing && (
-          <div className="flex flex-col gap-3 p-6 justify-center min-w-[200px]">
+          <div className="flex flex-col gap-3 p-6 justify-start min-w-[200px] overflow-y-auto">
             {/* Status card */}
             <div
               className={`flex items-center gap-4 rounded-lg p-4 ${darkMode ? "bg-slate-800" : "bg-slate-50"}`}
@@ -531,24 +576,35 @@ function BacklogDetails({
                 !
               </div>
               <div>
-                <p
-                  className={`text-[9px] font-bold tracking-[1.4px] uppercase mb-0.5 ${darkMode ? "text-slate-400" : "text-slate-400"}`}
-                >
+                <p className={`text-[9px] font-bold tracking-[1.4px] uppercase mb-0.5 ${darkMode ? "text-slate-400" : "text-slate-400"}`}>
                   Priority Level
                 </p>
-                <p
-                  className="text-sm font-bold tracking-wide"
-                  style={{ color: priorityMeta.color }}
-                >
+                <p className="text-sm font-bold tracking-wide" style={{ color: priorityMeta.color }}>
                   {priorityMeta.label}
                 </p>
-                <p
-                  className={`text-[10px] mt-0.5 ${darkMode ? "text-slate-400" : "text-slate-400"}`}
-                >
+                <p className={`text-[10px] mt-0.5 ${darkMode ? "text-slate-400" : "text-slate-400"}`}>
                   {priorityMeta.subtitle}
                 </p>
               </div>
             </div>
+
+            {/* Date / hours info rows */}
+            {[
+              { label: "Start Date", value: task.startDate ? new Date(task.startDate).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : null },
+              { label: "Due Date", value: task.dueDate ? new Date(task.dueDate).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : null },
+              { label: "Actual End", value: task.actualEnd ? new Date(task.actualEnd).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : null },
+              { label: "Est. Hours", value: task.estimatedHours != null ? `${task.estimatedHours} h` : null },
+              { label: "Actual Hours", value: task.actualHours != null ? `${task.actualHours} h` : null },
+            ].map(({ label, value }) => (
+              <div key={label} className={`rounded-lg px-4 py-3 ${darkMode ? "bg-slate-800" : "bg-slate-50"}`}>
+                <p className={`text-[9px] font-bold tracking-[1.4px] uppercase mb-0.5 ${darkMode ? "text-slate-400" : "text-slate-400"}`}>
+                  {label}
+                </p>
+                <p className={`text-sm font-semibold ${darkMode ? "text-slate-200" : "text-slate-700"}`}>
+                  {value ?? <span className={darkMode ? "text-slate-600" : "text-slate-300"}>—</span>}
+                </p>
+              </div>
+            ))}
           </div>
         )}
       </div>
