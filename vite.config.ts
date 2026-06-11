@@ -23,13 +23,15 @@ export default defineConfig({
     // Vite's default appType:'spa' already serves index.html for all paths,
     // so /callback is handled correctly without extra config.
     proxy: {
-      "/api": {
+      '/api': {
         target: "https://140.84.181.53.nip.io",
         changeOrigin: true,
+        secure: true,
       },
-      "/health": {
+      '/health': {
         target: "https://140.84.181.53.nip.io",
         changeOrigin: true,
+        secure: true,
       },
     },
   },

@@ -87,11 +87,11 @@ function ProjectCard({ project, members, index, onClick, onDelete, onEdit, onVie
 
   return (
     <article
-      onClick={() => { onViewTasks?.(project); onClick?.(project); }}
+      onClick={() => onClick?.(project)}
       role="button"
       tabIndex={0}
       aria-label={`Open project: ${project.name}`}
-      onKeyDown={(e) => e.key === "Enter" && (onViewTasks?.(project) ?? onClick?.(project))}
+      onKeyDown={(e) => e.key === "Enter" && onClick?.(project)}
       className={`card-entrance rounded-lg overflow-hidden cursor-pointer border
         transition-all duration-200 ease-out
         shadow-[0_1px_4px_rgba(0,0,0,0.06)]

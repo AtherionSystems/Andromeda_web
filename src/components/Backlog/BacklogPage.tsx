@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext, useRef } from "react";
+import React, { useState, useEffect, useContext, useRef } from "react";
 import BacklogColumn from "../../components/Backlog/BacklogColumn";
 import type {
   ApiProject,
@@ -8,12 +8,15 @@ import type {
 } from "../../types/api";
 import type { Member } from "../../types/project";
 import { getProjects, getProjectSprints } from "../../api/projects";
+import { getMyProjects, getMyTasks, type ApiMeTask } from "../../api/me";
 import {
   getProjectTasks,
   getTaskAssignments,
   getSprintTasks,
   updateTask,
 } from "../../api/tasks";
+import { useAuth } from "../../contexts/auth";
+import MemberAvatars from "../Projects/MemberAvatars";
 import BacklogDetails from "./BacklogDetails";
 import NewTaskModal from "./NewTaskModal";
 import { ThemeContext } from "../../contexts/themeContextValue";
@@ -50,15 +53,39 @@ function memberInitials(username: string): string {
   return username.slice(0, 2).toUpperCase();
 }
 
+function meTaskToApiTask(m: ApiMeTask, projectId: number): ApiTask {
+  return {
+    id: m.id,
+    title: m.title,
+    description: m.description,
+    priority: m.priority,
+    status: m.status,
+    estimatedHours: m.estimatedHours,
+    actualHours: m.actualHours,
+    storyPoints: null,
+    acceptanceCriteria: null,
+    startDate: m.startDate,
+    dueDate: m.dueDate,
+    actualEnd: m.actualEnd,
+    createdAt: "",
+    projectId,
+    projectName: m.projectName,
+  };
+}
+
 function BacklogPage({
   canUpdateStatus = false,
-  canEdit = false,
+  isPOView = false,
   initialProjectId,
+  scope = "all",
 }: {
   canUpdateStatus?: boolean;
-  canEdit?: boolean;
+  isPOView?: boolean;
   initialProjectId?: number;
+  /** "me" → only my projects + my tasks. Defaults to "all" (team-wide). */
+  scope?: "me" | "all";
 }) {
+  const { user } = useAuth();
   const [projects, setProjects] = useState<ApiProject[]>([]);
   const [tasks, setTasks] = useState<ApiTask[]>([]);
   const [sprints, setSprints] = useState<ApiSprint[]>([]);
@@ -138,16 +165,52 @@ function BacklogPage({
     const newStatus: TaskStatus =
       task.status === "done" ? "in_progress" : "done";
     // Optimistic update
+  // Backend doesn't yet support "revision" — we map it to "in_progress" on the
+  // wire and track the revision flag locally via sessionStorage so it survives
+  // navigation within the session.
+  const REVISION_KEY = "andromeda:revision-task-ids";
+  const readRevisionSet = (): Set<number> => {
+    try {
+      const raw = sessionStorage.getItem(REVISION_KEY);
+      return raw ? new Set(JSON.parse(raw) as number[]) : new Set();
+    } catch {
+      return new Set();
+    }
+  };
+  const writeRevisionSet = (set: Set<number>) => {
+    try {
+      sessionStorage.setItem(REVISION_KEY, JSON.stringify([...set]));
+    } catch {
+      /* ignore quota / privacy errors */
+    }
+  };
+
+  async function handleStatusChange(task: ApiTask, newStatus: TaskStatus) {
+    if (task.projectId == null) return;
+
+    const apiStatus: TaskStatus = newStatus === "revision" ? "in_progress" : newStatus;
+
+    const revSet = readRevisionSet();
+    if (newStatus === "revision") revSet.add(task.id);
+    else revSet.delete(task.id);
+    writeRevisionSet(revSet);
+
     const update = (prev: ApiTask[]) =>
       prev.map((t) => (t.id === task.id ? { ...t, status: newStatus } : t));
     setTasks(update);
     baseTasksRef.current = baseTasksRef.current.map((t) =>
       t.id === task.id ? { ...t, status: newStatus } : t,
     );
+
     try {
-      await updateTask(task.projectId, task.id, { status: newStatus });
-    } catch {
-      // Rollback on failure
+      await updateTask(task.projectId, task.id, { status: apiStatus });
+    } catch (err) {
+      console.error("Failed to update task status:", err);
+      const rollbackRev = readRevisionSet();
+      if (task.status === "revision") rollbackRev.add(task.id);
+      else rollbackRev.delete(task.id);
+      writeRevisionSet(rollbackRev);
+
       const rollback = (prev: ApiTask[]) =>
         prev.map((t) => (t.id === task.id ? { ...t, status: task.status } : t));
       setTasks(rollback);
@@ -157,31 +220,125 @@ function BacklogPage({
     }
   }
 
+  function handleTaskSaved(updated: ApiTask) {
+    const merge = (prev: ApiTask[]) =>
+      prev.map((t) => (t.id === updated.id ? { ...t, ...updated } : t));
+    setTasks(merge);
+    baseTasksRef.current = merge(baseTasksRef.current);
+    setSelectedTask(updated);
+  }
+
+  function handleTaskCreated(created: ApiTask) {
+    setTasks((prev) => [created, ...prev]);
+    baseTasksRef.current = [created, ...baseTasksRef.current];
+  }
+
+  async function handleAssigneesChanged() {
+    if (!selectedTask || selectedTask.projectId == null) return;
+    const { projectId, id } = selectedTask;
+    loadedAssignmentsRef.current.delete(id);
+    try {
+      const assignments = await getTaskAssignments(projectId, id);
+      const members: Member[] = assignments
+        .filter((a) => a.userName != null)
+        .map((a) => ({
+          initials: memberInitials(a.userName!),
+          color: AVATAR_COLORS[a.userId % AVATAR_COLORS.length],
+          name: a.userName!,
+        }));
+      setTaskAssignments((prev) => ({ ...prev, [id]: members }));
+      loadedAssignmentsRef.current.add(id);
+    } catch (err) {
+      console.error("Failed to refresh assignees:", err);
+    }
+  }
+
+  const activeRole: "developer" | "po" | undefined = isPOView
+    ? "po"
+    : canUpdateStatus
+      ? "developer"
+      : undefined;
+  const canEdit = isPOView;
+
   // ── Initial load ────────────────────────────────────────────────────────────
   useEffect(() => {
     if (hasFetched.current) return;
     hasFetched.current = true;
 
+    const fetchAllScope = async () => {
+      const projectList = await getProjects();
+      setProjects(projectList);
+
+      const taskArrays = await Promise.all(
+        projectList.map(async (project) => {
+          const projectTasks = await getProjectTasks(project.id);
+          return projectTasks.map((task) => ({
+            ...task,
+            projectId: project.id,
+            projectName: project.name,
+          }));
+        }),
+      );
+
+      return taskArrays.flat();
+    };
+
+    const fetchMeScope = async () => {
+      const [projectList, meTasks] = await Promise.all([
+        getMyProjects(),
+        getMyTasks(),
+      ]);
+      setProjects(projectList);
+
+      // Map projectName → projectId so we can hydrate ApiMeTask without a projectId.
+      const nameToId = new Map<string, number>();
+      for (const p of projectList) nameToId.set(p.name, p.id);
+
+      const enriched: ApiTask[] = meTasks
+        .map((m) => {
+          const projectId = nameToId.get(m.projectName) ?? -1;
+          return meTaskToApiTask(m, projectId);
+        })
+        .filter((t) => t.projectId !== -1);
+
+      // Pre-populate assignments with the current user so the card shows the avatar
+      // without a per-task assignments fetch.
+      if (user) {
+        const parts = user.username.trim().split(/[\s._-]+/);
+        const initials =
+          parts.length >= 2
+            ? (parts[0][0] + parts[1][0]).toUpperCase()
+            : user.username.slice(0, 2).toUpperCase();
+        const selfAvatar: Member = {
+          initials,
+          color: AVATAR_COLORS[user.id % AVATAR_COLORS.length],
+          name: user.name,
+        };
+        const map: Record<number, Member[]> = {};
+        for (const t of enriched) {
+          map[t.id] = [selfAvatar];
+          loadedAssignmentsRef.current.add(t.id);
+        }
+        setTaskAssignments(map);
+      }
+
+      return enriched;
+    };
+
     const fetchTasks = async () => {
       try {
         setError(null);
-        const projectList = await getProjects();
-        setProjects(projectList);
+        const allTasks = scope === "me" ? await fetchMeScope() : await fetchAllScope();
 
-        const taskArrays = await Promise.all(
-          projectList.map(async (project) => {
-            const projectTasks = await getProjectTasks(project.id);
-            return projectTasks.map((task) => ({
-              ...task,
-              projectId: project.id,
-              projectName: project.name,
-            }));
-          }),
+        // Apply session-stored revision flags so they survive remount.
+        const revSet = readRevisionSet();
+        const tagged = allTasks.map((t) =>
+          revSet.has(t.id) && t.status === "in_progress"
+            ? { ...t, status: "revision" as TaskStatus }
+            : t,
         );
-
-        const allTasks = taskArrays.flat();
-        baseTasksRef.current = allTasks;
-        setTasks(allTasks);
+        baseTasksRef.current = tagged;
+        setTasks(tagged);
       } catch (err) {
         console.error("Error fetching tasks:", err);
         setError("Unable to load backlog tasks right now.");
@@ -191,12 +348,12 @@ function BacklogPage({
     };
 
     fetchTasks();
-  }, []);
+  }, [scope, user]);
 
   // ── Assignments: fetch only for tasks visible on current page ───────────────
   useEffect(() => {
     const visibleTaskIds = (
-      ["todo", "in_progress", "review", "done"] as const
+      ["todo", "in_progress", "review", "revision", "done"] as const
     ).flatMap((status) => {
       const columnTasks = tasks.filter((t) => t.status === status);
       const page = columnPages[status] ?? 0;
@@ -242,6 +399,9 @@ function BacklogPage({
 
   // ── Sprint list: fetch when project changes ─────────────────────────────────
   useEffect(() => {
+    // In "me" scope we don't expose a sprint filter, so skip the sprint API call.
+    if (scope === "me") return;
+
     if (selectedProjectId === "all") {
       setSprints([]);
       setSelectedSprintId("all");
@@ -269,10 +429,11 @@ function BacklogPage({
 
     fetchSprints();
     return () => ac.abort();
-  }, [selectedProjectId]);
+  }, [selectedProjectId, scope]);
 
   // ── Sprint tasks: fetch when sprint filter changes ──────────────────────────
   useEffect(() => {
+    if (scope === "me") return;
     if (selectedProjectId === "all") return;
 
     // Restore from baseTasksRef — no API call needed (cache.ts handles HTTP dedup)
@@ -345,7 +506,7 @@ function BacklogPage({
 
     fetchSprintTasks();
     return () => ac.abort();
-  }, [selectedSprintId, selectedProjectId, projects]);
+  }, [selectedSprintId, selectedProjectId, projects, scope]);
 
   // ── Keyboard / theme side-effects ───────────────────────────────────────────
   useEffect(() => {
@@ -456,37 +617,39 @@ function BacklogPage({
                 </select>
               </div>
 
-              <div className="flex-1">
-                <label
-                  className={`mb-2 block text-left text-[11px] font-semibold uppercase tracking-wide ${darkMode ? "text-slate-300" : "text-slate-500"}`}
-                >
-                  Filter by sprint
-                </label>
-                <select
-                  value={selectedSprintId}
-                  onChange={(e) => {
-                    const value =
-                      e.target.value === "all" ? "all" : Number(e.target.value);
-                    setSelectedSprintId(value);
-                    setSelectedTask(null);
-                  }}
-                  disabled={selectedProjectId === "all" || loadingSprintList}
-                  className={`w-full rounded-lg border px-3 py-2 text-sm shadow-sm outline-none transition-colors focus:border-[#c74634] disabled:opacity-50 disabled:cursor-not-allowed ${darkMode ? "bg-slate-800 border-slate-700 text-slate-200" : "bg-white border-slate-200 text-slate-700"}`}
-                >
-                  {loadingSprintList ? (
-                    <option>Loading sprints...</option>
-                  ) : (
-                    <>
-                      <option value="all">All Sprints</option>
-                      {sprints.map((sprint) => (
-                        <option key={sprint.id} value={sprint.id}>
-                          {sprint.name}
-                        </option>
-                      ))}
-                    </>
-                  )}
-                </select>
-              </div>
+              {scope !== "me" && (
+                <div className="flex-1">
+                  <label
+                    className={`mb-2 block text-left text-[11px] font-semibold uppercase tracking-wide ${darkMode ? "text-slate-300" : "text-slate-500"}`}
+                  >
+                    Filter by sprint
+                  </label>
+                  <select
+                    value={selectedSprintId}
+                    onChange={(e) => {
+                      const value =
+                        e.target.value === "all" ? "all" : Number(e.target.value);
+                      setSelectedSprintId(value);
+                      setSelectedTask(null);
+                    }}
+                    disabled={selectedProjectId === "all" || loadingSprintList}
+                    className={`w-full rounded-lg border px-3 py-2 text-sm shadow-sm outline-none transition-colors focus:border-[#c74634] disabled:opacity-50 disabled:cursor-not-allowed ${darkMode ? "bg-slate-800 border-slate-700 text-slate-200" : "bg-white border-slate-200 text-slate-700"}`}
+                  >
+                    {loadingSprintList ? (
+                      <option>Loading sprints...</option>
+                    ) : (
+                      <>
+                        <option value="all">All Sprints</option>
+                        {sprints.map((sprint) => (
+                          <option key={sprint.id} value={sprint.id}>
+                            {sprint.name}
+                          </option>
+                        ))}
+                      </>
+                    )}
+                  </select>
+                </div>
+              )}
             </div>
           </div>
 
@@ -506,50 +669,289 @@ function BacklogPage({
       <div className="flex flex-1 min-h-0 items-stretch gap-6 overflow-hidden px-8 pb-8 pt-2">
         <BacklogColumn
           title="To Do"
-          subtitle={
-            selectedSprintName === "all" ? "All Sprints" : selectedSprintName
-          }
+          subtitle={selectedSprintName === "all" ? "All Sprints" : selectedSprintName}
           tasks={visibleTasks.filter((t) => t.status === "todo")}
           onTaskClick={setSelectedTask}
-          onStatusToggle={canUpdateStatus ? handleStatusToggle : undefined}
           taskAssignments={taskAssignments}
           onPageChange={(page) => handlePageChange("todo", page)}
         />
         <BacklogColumn
           title="In Progress"
-          subtitle={
-            selectedSprintName === "all" ? "All Sprints" : selectedSprintName
-          }
-          tasks={visibleTasks.filter((t) => t.status === "in_progress")}
+          subtitle={selectedSprintName === "all" ? "All Sprints" : selectedSprintName}
+          tasks={visibleTasks.filter((t) => t.status === "in_progress" || t.status === "revision")}
           onTaskClick={setSelectedTask}
-          onStatusToggle={canUpdateStatus ? handleStatusToggle : undefined}
           taskAssignments={taskAssignments}
           onPageChange={(page) => handlePageChange("in_progress", page)}
         />
         <BacklogColumn
           title="Review"
-          subtitle={
-            selectedSprintName === "all" ? "All Sprints" : selectedSprintName
-          }
+          subtitle={selectedSprintName === "all" ? "All Sprints" : selectedSprintName}
           tasks={visibleTasks.filter((t) => t.status === "review")}
           onTaskClick={setSelectedTask}
-          onStatusToggle={canUpdateStatus ? handleStatusToggle : undefined}
           taskAssignments={taskAssignments}
           onPageChange={(page) => handlePageChange("review", page)}
         />
         <BacklogColumn
           title="Done"
-          subtitle={
-            selectedSprintName === "all" ? "All Sprints" : selectedSprintName
-          }
+          subtitle={selectedSprintName === "all" ? "All Sprints" : selectedSprintName}
           tasks={visibleTasks.filter((t) => t.status === "done")}
           onTaskClick={setSelectedTask}
-          onStatusToggle={canUpdateStatus ? handleStatusToggle : undefined}
           taskAssignments={taskAssignments}
           onPageChange={(page) => handlePageChange("done", page)}
         />
       </div>
 
+      {selectedTask &&
+        (() => {
+          const STATUS_META: Record<
+            string,
+            { label: string; subtitle: string; color: string; icon: string }
+          > = {
+            todo: {
+              label: "TO DO",
+              subtitle: "Not Started",
+              color: "#94a3b8",
+              icon: "○",
+            },
+            in_progress: {
+              label: "IN PROGRESS",
+              subtitle: "Active Development",
+              color: "#f97316",
+              icon: "↻",
+            },
+            review: {
+              label: "IN REVIEW",
+              subtitle: "Under Review",
+              color: "#3b82f6",
+              icon: "◎",
+            },
+            revision: {
+              label: "REVISION",
+              subtitle: "Returned by PO",
+              color: "#f59e0b",
+              icon: "↩",
+            },
+            done: {
+              label: "DONE",
+              subtitle: "Completed",
+              color: "#22c55e",
+              icon: "✓",
+            },
+          };
+          const PRIORITY_META: Record<
+            string,
+            { label: string; subtitle: string; color: string }
+          > = {
+            critical: {
+              label: "CRITICAL",
+              subtitle: "High Urgency",
+              color: "#C74634",
+            },
+            high: {
+              label: "HIGH",
+              subtitle: "High Priority",
+              color: "#FFB13F",
+            },
+            medium: { label: "MEDIUM", subtitle: "Moderate", color: "#00688C" },
+            low: { label: "LOW", subtitle: "Low Priority", color: "#8FBFD0" },
+          };
+          const statusMeta =
+            STATUS_META[selectedTask.status] ?? STATUS_META.todo;
+          const priorityMeta = PRIORITY_META[selectedTask.priority] ?? {
+            label: selectedTask.priority.toUpperCase(),
+            subtitle: "",
+            color: "#94a3b8",
+          };
+
+          return (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-[1px] p-4"
+              onClick={() => setSelectedTask(null)}
+            >
+              <div
+                role="dialog"
+                aria-modal="true"
+                className={`relative w-full max-w-[700px] rounded-lg shadow-2xl flex ${darkMode ? "bg-slate-900 text-slate-100" : "bg-white text-slate-800"}`}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Close */}
+                <button
+                  onClick={() => setSelectedTask(null)}
+                  className={`absolute top-4 right-5 text-xl leading-none z-10 transition-colors ${darkMode ? "text-slate-500 hover:text-slate-200" : "text-slate-400 hover:text-slate-700"}`}
+                >
+                  ✕
+                </button>
+
+                {/* Left column */}
+                <div className="flex-1 p-8 min-w-0">
+                  <h2
+                    className={`text-2xl italic font-light mb-1 pr-8 ${darkMode ? "text-slate-100" : "text-slate-800"}`}
+                  >
+                    {selectedTask.title}
+                  </h2>
+                  <p
+                    className={`text-[10px] tracking-[1.2px] uppercase font-semibold mb-6 ${darkMode ? "text-slate-500" : "text-slate-400"}`}
+                  >
+                    {selectedTask.projectName ||
+                      `Project #${selectedTask.projectId ?? "N/A"}`}
+                  </p>
+
+                  <p
+                    className={`text-[10px] tracking-[1.2px] uppercase font-semibold mb-1.5 ${darkMode ? "text-slate-400" : "text-slate-500"}`}
+                  >
+                    Task Description
+                  </p>
+                  <div
+                    className={`rounded border px-3 py-2.5 text-sm min-h-[80px] ${darkMode ? "bg-slate-800 border-slate-700 text-slate-300" : "bg-[#f5f5f5] border-transparent text-slate-600"}`}
+                  >
+                    {selectedTask.description || (
+                      <span
+                        className={
+                          darkMode ? "text-slate-500" : "text-slate-400"
+                        }
+                      >
+                        No description available.
+                      </span>
+                    )}
+                  </div>
+
+                  <p
+                    className={`text-[10px] tracking-[1.2px] uppercase font-semibold mt-5 mb-1.5 ${darkMode ? "text-slate-400" : "text-slate-500"}`}
+                  >
+                    Assignees
+                  </p>
+                  {selectedMembers.length === 0 ? (
+                    <p
+                      className={`text-xs ${darkMode ? "text-slate-500" : "text-slate-400"}`}
+                    >
+                      No assignees
+                    </p>
+                  ) : (
+                    <MemberAvatars
+                      members={selectedMembers}
+                      max={selectedMembers.length}
+                    />
+                  )}
+                </div>
+
+                {/* Divider */}
+                <div
+                  className={`w-px self-stretch ${darkMode ? "bg-slate-700" : "bg-slate-100"}`}
+                />
+
+                {/* Right column */}
+                <div className="flex flex-col gap-3 p-6 justify-center min-w-[200px]">
+                  {/* Status card */}
+                  <div
+                    className={`flex items-center gap-4 rounded-lg p-4 ${darkMode ? "bg-slate-800" : "bg-slate-50"}`}
+                  >
+                    <div
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-xl text-white"
+                      style={{ backgroundColor: statusMeta.color }}
+                    >
+                      {statusMeta.icon}
+                    </div>
+                    <div>
+                      <p
+                        className={`text-[9px] font-bold tracking-[1.4px] uppercase mb-0.5 ${darkMode ? "text-slate-400" : "text-slate-400"}`}
+                      >
+                        Current Status
+                      </p>
+                      <p
+                        className="text-sm font-bold tracking-wide"
+                        style={{ color: statusMeta.color }}
+                      >
+                        {statusMeta.label}
+                      </p>
+                      <p
+                        className={`text-[10px] mt-0.5 ${darkMode ? "text-slate-400" : "text-slate-400"}`}
+                      >
+                        {statusMeta.subtitle}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Priority card */}
+                  <div
+                    className={`flex items-center gap-4 rounded-lg p-4 ${darkMode ? "bg-slate-800" : "bg-slate-50"}`}
+                  >
+                    <div
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-xl font-bold text-white"
+                      style={{ backgroundColor: priorityMeta.color }}
+                    >
+                      !
+                    </div>
+                    <div>
+                      <p
+                        className={`text-[9px] font-bold tracking-[1.4px] uppercase mb-0.5 ${darkMode ? "text-slate-400" : "text-slate-400"}`}
+                      >
+                        Priority Level
+                      </p>
+                      <p
+                        className="text-sm font-bold tracking-wide"
+                        style={{ color: priorityMeta.color }}
+                      >
+                        {priorityMeta.label}
+                      </p>
+                      <p
+                        className={`text-[10px] mt-0.5 ${darkMode ? "text-slate-400" : "text-slate-400"}`}
+                      >
+                        {priorityMeta.subtitle}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Action buttons */}
+                  {(() => {
+                    const actionBtn = (
+                      label: string,
+                      newStatus: TaskStatus,
+                      style: React.CSSProperties,
+                    ) => (
+                      <button
+                        key={newStatus}
+                        onClick={() => {
+                          handleStatusChange(selectedTask, newStatus);
+                          setSelectedTask(null);
+                        }}
+                        style={style}
+                        className="w-full rounded-lg px-3 py-2 text-[11px] font-bold uppercase tracking-wide transition-opacity hover:opacity-85"
+                      >
+                        {label}
+                      </button>
+                    );
+
+                    if (activeRole === "developer") {
+                      if (selectedTask.status === "todo")
+                        return actionBtn("▶ Start Project", "in_progress", { backgroundColor: "#4a3f7a", color: "#fff" });
+                      if (selectedTask.status === "in_progress")
+                        return (
+                          <div className="flex flex-col gap-2">
+                            {actionBtn("→ Send to Review", "review", { backgroundColor: "#00688C", color: "#fff" })}
+                            {actionBtn("← Back to To Do", "todo", { backgroundColor: "#64748b", color: "#fff" })}
+                          </div>
+                        );
+                      if (selectedTask.status === "revision")
+                        return actionBtn("▶ Resume Work", "in_progress", { backgroundColor: "#4a3f7a", color: "#fff" });
+                    }
+
+                    if (activeRole === "po") {
+                      if (selectedTask.status === "review")
+                        return (
+                          <div className="flex flex-col gap-2">
+                            {actionBtn("✓ Mark as Done", "done", { backgroundColor: "#2a6a5a", color: "#fff" })}
+                            {actionBtn("↩ Return for Revision", "revision", { backgroundColor: "#FFB13F", color: "#1e293b" })}
+                          </div>
+                        );
+                    }
+
+                    return null;
+                  })()}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
       {selectedTask && (
         <BacklogDetails
           task={selectedTask}

@@ -1,73 +1,64 @@
-# React + TypeScript + Vite
+# Andromeda Web
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Frontend web de **Atherion Systems / Andromeda**: sistema integral de gestión de proyectos ágiles (proyectos, sprints, backlog y KPIs) con vistas dedicadas por rol — **Developer** y **Product Owner (PO)** — autenticación contra **OCI IAM (IDCS)** y backend Spring Boot desplegado en **Oracle Cloud (OKE)**.
 
-Currently, two official plugins are available:
+## Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+| Capa | Tecnología |
+|---|---|
+| UI | React 19 + TypeScript + Vite |
+| Estilos | Tailwind CSS 4 + componentes shadcn/ui |
+| Gráficas | Recharts |
+| Autenticación | OAuth2 / PKCE contra OCI IAM (IDCS) |
+| Backend (repo aparte) | Spring Boot en OKE + Oracle Autonomous DB |
+| Tests | Vitest + jsdom |
 
-## React Compiler
+## Ejecución local
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev        # https://localhost:5173 (puerto fijo, requerido por el redirect de OCI)
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+- Configura las variables `VITE_OCI_*` en `.env` (cliente PKCE de OCI IAM).
+- En desarrollo, Vite **proxea** `/api` y `/health` al backend desplegado (ver `vite.config.ts`); no necesitas backend local.
+- `VITE_API_BASE_URL` solo se usa en builds de producción.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run build      # build de producción
+npx tsc --noEmit   # type-check
+npx vitest run     # tests
 ```
+
+## Documentación
+
+| Documento | Contenido |
+|---|---|
+| [Arquitectura C4](docs/arquitectura-c4.md) | Niveles de contexto, contenedores y componentes |
+| [Vista Developer](docs/developer/README.md) | Funcionalidad, pantallas y endpoints de la vista de desarrollador |
+| [Requerimientos Developer](docs/developer/requerimientos.md) | HU, RF y RNF de la vista de desarrollador |
+| Vista PO | _Pendiente — se documenta en la branch del PO (`docs/po/`)_ |
+
+> Convención para evitar conflictos entre branches: cada vista documenta en su propia carpeta (`docs/developer/`, `docs/po/`). Este README y el C4 de niveles 1–2 son compartidos; el nivel 3 (componentes) se agrega por vista.
+
+## Estructura del proyecto
+
+```
+src/
+├── api/            # Clientes HTTP por dominio (me, projects, tasks, health) + caché TTL
+├── components/
+│   ├── Backlog/    # Tablero kanban (compartido Developer/PO vía props scope)
+│   ├── Projects/   # Listado de proyectos (compartido vía scope)
+│   ├── Sidebar/    # Navegación por rol (DEV_NAV / PO_NAV)
+│   ├── dashboard/  # Cards del dashboard de developer
+│   └── ui/         # Primitivas shadcn/ui
+├── contexts/       # Auth (sesión OCI) y tema (dark mode)
+└── pages/
+    ├── Developer/  # Vista Developer (esta branch)
+    ├── PO/         # Vista Product Owner (branch del PO)
+    └── Login/      # Flujo PKCE
+```
+
+## Equipo de documentación
+
+Arquitectura C4 y documentación de la vista Developer: **JaviSan, Paco**.
