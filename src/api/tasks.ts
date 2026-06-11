@@ -20,6 +20,22 @@ export const getProjectTasks = (
   });
 };
 
+export const getTasksByStory = (
+  projectId: number,
+  userStoryId: number,
+): Promise<ApiTask[]> => {
+  const KEY = `tasks:story:${projectId}:${userStoryId}`;
+  const hit = cache.get<ApiTask[]>(KEY);
+  if (hit) return Promise.resolve(hit);
+
+  return apiFetch<ApiTask[]>(
+    `/api/projects/${projectId}/tasks?userStoryId=${userStoryId}`,
+  ).then((data) => {
+    cache.set(KEY, data, TTL.TASKS);
+    return data;
+  });
+};
+
 export const getSprintTasks = (
   projectId: number,
   sprintId: number,
@@ -84,6 +100,7 @@ export const createTask = (
   }).then((data) => {
     cache.invalidatePrefix(`tasks:project:${projectId}`);
     cache.invalidatePrefix(`tasks:sprint:${projectId}:`);
+    if (userStoryId != null) cache.invalidate(`tasks:story:${projectId}:${userStoryId}`);
     return data;
   });
 };

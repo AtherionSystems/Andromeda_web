@@ -253,7 +253,7 @@ function CapabilityPage({ project, onClose }: CapabilityPageProps) {
                     key={cap.id}
                     capability={cap}
                     defaultOpen={i === 0}
-                    projectId={project.id}
+                    project={project}
                     onAddFeature={setAddFeatureCapId}
                     onAddStory={(capabilityId, featureId) =>
                       setAddStoryTarget({ capabilityId, featureId })

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTheme } from "../../../contexts/useTheme";
 import { deleteFeature } from "../../../api/capabilities";
+import type { ApiProject } from "../../../types/api";
 import type { Feature, Story } from "./types";
 import { Chevron } from "./shared";
 import { FEAT_STATUS_STYLES, PRIORITY_COLOR } from "./styles";
@@ -10,7 +11,7 @@ import ConfirmDeleteDialog from "./ConfirmDeleteDialog";
 
 interface Props {
   feature: Feature;
-  projectId: number;
+  project: ApiProject;
   capabilityId: string;
   onAddStory?: (featureId: string) => void;
   onExpand?: () => void;
@@ -23,7 +24,7 @@ interface Props {
 
 function FeatureCard({
   feature,
-  projectId,
+  project,
   capabilityId,
   onAddStory,
   onExpand,
@@ -46,7 +47,7 @@ function FeatureCard({
   async function handleDelete() {
     setDeleting(true);
     try {
-      await deleteFeature(projectId, capabilityId, feature.id);
+      await deleteFeature(project.id, capabilityId, feature.id);
       onDeleted?.(feature.id);
     } catch (err) {
       console.error("Failed to delete feature:", err);
@@ -133,7 +134,7 @@ function FeatureCard({
                   <StoryRow
                     key={story.id}
                     story={story}
-                    projectId={projectId}
+                    project={project}
                     capabilityId={capabilityId}
                     featureId={feature.id}
                     onEdited={onStoryEdited}
@@ -157,7 +158,7 @@ function FeatureCard({
 
       {editOpen && (
         <EditFeatureModal
-          projectId={projectId}
+          projectId={project.id}
           capabilityId={capabilityId}
           feature={feature}
           onClose={() => setEditOpen(false)}

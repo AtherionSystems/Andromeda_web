@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTheme } from "../../../contexts/useTheme";
 import { deleteCapability } from "../../../api/capabilities";
+import type { ApiProject } from "../../../types/api";
 import type { Capability, Feature, Story } from "./types";
 import { Chevron } from "./shared";
 import FeatureCard from "./FeatureCard";
@@ -10,7 +11,7 @@ import ConfirmDeleteDialog from "./ConfirmDeleteDialog";
 interface Props {
   capability: Capability;
   defaultOpen?: boolean;
-  projectId: number;
+  project: ApiProject;
   onAddFeature?: (capabilityId: string) => void;
   onAddStory?: (capabilityId: string, featureId: string) => void;
   onExpandFeature?: (capabilityId: string, featureId: string) => void;
@@ -26,7 +27,7 @@ interface Props {
 function CapabilityCard({
   capability,
   defaultOpen,
-  projectId,
+  project,
   onAddFeature,
   onAddStory,
   onExpandFeature,
@@ -49,7 +50,7 @@ function CapabilityCard({
   async function handleDelete() {
     setDeleting(true);
     try {
-      await deleteCapability(projectId, capability.id);
+      await deleteCapability(project.id, capability.id);
       onDeleted?.(capability.id);
     } catch (err) {
       console.error("Failed to delete capability:", err);
@@ -115,7 +116,7 @@ function CapabilityCard({
               <FeatureCard
                 key={feature.id}
                 feature={feature}
-                projectId={projectId}
+                project={project}
                 capabilityId={capability.id}
                 onAddStory={
                   onAddStory
@@ -149,7 +150,7 @@ function CapabilityCard({
 
       {editOpen && (
         <EditCapabilityModal
-          projectId={projectId}
+          projectId={project.id}
           capability={capability}
           onClose={() => setEditOpen(false)}
           onSaved={(updated) => {

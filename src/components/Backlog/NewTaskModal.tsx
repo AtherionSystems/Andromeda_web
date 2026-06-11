@@ -11,9 +11,17 @@ interface StoryOption {
   label: string;
 }
 
+interface LockedStory {
+  id: string;
+  numericId: number;
+  title: string;
+}
+
 interface Props {
   projects: ApiProject[];
   defaultProjectId: number | "all";
+  /** When set, the story field is pre-filled and locked (used from CapabilityPage). */
+  lockedStory?: LockedStory;
   onClose: () => void;
   onCreated: (task: ApiTask) => void;
 }
@@ -29,7 +37,7 @@ const STATUS_LABEL: Record<TaskStatus, string> = {
   done: "Done",
 };
 
-function NewTaskModal({ projects, defaultProjectId, onClose, onCreated }: Props) {
+function NewTaskModal({ projects, defaultProjectId, lockedStory, onClose, onCreated }: Props) {
   const { darkMode } = useTheme();
 
   const [projectId, setProjectId] = useState<number | "">(
@@ -40,7 +48,7 @@ function NewTaskModal({ projects, defaultProjectId, onClose, onCreated }: Props)
   const [priority, setPriority] = useState<TaskPriority>("medium");
   const [status, setStatus] = useState<TaskStatus>("todo");
   const [dueDate, setDueDate] = useState("");
-  const [selectedStoryId, setSelectedStoryId] = useState<string>("");
+  const [selectedStoryId, setSelectedStoryId] = useState<string>(lockedStory?.id ?? "");
   const [storyOptions, setStoryOptions] = useState<StoryOption[]>([]);
   const [storiesLoading, setStoriesLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -60,7 +68,9 @@ function NewTaskModal({ projects, defaultProjectId, onClose, onCreated }: Props)
   }, [onClose]);
 
   // Load stories for the selected project whenever it changes.
+  // Skipped when a story is already locked (opened from CapabilityPage).
   useEffect(() => {
+    if (lockedStory) return;
     setStoryOptions([]);
     setSelectedStoryId("");
     if (projectId === "") return;
@@ -125,7 +135,7 @@ function NewTaskModal({ projects, defaultProjectId, onClose, onCreated }: Props)
     if (description.trim()) body.description = description.trim();
     if (dueDate) body.dueDate = `${dueDate}T00:00:00`;
 
-    const selectedStory = storyOptions.find((s) => s.id === selectedStoryId);
+    const selectedStory = lockedStory ?? storyOptions.find((s) => s.id === selectedStoryId);
     const numericStoryId = selectedStory?.numericId;
 
     setSubmitting(true);
@@ -220,8 +230,25 @@ function NewTaskModal({ projects, defaultProjectId, onClose, onCreated }: Props)
             </select>
           </div>
 
-          {/* User Story — shown only after a project is selected */}
-          {projectId !== "" && (
+          {/* User Story */}
+          {lockedStory ? (
+            <div className="mb-4">
+              <label className={labelClass}>User Story</label>
+              <div
+                className={`flex items-center gap-2 rounded border px-3 py-2.5 text-sm ${
+                  darkMode
+                    ? "bg-slate-800/50 border-slate-700 text-slate-300"
+                    : "bg-[#eef4f8] border-[#dbe7f0] text-slate-600"
+                }`}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#3a7fa0" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                </svg>
+                <span className="truncate">{lockedStory.title}</span>
+              </div>
+            </div>
+          ) : projectId !== "" && (
             <div className="mb-4">
               <label className={labelClass}>
                 User Story
