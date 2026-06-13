@@ -1,6 +1,6 @@
 # Vista Developer — Andromeda Web
 
-> **Autores:** JaviSan, Paco · Branch: `DeveloperView`
+> **Autores:** JaviSan, Paco · Rama: `main`
 
 Vista personal del desarrollador: todo lo que se muestra está acotado a **sus** proyectos y **sus** tareas (endpoints `/api/me/*`). El objetivo es que un developer responda en una pantalla: *¿qué tengo pendiente, cómo voy contra mis estimaciones y cómo va el sprint de mi equipo?*
 

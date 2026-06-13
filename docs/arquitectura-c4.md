@@ -1,6 +1,6 @@
 # Arquitectura C4 — Andromeda
 
-> **Autores:** JaviSan, Paco · Niveles 1–2 cubren el sistema completo (compartidos entre branches). Nivel 3 documenta los componentes de la **vista Developer**; la vista PO agrega su propio nivel 3 en `docs/po/`.
+> **Autores:** JaviSan, Paco · Niveles 1–2 cubren el sistema completo. El Nivel 3 documenta los componentes de cada vista (Developer y PO).
 
 ## Nivel 1 — Contexto del sistema
 
@@ -89,6 +89,63 @@ C4Component
 - **Estatus `revision`:** el backend no lo soporta; se mapea a `in_progress` en el wire y se persiste localmente en `sessionStorage`.
 - **Componentes compartidos con PO** (`BacklogPage`, `ProjectsPage`, `Sidebar`): se parametrizan con `scope`/listas de navegación por rol en lugar de duplicarse; los cambios de esta branch no alteran el comportamiento de PO.
 
-## Nivel 3 — Componentes de la vista PO
+## Nivel 3 — Componentes de la vista PO (SPA)
 
-_Pendiente — se documenta en la branch del PO (`docs/po/`)._
+```mermaid
+C4Component
+    title Componentes - Vista Product Owner
+    Container_Boundary(spa, "Andromeda Web (SPA)") {
+        Component(login, "Login / Callback", "React + PKCE", "Flujo OAuth2 contra IDCS; guarda tokens en sesión")
+        Component(authctx, "AuthContext", "React Context", "Sesión del usuario y rol")
+        Component(popage, "POPage", "React", "Shell de la vista: enrutado interno + Sidebar (PO_NAV)")
+        Component(podash, "PODashboard", "React + Recharts", "Resumen de proyectos: Sprint Velocity Chart, Team Distribution, Current Objectives, Upcoming Priorities e indicador de salud del backend")
+        Component(projects, "ProjectsPage (scope completo)", "React", "Gestión completa de proyectos: crear, editar, eliminar, administrar miembros y sprints")
+        Component(backlog, "BacklogPage (isPOView)", "React", "Backlog completo del equipo con creación, edición y asignación de tareas a sprints")
+        Component(analytics, "AnalyticsPage", "React + Recharts", "KPIs del equipo por proyecto: Sprint Velocity, Completion Rate, Burndown, Individual Performance, Team Velocity, Task Distribution y Team Task Completion")
+        Component(config, "Configuration", "React", "Ajustes generales: tema oscuro y preferencias")
+        Component(apiclient, "Capa API (src/api)", "fetch + caché TTL", "projects.ts, tasks.ts, members.ts, dashboard.ts, health.ts — agrega Bearer token y deduplica requests")
+    }
+    System_Ext(api, "Andromeda API", "Spring Boot")
+
+    Rel(login, authctx, "Inicializa sesión")
+    Rel(popage, podash, "Ruta /")
+    Rel(popage, projects, "Ruta /projects")
+    Rel(popage, backlog, "Ruta /backlog")
+    Rel(popage, analytics, "Ruta /analytics")
+    Rel(popage, config, "Ruta /settings")
+    Rel(podash, apiclient, "getProjects / getProjectTasks / getProjectMembers / getHealth")
+    Rel(projects, apiclient, "getProjects / createProject / updateProject / deleteProject / addMember / removeMember / createSprint / updateSprint / deleteSprint")
+    Rel(backlog, apiclient, "getProjects / getProjectTasks / createTask / updateTask / deleteTask / addTaskToSprint")
+    Rel(analytics, apiclient, "getProjects / getDashboardKPI")
+    Rel(apiclient, api, "REST", "JSON + Bearer")
+```
+
+### Endpoints consumidos por la vista PO
+
+| Endpoint | Uso |
+|---|---|
+| `GET /health` | Indicador compacto de disponibilidad del backend |
+| `GET /api/projects` | Todos los proyectos (sin filtro de membresía) |
+| `GET /api/projects/{id}/tasks` | Tareas de un proyecto |
+| `GET /api/project-members` | Miembros de todos los proyectos (resultado agrupado por `projectId` en cliente) |
+| `GET /api/dashboard?projectId=` | KPIs del equipo: `taskDistribution`, `teamVelocity`, `burndownBySprint`, `hoursPerUserBySprint`, `userTasksPerSprint` |
+| `POST /api/projects` | Crear proyecto |
+| `PATCH /api/projects/{id}` | Editar proyecto |
+| `DELETE /api/projects/{id}` | Eliminar proyecto |
+| `POST /api/project-members` | Agregar miembro al proyecto |
+| `DELETE /api/project-members/{id}` | Quitar miembro del proyecto |
+| `POST /api/projects/{id}/sprints` | Crear sprint |
+| `PATCH /api/projects/{id}/sprints/{sid}` | Editar o cambiar estado de sprint |
+| `DELETE /api/projects/{id}/sprints/{sid}` | Eliminar sprint |
+| `POST /api/projects/{id}/tasks` | Crear tarea |
+| `PATCH /api/projects/{id}/tasks/{taskId}` | Editar tarea o cambiar estatus |
+| `DELETE /api/projects/{id}/tasks/{taskId}` | Eliminar tarea |
+| `POST /api/projects/{id}/sprints/{sid}/tasks` | Asignar tarea a sprint |
+
+### Decisiones de diseño relevantes
+
+- **Alcance global:** la vista PO no filtra por membresía; consume `GET /api/projects` y obtiene todos los proyectos del sistema.
+- **Caché TTL compartido:** reutiliza la misma capa `src/api/` con caché TTL que la vista Developer; ambas vistas se benefician de la deduplicación de requests.
+- **Componentes compartidos:** `BacklogPage`, `ProjectsPage` y `Sidebar` se parametrizan por props/rol para servir a ambas vistas sin duplicar código.
+- **AnalyticsPage independiente:** consume `GET /api/dashboard?projectId=` (endpoint de equipo) en lugar de los endpoints `me/` de la vista Developer.
+- **isPOView en BacklogPage:** habilita las acciones de escritura avanzadas (crear tarea, crear sprint, asignar a sprint) que el Developer no puede ejecutar.
