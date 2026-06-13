@@ -51,7 +51,7 @@ interface ProjectCardProps {
   onEdit?: (project: ApiProject) => void;
 }
 
-function ProjectCard({ project, members, index, onClick, onDelete, onEdit }: ProjectCardProps) {
+function ProjectCard({ project, members, index, onClick, onDelete, onEdit, onViewTasks }: ProjectCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [dropdownPos, setDropdownPos] = useState({ top: 0, right: 0 });

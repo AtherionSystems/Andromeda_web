@@ -126,6 +126,47 @@ function BacklogPage({
     setColumnPages((prev) => ({ ...prev, [column]: page }));
   };
 
+  // Reflect an edited task (title/description) in the board and open modal.
+  function handleTaskSaved(updated: ApiTask) {
+    const merge = (prev: ApiTask[]) =>
+      prev.map((t) => (t.id === updated.id ? { ...t, ...updated } : t));
+    setTasks(merge);
+    baseTasksRef.current = merge(baseTasksRef.current);
+    setSelectedTask(updated);
+  }
+
+  // Add a newly created task to the board.
+  function handleTaskCreated(created: ApiTask) {
+    setTasks((prev) => [created, ...prev]);
+    baseTasksRef.current = [created, ...baseTasksRef.current];
+  }
+
+  // Refresh a task's assignees after they change in the detail modal.
+  async function handleAssigneesChanged() {
+    if (!selectedTask || selectedTask.projectId == null) return;
+    const { projectId, id } = selectedTask;
+    loadedAssignmentsRef.current.delete(id);
+    try {
+      const assignments = await getTaskAssignments(projectId, id);
+      const members: Member[] = assignments
+        .filter((a) => a.userName != null)
+        .map((a) => ({
+          initials: memberInitials(a.userName!),
+          color: AVATAR_COLORS[a.userId % AVATAR_COLORS.length],
+          name: a.userName!,
+        }));
+      setTaskAssignments((prev) => ({ ...prev, [id]: members }));
+      loadedAssignmentsRef.current.add(id);
+    } catch (err) {
+      console.error("Failed to refresh assignees:", err);
+    }
+  }
+
+  async function handleStatusToggle(task: ApiTask) {
+    if (task.projectId == null) return;
+    const newStatus: TaskStatus =
+      task.status === "done" ? "in_progress" : "done";
+    // Optimistic update
   // Backend doesn't yet support "revision" — we map it to "in_progress" on the
   // wire and track the revision flag locally via sessionStorage so it survives
   // navigation within the session.

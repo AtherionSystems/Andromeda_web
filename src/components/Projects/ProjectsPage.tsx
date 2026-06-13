@@ -16,6 +16,7 @@ import ProjectArchitectureScreen from "./CapabilityPage";
 import SprintsPage from "./Sprint/SprintsPage";
 import ProjectEntryModal from "./EntryPointProjects/ProjectEntryModal";
 
+// prueba de projects en producción
 interface ProjectsPageProps {
   description?: string;
   readOnly?: boolean;
